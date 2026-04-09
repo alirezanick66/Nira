@@ -7,14 +7,14 @@ from pathlib import Path
 import httpx
 
 # ==================== Imports داخلی پروژه ====================
-from nira.config.logging_config import LG, LogLevel, log_message
-from nira.config.settings import get_settings
+from src.config.logging_config import LG, LogLevel, log_message
+from src.config.settings import get_settings
 
 # ==================== متغیرهای داخلی ====================
 settings = get_settings()
-base_url = settings.SCRAPING_BASE_URL
+
 # ‫آدرس صفحه لیست محصولات موبایل
-LIST_URL = ( f"{base_url}/product/list/69_800_801"
+LIST_URL = ( f"{settings.SCRAPING_BASE_URL}/product/list/69_800_801"
              f"/%D8%AA%D9%85%D8%A7%D9%85%DB%8C-%DA%AF%D9%88%D8%B4%DB%8C%E2%80%8C%D9%87%D8%A7" )
 
 # ‫آدرس جدیدترین محصولات برای آپدیت‌های بعدی

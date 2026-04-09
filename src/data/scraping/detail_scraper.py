@@ -6,9 +6,9 @@ import re
 from pathlib import Path
 import httpx
 # ==================== Imports داخلی پروژه ====================
-from nira.config.logging_config import LG, LogLevel, log_message
-from nira.config.settings import get_settings
-from nira.data.models.product import Product, ProductOffer, ProductSpecs
+from src.config.logging_config import LG, LogLevel, log_message
+from src.config.settings import get_settings
+from src.data.models.product import Product, ProductOffer, ProductSpecs
 
 # ==================== متغیرهای داخلی ====================
 settings = get_settings()
@@ -39,17 +39,9 @@ _RE_IMAGE = re.compile( r'/image/small_product-TLP-\d+[^"]*\.(?:png|jpg|webp)' )
 _RE_SCORE_COUNT = re.compile( r'"score_count":(\d+)' )
 
 # ‫الگو برای icons (مشخصات کلیدی)
-_RE_ICONS = re.compile( r'"icons":\[(\{.+?\})\]', re.DOTALL )
+_RE_ICONS = re.compile( r'"icons":\[(\{.+?\})\]', re.DOTALL )          #TODO ‫چرا از اسم ICONS استفاده شده؟
 _RE_ICON_ITEM = re.compile( r'\{"font":"([^"]+)","value":"([^"]+)","title":"([^"]+)"\}' )
 
-# ‫الگو برای offer های تکنولایف
-_RE_OFFERS_BLOCK = re.compile(
-    r'"seller_code":"TLS-\d+","seller_url":"[^"]+","price":(\d+),'
-    r'"guarantee":"[^"]*","discount":([^,]+),.+?'
-    r'"delivery_text":"([^"]+)","stock_text":"([^"]+)","discounted_price":(\d+),'
-    r'.+?"in_stock":(\d+).+?"is_techno":(true|false)',
-    re.DOTALL,
-)
 _RE_COLOR_IN_OFFER = re.compile( r'"color":\{"code":"([^"]+)","value":"([^"]+)"' )
 
 
@@ -272,14 +264,14 @@ async def scrape_products(
 
             # ‫ذخیره هر 50 محصول (برای جلوگیری از از دست رفتن داده)
             if len( products ) % 50 == 0 and products:
-                _save_products( products, output_path )
+                await _save_products( products, output_path )
 
             # ‫delay بین request ها
             if i < len( product_ids ):
                 await asyncio.sleep( random.uniform( settings.SCRAPING_DELAY_SECONDS, settings.SCRAPING_DELAY_SECONDS * 2 ) )
 
     # ‫ذخیره نهایی
-    _save_products( products, output_path )
+    await _save_products( products, output_path )
 
     log_message(
         LG.SCRAPING,
@@ -291,15 +283,19 @@ async def scrape_products(
     return products
 
 
-def _save_products( products: list[ Product ], output_path: Path ) -> None:
+async def _save_products( products: list[ Product ], output_path: Path ) -> None:
     """‫ذخیره محصولات در فایل JSON"""
-    output_path.parent.mkdir( parents=True, exist_ok=True )
-    data = [ p.model_dump( mode="json" ) for p in products ]
-    output_path.write_text(
-        json.dumps( {
-            "products": data,
-            "total": len( data )
-        }, ensure_ascii=False, indent=2 ),
-        encoding="utf-8",
-    )
+
+    def _blocking_write():
+        output_path.parent.mkdir( parents=True, exist_ok=True )
+        data = [ p.model_dump( mode="json" ) for p in products ]
+        output_path.write_text(
+            json.dumps( {
+                "products": data,
+                "total": len( data )
+            }, ensure_ascii=False, indent=2 ),
+            encoding="utf-8",
+        )
+
+    await asyncio.to_thread( _blocking_write )
     log_message( LG.SCRAPING, f"ذخیره شد: {output_path} — {len(products)} محصول", LogLevel.INFO )
