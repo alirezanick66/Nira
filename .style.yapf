@@ -1,0 +1,9 @@
+[style]
+based_on_style = pep8
+allow_multiline_lambdas = true
+spaces_before_comment = 10
+spaces_around_power_operator = true
+split_before_logical_operator = true
+align_closing_bracket_with_visual_indent = true
+space_inside_brackets = true
+column_limit = 134

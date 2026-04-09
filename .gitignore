@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env.local
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files
+/data
+
+
+# Logs
+data/logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documents
+# backend/data/docs/
+
+# FRONTEND
+frontend/node_modules/**
