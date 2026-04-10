@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 class ProductOffer( BaseModel ):
     """‫اطلاعات قیمت و موجودی یک رنگ/فروشنده"""
 
-    color_name: str | None = None
-    color_code: str | None = None
+    # color_name: str | None = None
+    # color_code: str | None = None
     price: int = Field( ge=0 )
     discounted_price: int = Field( ge=0 )
     discount_percent: int | None = None
@@ -33,7 +33,6 @@ class Product( BaseModel ):
 
     # ‫اطلاعات پایه
     product_id: int = Field( description="‫شناسه عددی محصول از URL" )
-    code: str = Field( description="‫کد محصول مثل TLP-76419" )
     name: str
     model: str | None = None
     brand_fa: str | None = None
