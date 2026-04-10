@@ -1,16 +1,15 @@
-# ==================== Imports  ====================
 import asyncio
 import json
 import random
-
 from pathlib import Path
+
 import httpx
-# ==================== Imports داخلی پروژه ====================
+
 from src.config.logging_config import LG, LogLevel, log_message
 from src.config.settings import get_settings
 from src.data.models.product import Product
 from src.data.scraping.parsers import parse_product
-# ==================== متغیرهای داخلی ====================
+
 settings = get_settings()
 BASE_URL = settings.SCRAPING_BASE_URL
 HEADERS = {
@@ -24,17 +23,11 @@ HEADERS = {
 }
 
 
-# ==================== توابع  اصلی====================
 async def scrape_product(
     client: httpx.AsyncClient,
     product_id: int,
 ) -> Product | None:
-    """‫دریافت و parse صفحه یک محصول
-
-    ‫پارامترها:
-        client: کلاینت HTTP
-        product_id: شناسه عددی محصول
-    """
+    """دریافت و parse صفحه یک محصول با مدیریت Retry"""
     url = f"{BASE_URL}/product-{product_id}/"
 
     for attempt in range( 1, settings.SCRAPING_MAX_RETRIES + 1 ):
@@ -63,35 +56,41 @@ async def scrape_products(
     product_ids: list[ int ],
     output_path: Path,
 ) -> list[ Product ]:
-    """‫استخراج جزئیات همه محصولات و ذخیره در فایل JSON
-
-    ‫پارامترها:
-        product_ids: لیست شناسه‌های محصولات
-        output_path: مسیر فایل خروجی JSON
-    """
+    """استخراج جزئیات همه محصولات به‌صورت همزمان با محدودیت Semaphore"""
     products: list[ Product ] = []
     failed: list[ int ] = []
+    SCRAPING_CONCURRENCY: int = 5
+    # Semaphore تعداد درخواست‌های همزمان را به SCRAPING_CONCURRENCY محدود می‌کند
+    semaphore = asyncio.Semaphore( SCRAPING_CONCURRENCY )
 
     async with httpx.AsyncClient( headers=HEADERS, follow_redirects=True ) as client:
-        for i, product_id in enumerate( product_ids, 1 ):
-            log_message( LG.SCRAPING, f"پردازش {i}/{len(product_ids)} — محصول {product_id}", LogLevel.INFO )
 
-            product = await scrape_product( client, product_id )
+        async def _scrape_with_limit( pid: int ) -> Product | None:
+            async with semaphore:
+                # ‫تأخیر کوتاه و تصادفی برای جلوگیری از تشخیص Burst توسط WAF سایت
+                await asyncio.sleep( random.uniform( 0.2, 0.5 ) )
+                result = await scrape_product( client, pid )
+                if isinstance( result, Product ):
+                    products.append( result )
+                    if len( products ) % 50 == 0:
+                        await _save_products( products, output_path )
+                return result
 
-            if product:
-                products.append( product )
+        # ایجاد و اجرای همزمان تسک‌ها
+        tasks = [ _scrape_with_limit( pid ) for pid in product_ids ]
+        results = await asyncio.gather( *tasks, return_exceptions=True )
+
+        # پردازش نتایج
+        for pid, result in zip( product_ids, results ):
+            if isinstance( result, Exception ) or result is None:
+                failed.append( pid )
+                log_message( LG.SCRAPING, f"محصول {pid} — خطای غیرمنتظره: {result}", LogLevel.ERROR )
+            elif isinstance( result, Product ):
+                products.append( result )
             else:
-                failed.append( product_id )
+                failed.append( pid )
 
-            # ‫ذخیره هر 50 محصول (برای جلوگیری از از دست رفتن داده)
-            if len( products ) % 50 == 0 and products:
-                await _save_products( products, output_path )
-
-            # ‫delay بین request ها
-            if i < len( product_ids ):
-                await asyncio.sleep( random.uniform( settings.SCRAPING_DELAY_SECONDS, settings.SCRAPING_DELAY_SECONDS * 2 ) )
-
-    # ‫ذخیره نهایی
+    # ذخیره نهایی
     await _save_products( products, output_path )
 
     log_message(
@@ -100,14 +99,13 @@ async def scrape_products(
         LogLevel.INFO,
         failed_ids=failed[ :10 ] if failed else [],
     )
-
     return products
 
 
 async def _save_products( products: list[ Product ], output_path: Path ) -> None:
-    """‫ذخیره محصولات در فایل JSON"""
+    """ذخیره محصولات در فایل JSON به‌صورت غیرمسدودکننده"""
 
-    def _blocking_write():
+    def _blocking_write() -> None:
         output_path.parent.mkdir( parents=True, exist_ok=True )
         data = [ p.model_dump( mode="json" ) for p in products ]
         output_path.write_text(

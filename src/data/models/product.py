@@ -18,18 +18,63 @@ class ProductOffer( BaseModel ):
 
 
 class ProductSpecs( BaseModel ):
-    """‫مشخصات فنی محصول — استخراج از icons"""
+    """‫مشخصات فنی کامل محصول"""
 
     cpu: str | None = None
+    cpu_cores: str | None = None
+    gpu: str | None = None
+    camera_quality: str | None = None
+    os: str | None = None
+    release_date: str | None = None
+    dimensions_weight: str | None = None
+    internal_storage: str | None = None
     ram: str | None = None
-    storage: str | None = None
-    screen_size: str | None = None
-    camera_rear: str | None = None
+    expandable_storage: str | None = None
+    display_type: str | None = None
+    display_size: str | None = None
+    display_colors_resolution: str | None = None
+    screen_to_body_ratio: str | None = None
+    aspect_ratio: str | None = None
+    pixel_density: str | None = None
+    multi_touch: str | None = None
+    rear_camera: str | None = None
+    camera_hardware: str | None = None
+    rear_video: str | None = None
+    flash: str | None = None
+    digital_zoom: str | None = None
+    front_camera: str | None = None
+    camera_features: str | None = None
+    network_internet: str | None = None
+    cellular_networks: str | None = None
+    umts_speed: str | None = None
+    usb_port: str | None = None
+    usb_charging: str | None = None
+    bluetooth: str | None = None
+    audio_jack: str | None = None
+    wifi: str | None = None
+    wifi_hotspot: str | None = None
+    hdmi_output: str | None = None
+    gps: str | None = None
+    web_browser: str | None = None
+    java_support: str | None = None
+    music_formats: str | None = None
+    audio_recording_formats: str | None = None
+    video_formats: str | None = None
+    video_recording_formats: str | None = None
+    photo_formats: str | None = None
+    camera_photo_format: str | None = None
+    sensors: str | None = None
+    water_dust_resistance: str | None = None
+    radio: str | None = None
+    other_features: str | None = None
     battery: str | None = None
+    battery_capacity: str | None = None
+    battery_type: str | None = None
+    product_code: str | None = None
 
 
 class Product( BaseModel ):
-    """‫مدل اصلی محصول — خروجی detail_scraper"""
+    """‫مدل  اصلی محصول """
 
     # ‫اطلاعات پایه
     product_id: int = Field( description="‫شناسه عددی محصول از URL" )

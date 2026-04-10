@@ -8,11 +8,8 @@ from src.config.settings import get_settings
 settings = get_settings()
 BASE_URL = settings.SCRAPING_BASE_URL
 
-# ‫الگوهای regex برای استخراج داده از HTML
-_RE_PRODUCT_BLOCK = re.compile(
-    r'\{"_id":"[^"]+","code":"TLP-(\d+)"(.+?)"score_avg":([\d.]+)',
-    re.DOTALL,
-)
+# ‫الگوهای پایه برای استخراج داده از HTML
+_RE_PRODUCT_BLOCK = re.compile( r'\{"_id":"[^"]+","code":"TLP-(\d+)"(.+?)"score_avg":([\d.]+)', re.DOTALL )
 _RE_TITLE = re.compile( r'"title":"([^"]+)"' )
 _RE_MODEL = re.compile( r'"model":"([^"]+)"' )
 _RE_BRAND_FA = re.compile( r'"brand":\{"name":"([^"]+)"' )
@@ -22,38 +19,87 @@ _RE_IS_AVAILABLE = re.compile( r'"is_available":(true|false)' )
 _RE_CANONICAL = re.compile( r'"canonical":"(https://www\.technolife\.com/product-\d+/[^"]+)"' )
 _RE_IMAGE = re.compile( r'/image/small_product-TLP-\d+[^"]*\.(?:png|jpg|webp)' )
 _RE_SCORE_COUNT = re.compile( r'"score_count":(\d+)' )
+_RE_NAME = re.compile( r'<strong[^>]*id=["\']pdp_name["\'][^>]*>(.*?)</strong>', re.DOTALL )
+# _RE_COLOR_IN_OFFER = re.compile( r'"color":\{"code":"([^"]+)","value":"([^"]+)"' ) #رنگ محصول
 
-# ‫الگو برای icons (مشخصات کلیدی)
-_RE_ICONS = re.compile( r'"icons":\[(\{.+?\})\]', re.DOTALL )
-_RE_ICON_ITEM = re.compile( r'\{"font":"([^"]+)","value":"([^"]+)","title":"([^"]+)"\}' )
+# ‫الگو استخراج ردیف‌های مشخصات فنی از <li>
+_RE_SPEC_ROW = re.compile( r'<li[^>]*>.*?<p[^>]*>(.*?)</p>.*?<p[^>]*>(.*?)</p>.*?</li>', re.DOTALL )
 
-# _RE_COLOR_IN_OFFER = re.compile( r'"color":\{"code":"([^"]+)","value":"([^"]+)"' )
+# ‫نگاشت کلیدهای HTML به فیلدهای مدل
+_SPEC_KEY_MAP: dict[ str, str ] = {
+    "نوع پردازنده": "cpu",
+    "تعداد هسته پردازشگر": "cpu_cores",
+    "پردازنده گرافیکی": "gpu",
+    "کیفیت دوربین": "camera_quality",
+    "نوع سیستم عامل": "os",
+    "تاریخ معرفی": "release_date",
+    "ابعاد/ وزن": "dimensions_weight",
+    "حافظه داخلی": "internal_storage",
+    "حافظه ram": "ram",
+    "امکان افزایش حافظه": "expandable_storage",
+    "نوع صفحه نمایش": "display_type",
+    "سایز صفحه نمایش": "display_size",
+    "تعداد رنگ": "display_colors_resolution",
+    "درصد نسبت صفحه نمایش به بدنه": "screen_to_body_ratio",
+    "نسبت صفحه نمایش": "aspect_ratio",
+    "تراکم پیکسل": "pixel_density",
+    "مولتی تاچ": "multi_touch",
+    "دوربین پشت": "rear_camera",
+    "مشخصات سخت‌ افزاری دوربین": "camera_hardware",
+    "فیلمبرداری دوربین پشت": "rear_video",
+    "فلاش": "flash",
+    "زوم دیجیتال": "digital_zoom",
+    "دوربین جلو": "front_camera",
+    "سایر ویژگی‌ های مهم دوربین": "camera_features",
+    "شبکه اینترنت": "network_internet",
+    "شبکه‌ های مخابراتی قابل پشتیبانی": "cellular_networks",
+    "حداکثر سرعت دانلود": "umts_speed",
+    "پورت usb": "usb_port",
+    "امکان شارژ از طریق usb": "usb_charging",
+    "بلوتوث": "bluetooth",
+    "جک 3.5 میلی متری صدا": "audio_jack",
+    "شبکه wi-fi": "wifi",
+    "امکان wi-fi hotspot": "wifi_hotspot",
+    "خروجی hdmi": "hdmi_output",
+    "موقعیت‌ نما gps": "gps",
+    "مرورگر وب": "web_browser",
+    "پشتیبانی از java": "java_support",
+    "پخش موسیقی": "music_formats",
+    "ضبط صدا": "audio_recording_formats",
+    "پخش ویدئو": "video_formats",
+    "ضبط ویدئو": "video_recording_formats",
+    "نمایش عکس": "photo_formats",
+    "فرمت عکس‌ های دوربین": "camera_photo_format",
+    "سنسورها": "sensors",
+    "مقاومت در برابر آب و گرد و غبار": "water_dust_resistance",
+    "رادیو": "radio",
+    "سایر مشخصات مهم": "other_features",
+    "باتری": "battery",
+    "ظرفیت باتری": "battery_capacity",
+    "نوع باتری": "battery_type",
+    "شناسه کالا": "product_code",
+}
 
 
 # ==================== توابع کمکی داخلی====================
-def parse_icons( html: str ) -> ProductSpecs:
-    """‫استخراج مشخصات فنی از icons"""
-
-    # ‫mapping از font icon به فیلد
-    icon_map = {
-        "icon-processors": "cpu",
-        "icon-hard-disk-drive": "storage",
-        "icon-ram": "ram",
-        "icon-smartphone-1": "screen_size",
-        "icon-photo-camera": "camera_rear",
-        "icon-battery-1": "battery",
-    }
-
+def _parse_specs( html: str ) -> ProductSpecs:
+    """‫استخراج مشخصات فنی کامل از بخش لیست جزییات"""
     specs_data: dict[ str, str ] = {}
-    icons_match = _RE_ICONS.search( html )
-    if not icons_match:
-        return ProductSpecs()
 
-    for item in _RE_ICON_ITEM.finditer( icons_match.group( 0 ) ):
-        font, value, _ = item.group( 1 ), item.group( 2 ), item.group( 3 )
-        field = icon_map.get( font )
-        if field:
-            specs_data[ field ] = value.strip()
+    # جلوگیری از تداخل زیررشته‌ها (مثلاً تطابق "باتری" به جای "ظرفیت باتری")
+    sorted_key_map = sorted( _SPEC_KEY_MAP.items(), key=lambda item: len( item[ 0 ] ), reverse=True )
+
+    for match in _RE_SPEC_ROW.finditer( html ):
+        raw_key = match.group( 1 ).strip().rstrip( ':' ).strip()
+        value = match.group( 2 ).strip()
+
+        # ‫نرمال‌سازی کلید برای تطبیق امن‌تر با نگاشت
+        norm_key = raw_key.replace( '\u200c', ' ' ).lower()
+
+        for map_key, field_name in sorted_key_map:
+            if map_key.replace( '\u200c', ' ' ).lower() in norm_key:
+                specs_data[ field_name ] = value
+                break
 
     return ProductSpecs( **specs_data )
 
@@ -137,12 +183,11 @@ def parse_product( html: str, product_id: int ) -> Product | None:
         Product یا None در صورت شکست parse
     """
     # ‫استخراج فیلدهای پایه
-    title_m = _RE_TITLE.search( html )
-    if not title_m:
-        log_message( LG.SCRAPING, f"محصول {product_id}: title یافت نشد", LogLevel.WARNING )
+    name_m = _RE_NAME.search( html )
+    if not name_m:
+        log_message( LG.SCRAPING, f"محصول {product_id}: نام محصول (pdp_name) یافت نشد", LogLevel.WARNING )
         return None
 
-    # code_m = re.search( r'"code":"(TLP-\d+)"', html )
     model_m = _RE_MODEL.search( html )
     brand_fa_m = _RE_BRAND_FA.search( html )
     brand_en_m = _RE_BRAND_EN.search( html )
@@ -154,7 +199,7 @@ def parse_product( html: str, product_id: int ) -> Product | None:
     score_avg_m = _RE_PRODUCT_BLOCK.search( html )
 
     # ‫استخراج مشخصات فنی و offer ها
-    specs = parse_icons( html )
+    specs = _parse_specs( html )
     offers, main_offer = parse_offers( html )
     is_available = available_m.group( 1 ) == "true" if available_m else False
 
@@ -174,7 +219,7 @@ def parse_product( html: str, product_id: int ) -> Product | None:
 
     return Product(
         product_id=product_id,
-        name=title_m.group( 1 ),
+        name=name_m.group( 1 ),
         model=model_m.group( 1 ) if model_m else None,
         brand_fa=brand_fa_m.group( 1 ) if brand_fa_m else None,
         brand_en=brand_en_m.group( 1 ) if brand_en_m else None,

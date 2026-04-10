@@ -12,7 +12,7 @@ async def main():
     # all_ids = await collect_all_ids()
     # save_ids( all_ids, output_path=Path( "data/products/product_ids.json" ) )
     ids = load_ids( Path( "data/products/product_ids.json" ) )
-    await scrape_products( ids[ :5 ], Path( "data/products/products.json" ) )
+    await scrape_products( ids[ :10 ], Path( "data/products/products.json" ) )
 
 
 asyncio.run( main() )
