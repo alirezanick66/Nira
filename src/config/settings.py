@@ -20,7 +20,7 @@ class Settings( BaseSettings ):
 
     # ==================== Scraping ====================
     SCRAPING_BASE_URL: str = "https://www.technolife.com"
-    SCRAPING_DELAY_SECONDS: float = 2.0
+    SCRAPING_DELAY_SECONDS: float = 0.3
     SCRAPING_MAX_RETRIES: int = 3
 
 
