@@ -7,21 +7,20 @@ from bidi.algorithm import get_display
 from loguru import logger
 
 # ‫پیدا کردن مسیر ریشه پروژه (این فایل در src/config/ قرار دارد)
-CURRENT_DIR = Path(__file__).resolve().parent.parent.parent
+CURRENT_DIR = Path( __file__ ).resolve().parent.parent.parent
 LOG_DIR = CURRENT_DIR / "data" / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir( parents=True, exist_ok=True )
 
 
-class LG(str, Enum):
+class LG( str, Enum ):
     API = "API"
     DATABASE = "Database"
     DATA_PROCESSING = "DataProcessing"
     RETRIEVAL = "Retrieval"
     LLM = "LLM"
-    SCRAPING = "Scraping"
 
 
-class LogLevel(str, Enum):
+class LogLevel( str, Enum ):
     """‫سطح‌های لاگ‌گذاری"""
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -31,24 +30,22 @@ class LogLevel(str, Enum):
 
 
 # ‫فرمت لاگ کنسول
-CONSOLE_FORMAT = ("<green>{time:YYYY-MM-DD HH:mm}</green> | "
-                  "<cyan>{extra[category]}</cyan> | "
-                  "<level>{level: <8}</level> | "
-                  "<level>{message}</level>{extra[custom_extra]}")
+CONSOLE_FORMAT = ( "<green>{time:YYYY-MM-DD HH:mm}</green> | "
+                   "<cyan>{extra[category]}</cyan> | "
+                   "<level>{level: <8}</level> | "
+                   "<level>{message}</level>{extra[custom_extra]}" )
 
 # ‫فرمت لاگ فایل
-FILE_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm} | {extra[category]} | {level} | {message}{extra[custom_extra]}"
-)
+FILE_FORMAT = ( "{time:YYYY-MM-DD HH:mm} | {extra[category]} | {level} | {message}{extra[custom_extra]}" )
 
-logger.remove()  # ‫پاک کردن تنظیمات پیش‌فرض loguru
+logger.remove()          # ‫پاک کردن تنظیمات پیش‌فرض loguru
 
 # ‫تنظیم رنگ‌بندی سطح‌ها
-logger.level("INFO", color="<white>")
-logger.level("DEBUG", color="<light-green>")
-logger.level("WARNING", color="<yellow>")
-logger.level("ERROR", color="<red>")
-logger.level("CRITICAL", color="<red><bold>")
+logger.level( "INFO", color="<white>" )
+logger.level( "DEBUG", color="<light-green>" )
+logger.level( "WARNING", color="<yellow>" )
+logger.level( "ERROR", color="<red>" )
+logger.level( "CRITICAL", color="<red><bold>" )
 
 # ‫لاگ کنسول
 logger.add(
@@ -56,7 +53,7 @@ logger.add(
     format=CONSOLE_FORMAT,
     colorize=True,
     level="DEBUG",
-    filter=lambda record: record["extra"].get("target") == "console",
+    filter=lambda record: record[ "extra" ].get( "target" ) == "console",
 )
 
 # ‫لاگ فایل — یه فایل جداگانه برای هر دسته
@@ -65,11 +62,11 @@ for category in LG:
         LOG_DIR / f"{category.value.lower()}.log",
         format=FILE_FORMAT,
         level="DEBUG",
-        rotation="10 MB",  # چرخش وقتی به 10 مگابایت برسه
-        retention=7,  # نگه داشتن 7 فایل بک‌آپ
+        rotation="10 MB",          # چرخش وقتی به 10 مگابایت برسه
+        retention=7,          # نگه داشتن 7 فایل بک‌آپ
         encoding="utf-8",
-        filter=lambda record, cat=category.value: (record["extra"].get(
-            "category") == cat and record["extra"].get("target") == "file"),
+        filter=lambda record, cat=category.value:
+        ( record[ "extra" ].get( "category" ) == cat and record[ "extra" ].get( "target" ) == "file" ),
     )
 
 
@@ -88,11 +85,11 @@ def log_message(
         **kwargs: اطلاعات اضافی برای ضمیمه شدن به لاگ
     """
     # ‫پردازش فارسی فقط برای کنسول — برای فایل خام ذخیره می‌شود
-    console_message = get_display(arabic_reshaper.reshape(message))
+    console_message = get_display( arabic_reshaper.reshape( message ) )
     extra = {
         "category": category.value,
         "custom_extra": f" | {kwargs}" if kwargs else "",
     }
 
-    logger.bind(target="console", **extra).log(level.value, console_message)
-    logger.bind(target="file", **extra).log(level.value, message)
+    logger.bind( target="console", **extra ).log( level.value, console_message )
+    logger.bind( target="file", **extra ).log( level.value, message )
