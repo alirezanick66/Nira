@@ -18,11 +18,6 @@ class Settings( BaseSettings ):
     APP_ENV: Literal[ "development", "production" ] = "development"
     APP_DEBUG: bool = True
 
-    # ==================== Scraping ====================
-    SCRAPING_BASE_URL: str = "https://www.technolife.com"
-    SCRAPING_DELAY_SECONDS: float = 0.3
-    SCRAPING_MAX_RETRIES: int = 3
-
 
 @lru_cache
 def get_settings() -> Settings:
