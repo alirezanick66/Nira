@@ -21,6 +21,18 @@ class Settings( BaseSettings ):
     REQUEST_DELAY_SECONDS: float = 0.5
     MAX_RETRIES: int = 3
 
+    #───────────────────── Database ─────────────────────
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_NAME: str = "nira_db"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "postgres"
+    POSTGRES_ECHO: bool = False
+
+    DATABASE_URL: str = Field( default=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}" )
+
+    sync_concurrency: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
+
     # ───────────────────── FastApi ─────────────────────
     APP_ENV: Literal[ "development", "production" ] = "development"
     APP_DEBUG: bool = True

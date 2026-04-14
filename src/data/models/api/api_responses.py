@@ -4,7 +4,7 @@
 ‫فقط فیلدهای مورد نیاز رو extract می‌کنیم، بقیه ignore می‌شن
 """
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 # ==================== Product ID List API ====================
 
@@ -164,6 +164,22 @@ class DigikaiaProduct( BaseModel ):
     # Comments Overview (اختیاری)
     comments_overview: DigikaiaCommentsOverview | None = None
 
+    @field_validator( "comments_overview", mode="before" )
+    @classmethod
+    def _normalize_comments_overview( cls, value: object ) -> DigikaiaCommentsOverview | None:
+        """‫تبدیل لیست خالی [] به None برای تحمل ناهمگونی API دیجی‌کالا"""
+        # ‫لیست خالی → None
+        if isinstance( value, list ) and len( value ) == 0:
+            return None
+
+        # ‫None یا از قبل معتبر → بازگرداندن مستقیم
+        if value is None or isinstance( value, DigikaiaCommentsOverview ):
+            return value
+
+        # ‫هر نوع دیگر (مثلاً dict خام) → اجازه به Pydantic برای اعتبارسنجی بعدی
+        # ‫با type: ignore چون Pydantic در مرحله بعد نوع نهایی را چک می‌کند
+        return value          # type: ignore[return-value]
+
 
 class DigikaiaProductDetailData( BaseModel ):
     """‫داده‌های اصلی response جزئیات محصول"""
@@ -174,5 +190,5 @@ class DigikaiaProductDetailData( BaseModel ):
 class DigikaiaProductDetailResponse( BaseModel ):
     """‫Response کامل API جزئیات محصول"""
 
-    status: str = Field( default="ok" )
+    status: int = Field( default=200 )
     data: DigikaiaProductDetailData
