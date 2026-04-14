@@ -75,7 +75,7 @@ class DigikalaAPIClient:
             response.raise_for_status()
 
             # ‫رعایت Rate Limiting بین درخواست‌ها
-            await asyncio.sleep( self._settings.REQUEST_DELAY )
+            await asyncio.sleep( self._settings.REQUEST_DELAY_SECONDS )
             return response.json()
 
     async def fetch_product_list( self, page: int = 1 ) -> DigikaiaProductListResponse:
@@ -91,7 +91,7 @@ class DigikalaAPIClient:
             ValidationError: اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
         log_message( LG.API, f"درخواست لیست محصولات | صفحه: {page}", LogLevel.DEBUG )
-        raw_data = await self._safe_request( "v1/search/", params={ "page_no": page } )
+        raw_data = await self._safe_request( "/v1/categories/mobile-phone/search/", params={ "page": page } )
 
         try:
             return DigikaiaProductListResponse.model_validate( raw_data )
@@ -112,7 +112,7 @@ class DigikalaAPIClient:
             ValidationError: اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
         log_message( LG.API, f"درخواست جزئیات محصول | ID: {product_id}", LogLevel.DEBUG )
-        raw_data = await self._safe_request( f"product/v2/{product_id}/" )
+        raw_data = await self._safe_request( f"/v2/product/{product_id}/" )
 
         try:
             return DigikaiaProductDetailResponse.model_validate( raw_data )

@@ -83,8 +83,9 @@ class ProductTransformer:
         if api_product.expert_review:
             expert_review = ExpertReview( description=api_product.expert_review.description,
                                           sections=[
-                                              ReviewSectionItem( text=section.text )
-                                              for section in api_product.expert_review.review_sections for section in section.sections
+                                              ReviewSectionItem( text=item.text )
+                                              for review_section in api_product.expert_review.review_sections
+                                              for item in review_section.sections
                                           ] )
 
         # ‫استخراج User Feedback

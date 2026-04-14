@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,9 +16,9 @@ class Settings( BaseSettings ):
     )
 
     #───────────────────── API ─────────────────────
-    DIGIKALA_BASE_URL = "https://api.digikala.com"
+    DIGIKALA_BASE_URL: str = "https://api.digikala.com"
     REQUEST_TIMEOUT: int = 30
-    REQUEST_DELAY: float = 0.5
+    REQUEST_DELAY_SECONDS: float = 0.5
     MAX_RETRIES: int = 3
 
     # ───────────────────── FastApi ─────────────────────
