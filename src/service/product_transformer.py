@@ -3,7 +3,7 @@
 ‫این ماژول مسئول تبدیل داده‌های خام API دیجی‌کالا به مدل Product نرمال‌شده هست
 """
 
-from src.data.models.core.product import ExpertReview, Product, ProductSpecification, UserFeedback
+from src.data.models.core.product import ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback
 from src.data.models.core.product import ProductCategory, ProductStatus
 from src.data.models.api.api_responses import DigikaiaProduct
 from src.utils.spec_normalizer import SpecNormalizer
@@ -81,10 +81,11 @@ class ProductTransformer:
         # ‫استخراج Expert Review
         expert_review = None
         if api_product.expert_review:
-            expert_review = ExpertReview(
-                description=api_product.expert_review.description,
-                sections=[ section.model_dump() for section in api_product.expert_review.review_sections ],
-            )
+            expert_review = ExpertReview( description=api_product.expert_review.description,
+                                          sections=[
+                                              ReviewSectionItem( text=section.text )
+                                              for section in api_product.expert_review.review_sections for section in section.sections
+                                          ] )
 
         # ‫استخراج User Feedback
         user_feedback = None

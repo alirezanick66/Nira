@@ -4,9 +4,7 @@
 ‫فقط فیلدهای مورد نیاز رو extract می‌کنیم، بقیه ignore می‌شن
 """
 
-from typing import Any
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # ==================== Product ID List API ====================
 
@@ -106,11 +104,16 @@ class DigikaiaSpecification( BaseModel ):
     attributes: list[ DigikaiaSpecAttribute ] = Field( default_factory=list )
 
 
+class DigikaiaExpertSectionItem( BaseModel ):
+    model_config = ConfigDict( extra="ignore" )
+    text: str | None = Field( default=None, description="متن بخش نقد تخصصی" )
+
+
 class DigikaiaExpertReviewSection( BaseModel ):
     """‫یک بخش از نقد تخصصی"""
 
     title: str
-    sections: list[ dict[ str, Any ] ] = Field( default_factory=list )
+    sections: list[ DigikaiaExpertSectionItem ] = Field( default_factory=list )
 
 
 class DigikaiaExpertReview( BaseModel ):
