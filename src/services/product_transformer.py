@@ -5,7 +5,7 @@
 
 from src.data.models.core.product import ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback
 from src.data.models.core.product import ProductCategory, ProductStatus
-from src.data.models.api.api_responses import DigikaiaProduct
+from src.data.models.api.api_responses import DigikaiaProduct, DigikaiaSpecification
 from src.utils.spec_normalizer import SpecNormalizer
 
 
@@ -52,7 +52,7 @@ class ProductTransformer:
         return status_map.get( status, ProductStatus.OUT_OF_STOCK )
 
     @staticmethod
-    def _serialize_specs( specs: list ) -> list[ dict ]:
+    def _serialize_specs( specs: list[ DigikaiaSpecification ] ) -> list[ dict[ str, object ] ]:
         """تبدیل DigikaiaSpecification → dict"""
         return [ spec.model_dump() for spec in specs ]
 
@@ -123,6 +123,7 @@ class ProductTransformer:
             rating_count=api_product.rating.count,
           # ‫تصاویر و رنگ‌ها
             image_url=image_url,
+            images=api_product.images.webp_url,
             colors=colors,
           # ‫مشخصات
             specifications=specifications,
