@@ -10,6 +10,7 @@
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
+from pydantic.config import ConfigDict
 
 
 #==================== Enum Class ====================
@@ -60,11 +61,17 @@ class NormalizedSpec( BaseModel ):
     spec_unit: str | None = Field( default=None, description="‫واحد (GB/mAh/MP/...)" )
 
 
+class ReviewSectionItem( BaseModel ):
+    """‫آیتم محتوایی در بخش‌های نقد تخصصی"""
+    model_config = ConfigDict( extra="ignore" )
+    text: str | None = Field( default=None, description="متن بخش (در صورت قالب متنی)" )
+
+
 class ExpertReview( BaseModel ):
     """‫نقد تخصصی"""
 
     description: str = Field( description="‫توضیحات اصلی" )
-    sections: list[ dict ] = Field( default_factory=list, description="‫بخش‌های نقد (JSON)" )
+    sections: list[ ReviewSectionItem ] = Field( default_factory=list, description="‫بخش‌های نقد (JSON)" )
 
     def get_summary( self, max_length: int = 500 ) -> str:
         """‫دریافت خلاصه توضیحات"""
@@ -152,10 +159,11 @@ class Product( BaseModel ):
     updated_at: datetime = Field( default_factory=datetime.utcnow, description="‫آخرین به‌روزرسانی" )
 
     # ‫فیلدهای محاسباتی (برای Qdrant)
-    price_range: PriceRange | None = Field( default=None )
+    price_range: PriceRange = Field( default=PriceRange.BUDGET )
     battery_quality: QualityLevel = Field( default=QualityLevel.UNKNOWN )
     camera_quality: QualityLevel = Field( default=QualityLevel.UNKNOWN )
     value_for_money: QualityLevel = Field( default=QualityLevel.UNKNOWN )
+
     tags: list[ str ] = Field( default_factory=list, description="‫برچسب‌های استنتاجی" )
 
     # ==================== اعتبارسنجی فیلدها ====================

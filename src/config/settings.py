@@ -14,7 +14,13 @@ class Settings( BaseSettings ):
         case_sensitive=False,
     )
 
-    # ==================== FastApi ====================
+    #───────────────────── API ─────────────────────
+    DIGIKALA_BASE_URL = "https://api.digikala.com"
+    REQUEST_TIMEOUT: int = 30
+    REQUEST_DELAY: float = 0.5
+    MAX_RETRIES: int = 3
+
+    # ───────────────────── FastApi ─────────────────────
     APP_ENV: Literal[ "development", "production" ] = "development"
     APP_DEBUG: bool = True
 
