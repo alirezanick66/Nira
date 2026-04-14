@@ -33,7 +33,7 @@ class DigikaiaProductListData( BaseModel ):
 class DigikaiaProductListResponse( BaseModel ):
     """‫Response کامل API لیست محصولات"""
 
-    status: str = Field( default="ok" )
+    status: int = Field( default=200 )
     data: DigikaiaProductListData
 
 
