@@ -70,11 +70,7 @@ class DigikaiaColor( BaseModel ):
 class DigikaiaImages( BaseModel ):
     """‫تصاویر محصول"""
 
-    class ImageMain( BaseModel ):
-        webp_url: list[ str ] = Field( default_factory=list )
-
-    main: ImageMain
-    lists: list[ Any ] = Field( default_factory=list )
+    webp_url: list[ str ] = Field( default_factory=list )
 
 
 class DigikaiaPrice( BaseModel ):
