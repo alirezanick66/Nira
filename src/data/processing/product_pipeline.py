@@ -5,9 +5,11 @@
 ‫- جداسازی کامل لایه‌های Transform و Enrich (SRP)
 ‫- مدیریت خطای هدفمند و لاگینگ RTL
 """
+#───────────────────── imports ─────────────────────
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
+#───────────────────── local imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.models.api.api_responses import DigikaiaProductDetailResponse
 from src.data.models.core.product import Product

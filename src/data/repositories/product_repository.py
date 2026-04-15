@@ -2,6 +2,7 @@
 ‫این کلاس تنها نقطهٔ تعامل با جدول product_raw_cache است.
 """
 #───────────────────── Imports ─────────────────────
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError

@@ -62,6 +62,7 @@ class DigikaiaRating( BaseModel ):
 
 class DigikaiaColor( BaseModel ):
     """‫رنگ محصول"""
+    model_config = ConfigDict( extra="ignore" )          # نادیده گرفتن ایمن فیلدهای اضافی
     title: str
 
 
@@ -69,6 +70,20 @@ class DigikaiaImages( BaseModel ):
     """‫تصاویر محصول"""
 
     webp_url: list[ str ] = Field( default_factory=list )
+
+    @field_validator( "webp_url", mode="before" )
+    @classmethod
+    def _extract_webp_url( cls, value: object ) -> list[ str ]:
+        """‫استخراج لیست URL از ساختار تودرتوی API"""
+        if isinstance( value, dict ):
+            # ‫حالت ۱: {"main": {"webp_url": [...]}}
+            if "main" in value and isinstance( value[ "main" ], dict ):
+                return value[ "main" ].get( "webp_url", [] )
+            # ‫حالت ۲: {"webp_url": [...]} (مستقیم)
+            if "webp_url" in value and isinstance( value[ "webp_url" ], list ):
+                return value[ "webp_url" ]
+        # ‫حالت ۳: لیست مستقیم یا مقدار نامعتبر
+        return value if isinstance( value, list ) else []
 
 
 class DigikaiaPrice( BaseModel ):
@@ -99,18 +114,29 @@ class DigikaiaSpecAttribute( BaseModel ):
 
 class DigikaiaSpecification( BaseModel ):
     """‫یک دسته از مشخصات فنی"""
+    model_config = ConfigDict( populate_by_name=True )          #‫فعالسازی alias
 
-    category: str | None = Field( default=None, description="‫عنوان دسته (معمولاً null)" )
+    category: str | None = Field( default=None, alias="title", description="عنوان دسته)" )          #‫api از فیلد title استفاده میکنه
     attributes: list[ DigikaiaSpecAttribute ] = Field( default_factory=list )
 
 
 class DigikaiaExpertSectionItem( BaseModel ):
     model_config = ConfigDict( extra="ignore" )
+
     text: str | None = Field( default=None, description="متن بخش نقد تخصصی" )
+
+    @field_validator( "text", mode="before" )
+    @classmethod
+    def _normalize_text( cls, value: object ) -> str | None:
+        """‫تبدیل مقادیر نامعتبر به None"""
+        if value is None or ( isinstance( value, str ) and value.strip() == "" ):
+            return None
+        return value if isinstance( value, str ) else str( value )
 
 
 class DigikaiaExpertReviewSection( BaseModel ):
     """‫یک بخش از نقد تخصصی"""
+    model_config = ConfigDict( extra="ignore" )
 
     title: str
     sections: list[ DigikaiaExpertSectionItem ] = Field( default_factory=list )
@@ -118,6 +144,7 @@ class DigikaiaExpertReviewSection( BaseModel ):
 
 class DigikaiaExpertReview( BaseModel ):
     """‫نقد تخصصی محصول"""
+    model_config = ConfigDict( extra="ignore" )
 
     description: str = Field( default="", description="‫توضیحات اصلی" )
     review_sections: list[ DigikaiaExpertReviewSection ] = Field( default_factory=list )
@@ -144,7 +171,15 @@ class DigikaiaProduct( BaseModel ):
     status: str = Field( description="‫marketable/stop_production/..." )
 
     # قیمت و موجودی (‫از default_variant)
-    default_variant: DigikaiaProductVariant
+    default_variant: DigikaiaProductVariant | None = None
+
+    @field_validator( "default_variant", mode="before" )
+    @classmethod
+    def _normalize_default_variant( cls, value: object ) -> DigikaiaProductVariant | None:
+        """‫تبدیل لیست خالی [] به None برای محصولات بدون واریانت"""
+        if isinstance( value, list ) and len( value ) == 0:
+            return None
+        return value          # type: ignore  # Pydantic نوع نهایی را چک می‌کند
 
     # امتیاز
     rating: DigikaiaRating
@@ -159,7 +194,10 @@ class DigikaiaProduct( BaseModel ):
     specifications: list[ DigikaiaSpecification ] = Field( default_factory=list )
 
     # Expert Review (اختیاری)
-    expert_review: DigikaiaExpertReview | None = None
+    expert_review: DigikaiaExpertReview | None = Field(
+        default=None,
+        alias="expert_reviews"          # ‫← API می‌فرستد expert_reviews، ما داخلی expert_review صدا می‌زنیم
+    )
 
     # Comments Overview (اختیاری)
     comments_overview: DigikaiaCommentsOverview | None = None
