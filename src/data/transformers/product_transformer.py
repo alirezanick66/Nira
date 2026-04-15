@@ -3,8 +3,8 @@
 ‫این ماژول مسئول تبدیل داده‌های خام API دیجی‌کالا به مدل Product نرمال‌شده هست
 """
 
-from src.data.models.core.product import ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback
-from src.data.models.core.product import ProductCategory, ProductStatus
+from src.data.models.core.product import ( ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback,
+                                           ProductCategory, ProductStatus )
 from src.data.models.api.api_responses import DigikaiaProduct, DigikaiaSpecification
 from src.utils.spec_normalizer import SpecNormalizer
 

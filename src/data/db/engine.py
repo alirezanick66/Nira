@@ -13,7 +13,7 @@ class DatabaseEngine:
         self._settings = get_settings()
         self._engine = create_async_engine(
             self._settings.DATABASE_URL,
-            echo=self._settings.POSTGRES_ECHO,
+            echo=self._settings.DB_ECHO,
             pool_size=5,
             max_overflow=10,
             pool_recycle=3600,

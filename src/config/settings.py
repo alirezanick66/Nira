@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field
+from pydantic.fields import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,20 +23,37 @@ class Settings( BaseSettings ):
     MAX_RETRIES: int = 3
 
     #───────────────────── Database ─────────────────────
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
-    DB_NAME: str = "nira_db"
-    DB_USER: str = "postgres"
-    DB_PASSWORD: str = "postgres"
-    POSTGRES_ECHO: bool = False
-
-    DATABASE_URL: str = Field( default=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}" )
+    DB_USER: str = Field( default="postgres" )
+    DB_PASSWORD: str = Field( default="postgres" )
+    DB_HOST: str = Field( default="localhost" )
+    DB_PORT: int = Field( default=5432 )
+    DB_NAME: str = Field( default="nira_db" )
+    DB_ECHO: bool = False
 
     sync_concurrency: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
 
     # ───────────────────── FastApi ─────────────────────
     APP_ENV: Literal[ "development", "production" ] = "development"
     APP_DEBUG: bool = True
+
+    #───────────────────── Test Storage ─────────────────────
+    TEST_LIST_IDS_OUTPUT: str = Field( default="data/test/product_ids.json", description="مسیر فایل خام  ایدی محصولات " )
+    TEST_DETAIL_PRODUCT_OUTPUT: str = Field( default="data/test/detail_products.json",
+                                             description=" ‫مسیر فایل خام   جزییات محصولات" )
+
+    # ───────────────────── Computed Fields ─────────────────────
+    @computed_field
+    @property
+    def DATABASE_URL( self ) -> str:
+        """‫ساخت آدرس اتصال PostgreSQL از اجزاء"""
+        return ( f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+                 f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}" )
+
+    @computed_field
+    @property
+    def SYNC_DB_URL( self ) -> str:
+        """‫آدرس اتصال برای Alembic (همان DATABASE_URL)"""
+        return self.DATABASE_URL
 
 
 @lru_cache

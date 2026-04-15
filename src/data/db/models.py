@@ -20,3 +20,13 @@ class ProductRawCache( Base ):
     product_id = Column( Integer, primary_key=True, autoincrement=False )
     raw_payload = Column( JSONB, nullable=False )
     updated_at = Column( DateTime, nullable=False, server_default=func.now(), onupdate=func.now() )
+
+
+class SyncProgress( Base ):
+    """‫جدول وضعیت همگام‌سازی (Singleton با id=1)"""
+    __tablename__ = "sync_progress"
+
+    id = Column( Integer, primary_key=True, default=1 )
+    last_processed_id = Column( Integer, nullable=True )
+    last_page = Column( Integer, nullable=False, default=1 )
+    updated_at = Column( DateTime, server_default=func.now(), onupdate=func.now() )

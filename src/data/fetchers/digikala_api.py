@@ -8,15 +8,19 @@
 """
 #───────────────────── Imports ─────────────────────
 import asyncio
+import random
 from typing import AsyncIterator, Self
 from httpx import AsyncClient, HTTPStatusError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from pydantic import ValidationError
-
 #───────────────────── Imports داخلی پروژه─────────────────────
+from src.core.resilience.api_resilience import ApiResilienceLayer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.api.api_responses import ( DigikaiaProductListResponse, DigikaiaProductDetailResponse )
+from src.data.models.api.api_responses import (
+    DigikaiaProductListResponse,
+    DigikaiaProductDetailResponse,
+)
 
 
 class DigikalaAPIClient:
@@ -25,18 +29,21 @@ class DigikalaAPIClient:
     def __init__( self ) -> None:
         self._settings = get_settings()
         self._client: AsyncClient | None = None
-        self._semaphore = asyncio.Semaphore( 5 )
+        self._resilience = ApiResilienceLayer()
+        self._semaphore = asyncio.Semaphore( 3 )
 
-        # ‫خواندن تنظیمات از Settings یا Environment Variables (گزینه ۲ تولید)
+        # ‫خواندن تنظیمات از Settings یا Environment Variables
         self._base_url = self._settings.DIGIKALA_BASE_URL
-        self._headers = { "Accept": "application/json", "User-Agent": "NiraBot/1.0 (Internal-Scraping)" }
+        self._headers = { "Accept": "application/json", "User-Agent": "NiraBot/1.0" }
 
     async def __aenter__( self ) -> Self:
         """‫راه‌اندازی کلاینت HTTP و بازگرداندن نمونه جهت استفاده در async with"""
-        self._client = AsyncClient( base_url=self._base_url,
-                                    timeout=self._settings.REQUEST_TIMEOUT,
-                                    follow_redirects=True,
-                                    headers=self._headers )
+        self._client = AsyncClient(
+            base_url=self._base_url,
+            timeout=self._settings.REQUEST_TIMEOUT,
+            follow_redirects=True,
+            headers=self._headers,
+        )
         log_message( LG.API, "کلاینت API دیجی‌کالا با موفقیت راه‌اندازی شد", LogLevel.DEBUG )
         return self
 
@@ -53,7 +60,7 @@ class DigikalaAPIClient:
         retry=retry_if_exception_type( HTTPStatusError ),
         reraise=True,
     )
-    async def _safe_request( self, url: str, params: dict[ str, str | int ] | None = None ) -> dict:
+    async def _safe_request( self, url: str, params: dict[ str, str | int ] | None = None ) -> dict[ str, object ]:
         """‫اجرای درخواست HTTP با مدیریت خطا، Retry و کنترل نرخ درخواست
 
         Args:
@@ -71,11 +78,11 @@ class DigikalaAPIClient:
             if self._client is None:
                 raise RuntimeError( "کلاینت HTTP راه‌اندازی نشده است. از `async with` استفاده کنید." )
 
-            response = await self._client.get( url, params=params )
+            response = await self._resilience.execute( self._client.get, url, params=params )
             response.raise_for_status()
 
             # ‫رعایت Rate Limiting بین درخواست‌ها
-            await asyncio.sleep( self._settings.REQUEST_DELAY_SECONDS )
+            await asyncio.sleep( random.uniform( 0.3, 0.8 ) )
             return response.json()
 
     async def fetch_product_list( self, page: int = 1 ) -> DigikaiaProductListResponse:
@@ -120,30 +127,39 @@ class DigikalaAPIClient:
             log_message( LG.API, f"خطای اعتبارسنجی محصول {product_id}: {exc}", LogLevel.ERROR )
             raise
 
-    async def stream_product_ids( self, start_page: int = 1, max_pages: int | None = None ) -> AsyncIterator[ int ]:
-        """‫ژنراتور غیرهمزمان برای پیمایش خودکار صفحات و استخراج ID محصولات
-
-        Args:
-            start_page: صفحه شروع
-            max_pages: حداکثر تعداد صفحات برای پیمایش (None = ادامه تا آخرین صفحه)
-
-        Yields:
-            شناسه عددی هر محصول به صورت ترتیبی
-        """
+    async def stream_product_ids( self,
+                                  start_page: int = 1,
+                                  resume_from_id: int | None = None,
+                                  max_pages: int | None = None ) -> AsyncIterator[ int ]:
+        """‫ژنراتور غیرهمزمان با قابلیت Resume و تشخیص هوشمند پایان صفحات"""
         current_page = start_page
         while max_pages is None or current_page <= max_pages + start_page - 1:
             try:
                 list_response = await self.fetch_product_list( page=current_page )
 
                 for item in list_response.data.products:
+                    if resume_from_id and item.id <= resume_from_id:
+                        continue
                     yield item.id
 
-                # ‫بررسی پایان صفحات
                 if current_page >= list_response.data.pager.total_pages:
                     log_message( LG.API, "پیمایش به پایان رسید (تمام صفحات پردازش شد)", LogLevel.INFO )
                     break
-
                 current_page += 1
-            except ( HTTPStatusError, ValidationError ) as exc:
-                log_message( LG.API, f"توقف پیمایش در صفحه {current_page} به دلیل خطا: {exc}", LogLevel.ERROR )
+
+            except HTTPStatusError as exc:
+                # لایه ۲: تشخیص هوشمند نوع خطا
+                if exc.response.status_code == 404:
+                    log_message( LG.API, f"صفحه {current_page} یافت نشد (پایان پیمایش)", LogLevel.INFO )
+                    break
+                elif exc.response.status_code == 400:
+                    wait_time = random.uniform( 5.0, 12.0 )
+                    log_message( LG.API, f"محدودیت سرور ({exc.response.status_code}) — انتظار {wait_time:.1f}s", LogLevel.WARNING )
+                    await asyncio.sleep( wait_time )
+                    continue
+                else:
+                    log_message( LG.API, f"خطای HTTP در صفحه {current_page}: {exc}", LogLevel.ERROR )
+                    break
+            except ValidationError as exc:
+                log_message( LG.API, f"خطای اعتبارسنجی صفحه {current_page}: {exc}", LogLevel.ERROR )
                 break
