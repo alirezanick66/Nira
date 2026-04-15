@@ -12,6 +12,7 @@ from src.utils.spec_normalizer import SpecNormalizer
 class ProductTransformer:
     """‫تبدیل‌گر API Response به Product Model"""
 
+    #───────────────────── private  methods ─────────────────────
     @staticmethod
     def _determine_category( title: str ) -> ProductCategory:
         """‫تشخیص category از عنوان محصول
@@ -56,6 +57,7 @@ class ProductTransformer:
         """تبدیل DigikaiaSpecification → dict"""
         return [ spec.model_dump() for spec in specs ]
 
+    #───────────────────── public methods ─────────────────────
     @classmethod
     def transform( cls, api_product: DigikaiaProduct ) -> Product:
         """‫تبدیل DigikaiaProduct به Product
@@ -103,6 +105,16 @@ class ProductTransformer:
         # ‫استخراج تصویر اصلی
         image_url = api_product.images.webp_url[ 0 ] if api_product.images.webp_url else None
 
+        # استخراج قیمت با چک کردن وجود واریانت
+        price = 0
+        original_price = 0
+        discount_percent = 0
+
+        if api_product.default_variant:
+            price = api_product.default_variant.price.selling_price
+            original_price = api_product.default_variant.price.rrp_price
+            discount_percent = api_product.default_variant.price.discount_percent
+
         # ‫ساخت Product
         product = Product(
           # ‫شناسایی
@@ -112,9 +124,9 @@ class ProductTransformer:
             category=cls._determine_category( api_product.title_fa ),
             url=api_product.url.uri,
           # ‫قیمت (تبدیل خودکار ریال → تومان در validator)
-            price=api_product.default_variant.price.selling_price,
-            original_price=api_product.default_variant.price.rrp_price,
-            discount_percent=api_product.default_variant.price.discount_percent,
+            price=price,
+            original_price=original_price,
+            discount_percent=discount_percent,
           # ‫موجودی
             is_available=api_product.status == "marketable",
             status=cls._map_status( api_product.status ),

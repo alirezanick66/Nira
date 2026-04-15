@@ -17,10 +17,7 @@ from pydantic import ValidationError
 from src.core.resilience.api_resilience import ApiResilienceLayer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.api.api_responses import (
-    DigikaiaProductListResponse,
-    DigikaiaProductDetailResponse,
-)
+from src.data.models.api.api_responses import ( DigikaiaProductListResponse, DigikaiaProductDetailResponse )
 
 
 class DigikalaAPIClient:
@@ -34,7 +31,14 @@ class DigikalaAPIClient:
 
         # ‫خواندن تنظیمات از Settings یا Environment Variables
         self._base_url = self._settings.DIGIKALA_BASE_URL
-        self._headers = { "Accept": "application/json", "User-Agent": "NiraBot/1.0" }
+        self._headers = {
+            "Accept":
+            "application/json",
+            "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
+
+    #─────────────────────private methods─────────────────────
 
     async def __aenter__( self ) -> Self:
         """‫راه‌اندازی کلاینت HTTP و بازگرداندن نمونه جهت استفاده در async with"""
@@ -84,6 +88,8 @@ class DigikalaAPIClient:
             # ‫رعایت Rate Limiting بین درخواست‌ها
             await asyncio.sleep( random.uniform( 0.3, 0.8 ) )
             return response.json()
+
+    #─────────────────────public methods─────────────────────
 
     async def fetch_product_list( self, page: int = 1 ) -> DigikaiaProductListResponse:
         """‫دریافت لیست محصولات از یک صفحه مشخص
