@@ -20,7 +20,11 @@ class ProductRepository:
         self._db = db_engine
 
     async def save_raw( self, product_id: int, raw_data: dict[ str, object ] ) -> None:
-
+        """‫ذخیره یا به‌روزرسانی داده خام محصول در جدول کش دیتابیس
+        Args:
+            product_id: شناسه محصول
+            raw_data: دیکشنری داده خام برای ذخیره
+        """
         stmt = ( pg_insert( ProductRawCache ).values( product_id=product_id, raw_payload=raw_data ).on_conflict_do_update(
             index_elements=[ ProductRawCache.product_id ], set_=dict( raw_payload=raw_data, updated_at=func.now() ) ) )
         async with self._db.session_maker() as session:
