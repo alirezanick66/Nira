@@ -156,11 +156,9 @@ class DigikalaAPIClient:
                 if exc.response.status_code == 404:
                     log_message( LG.API, f"صفحه {current_page} یافت نشد (پایان پیمایش)", LogLevel.INFO )
                     break
-                elif exc.response.status_code == 400:
-                    wait_time = random.uniform( 10.0, 30.0 )
-                    log_message( LG.API, f"محدودیت سرور ({exc.response.status_code}) — انتظار {wait_time:.1f}s", LogLevel.WARNING )
-                    await asyncio.sleep( wait_time )
-                    continue
+                if exc.response.status_code == 400:
+                    log_message( LG.API, "✅ پیمایش تکمیل شد (سقف ۱۰۰ صفحهٔ API)", LogLevel.INFO )
+                    break
                 else:
                     raise
             except ValidationError as exc:

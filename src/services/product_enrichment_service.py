@@ -192,7 +192,7 @@ class ProductEnrichmentService:
                     tags.append( "premium_build" )
 
         # ‫حذف تکراری‌ها
-        return list( set( tags ) )
+        return sorted( list( set( tags ) ) )
 
     @classmethod
     def enrich_product( cls, product: Product ) -> Product:
