@@ -16,8 +16,9 @@ async def main() -> None:
     pipeline = ProductProcessingPipeline( repo )
     indexer = QdrantIndexer()
 
-    # پردازش ۱۰ محصول نمونه از دیتابیس
-    test_ids = await repo.list_raw_product_ids( limit=10 )
+    # # پردازش ۱۰ محصول نمونه از دیتابیس
+    # test_product = await pipeline.process( 20127115 )
+    test_ids = await repo.list_raw_product_ids( limit=100 )
     products = []
     for pid in test_ids:
         prod = await pipeline.process( pid )
