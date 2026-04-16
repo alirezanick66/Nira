@@ -15,7 +15,7 @@ class EmbeddingService:
         if not path.exists():
             raise FileNotFoundError( f"مسیر مدل Embedding یافت نشد: {path}" )
 
-        self._model = SentenceTransformer( str( path ), trust_remote_code=True )
+        self._model = SentenceTransformer( str( path ) )
         self._dimension = self._model.get_embedding_dimension()
         log_message( LG.RETRIEVAL, f"مدل Embedding بارگذاری شد | مسیر: {path} | ابعاد: {self._dimension}", LogLevel.INFO )
 
