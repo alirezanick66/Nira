@@ -31,49 +31,48 @@ class DigikalaSyncService:
             return False
 
     #───────────────────── public methods ─────────────────────
-    async def run( self, max_products: int | None = None, checkpoint_every: int = 5, stop_event: asyncio.Event | None = None ) -> int:
-        """‫اجرای چرخهٔ همگام‌سازی با قابلیت Resume
-
-        Args:
-            max_products: حداکثر تعداد محصول برای پردازش در این اجرا
-            checkpoint_every: ذخیرهٔ پیشرفت پس از هر N محصول موفق
-
-        Returns:
-            تعداد محصولات موفقیت‌آمیز پردازش‌شده
-        """
-        last_id, start_page = await self._tracker.load()
-        log_message( LG.DATA_PROCESSING, f"شروع همگام‌سازی ID: {last_id} | صفحه: {start_page}", LogLevel.INFO )
+    async def run( self, max_products: int | None = None, checkpoint_every: int = 1, stop_event: asyncio.Event | None = None ) -> int:
+        """‫اجرای چرخهٔ همگام‌سازی با قابلیت Resume دقیق"""
+        last_id, last_page = await self._tracker.load()
+        log_message( LG.DATA_PROCESSING, f"شروع همگام‌سازی | ادامه از ID: {last_id} | صفحه: {last_page}", LogLevel.INFO )
 
         success_count = 0
         processed_count = 0
-        last_processed_id = last_id
+        current_id = last_id
+        current_page = last_page          # ✅ متغیر پویا برای ردیابی صفحه
+
         try:
             async with DigikalaAPIClient() as client:
-                async for pid in client.stream_product_ids( start_page=start_page, resume_from_id=last_id ):
-
-                    # ✅ بررسی درخواست توقف (Ctrl+C)
+                async for pid, page in client.stream_product_ids( start_page=last_page ):
                     if stop_event and stop_event.is_set():
                         log_message( LG.DATA_PROCESSING, "🛑 توقف درخواست شد — ذخیرهٔ چک‌پوینت نهایی...", LogLevel.INFO )
                         break
 
-                    if max_products and processed_count >= max_products:
+                    if max_products is not None and processed_count >= max_products:
                         break
+
+                    # ✅ به‌روزرسانی ردیاب‌ها
+                    current_id = pid
+                    current_page = page
 
                     if await self._process_product( client, pid ):
                         success_count += 1
                         processed_count += 1
-                        last_processed_id = pid
 
                         if processed_count % checkpoint_every == 0:
-                            await self._tracker.save( last_processed_id, page=start_page )
+                            await self._tracker.save( current_id, page=current_page )
 
-                # ذخیرهٔ نهایی پیشرفت
-                if last_processed_id:
-                    await self._tracker.save( last_processed_id, page=start_page )
+            # ذخیرهٔ نهایی پیش از خروج
+            if current_id and current_id != last_id:
+                await self._tracker.save( current_id, page=current_page )
+
         finally:
-            # ✅ ذخیرهٔ اجباری آخرین وضعیت پیش از خروج (حتی در صورت خطا یا Ctrl+C)
-            if last_processed_id and last_processed_id != last_id:
-                await self._tracker.save( last_processed_id, page=start_page )
+            # ✅ اطمینان از Commit نهایی حتی در صورت KeyboardInterrupt
+            if current_id and current_id != last_id:
+                try:
+                    await self._tracker.save( current_id, page=current_page )
+                except Exception:
+                    pass          # لاگ داخلی tracker مدیریت می‌شود
 
-        log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}/{max_products}", LogLevel.INFO )
+        log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.INFO )
         return success_count

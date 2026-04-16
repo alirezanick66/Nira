@@ -133,20 +133,18 @@ class DigikalaAPIClient:
             log_message( LG.API, f"خطای اعتبارسنجی محصول {product_id}: {exc}", LogLevel.ERROR )
             raise
 
-    async def stream_product_ids( self,
-                                  start_page: int = 1,
-                                  resume_from_id: int | None = None,
-                                  max_pages: int | None = None ) -> AsyncIterator[ int ]:
-        """‫ژنراتور غیرهمزمان با قابلیت Resume و تشخیص هوشمند پایان صفحات"""
+    async def stream_product_ids( self, start_page: int = 1, max_pages: int | None = None ) -> AsyncIterator[ tuple[ int, int ] ]:
+        """‫ژنراتور غیرهمزمان با خروجی (product_id, current_page)
+        ‫حذف resume_from_id: ترتیب ID در APIهای فروشگاهی تضمین‌شده نیست.
+        ‫مدیریت تکراری‌ها بر عهدهٔ ON CONFLICT در PostgreSQL است.
+        """
         current_page = start_page
         while max_pages is None or current_page <= max_pages + start_page - 1:
             try:
                 list_response = await self.fetch_product_list( page=current_page )
 
                 for item in list_response.data.products:
-                    if resume_from_id and item.id <= resume_from_id:
-                        continue
-                    yield item.id
+                    yield item.id, current_page          # ✅ ارسال شناسه و صفحهٔ فعلی
 
                 if current_page >= list_response.data.pager.total_pages:
                     log_message( LG.API, "پیمایش به پایان رسید (تمام صفحات پردازش شد)", LogLevel.INFO )
@@ -159,13 +157,12 @@ class DigikalaAPIClient:
                     log_message( LG.API, f"صفحه {current_page} یافت نشد (پایان پیمایش)", LogLevel.INFO )
                     break
                 elif exc.response.status_code == 400:
-                    wait_time = random.uniform( 5.0, 12.0 )
+                    wait_time = random.uniform( 10.0, 30.0 )
                     log_message( LG.API, f"محدودیت سرور ({exc.response.status_code}) — انتظار {wait_time:.1f}s", LogLevel.WARNING )
                     await asyncio.sleep( wait_time )
                     continue
                 else:
-                    log_message( LG.API, f"خطای HTTP در صفحه {current_page}: {exc}", LogLevel.ERROR )
-                    break
+                    raise
             except ValidationError as exc:
                 log_message( LG.API, f"خطای اعتبارسنجی صفحه {current_page}: {exc}", LogLevel.ERROR )
                 break
