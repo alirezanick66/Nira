@@ -7,7 +7,7 @@
 """
 
 #==================== Imports ====================
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 from pydantic.config import ConfigDict
@@ -155,8 +155,8 @@ class Product( BaseModel ):
     user_feedback: UserFeedback | None = Field( default=None )
 
     # ‫متادیتا
-    scraped_at: datetime = Field( default_factory=datetime.utcnow, description="‫زمان استخراج" )
-    updated_at: datetime = Field( default_factory=datetime.utcnow, description="‫آخرین به‌روزرسانی" )
+    scraped_at: datetime = Field( default_factory=lambda: datetime.now( timezone.utc ) )
+    updated_at: datetime = Field( default_factory=lambda: datetime.now( timezone.utc ) )
 
     # ‫فیلدهای محاسباتی (برای Qdrant)
     price_range: PriceRange = Field( default=PriceRange.BUDGET )

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
-
+from sqlalchemy import select, distinct
 #───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.db.engine import DatabaseEngine
@@ -55,3 +55,18 @@ class ProductRepository:
             except SQLAlchemyError as exc:
                 log_message( LG.DATABASE, f"خطای خواندن محصول {product_id}: {exc}", LogLevel.ERROR )
                 return None
+
+    async def list_raw_product_ids( self, limit: int = 50 ) -> list[ int ]:
+        """‫دریافت لیست شناسه‌های محصولات خام از دیتابیس
+
+        Args:
+            limit: حداکثر تعداد ID برای بازگرداندن
+
+        Returns:
+            لیست شناسه‌های عددی
+        """
+
+        stmt = ( select( distinct( ProductRawCache.product_id ) ).order_by( ProductRawCache.product_id ).limit( limit ) )
+        async with self._db.session_maker() as session:
+            result = await session.execute( stmt )
+            return [ row[ 0 ] for row in result.all() ]
