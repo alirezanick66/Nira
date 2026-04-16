@@ -4,7 +4,7 @@
 from typing import Sequence
 
 from qdrant_client import QdrantClient, models
-from qdrant_client.models import ( Distance, VectorParams, SparseVectorParams, SparseIndexParams, PayloadSchemaType )
+from qdrant_client.models import ( Distance, PayloadSchemaType )
 
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
@@ -74,7 +74,7 @@ class QdrantIndexer:
 
         for prod in products:
             payload = QdrantProductPayload.from_product( prod )
-            # ‫🟡 Placeholder: در گام بعدی، مدل Embedding واقعی برای dense و BM25 برای sparse جایگزین می‌شود
+            # ‫‫🟡 Placeholder: در گام بعدی، مدل Embedding واقعی برای dense و‫ BM25 برای sparse جایگزین می‌شود
             dense_vec = [ 0.0 ] * vector_size
             sparse_vec = models.SparseVector( indices=[], values=[] )
 
