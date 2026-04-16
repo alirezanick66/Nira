@@ -18,7 +18,7 @@ async def main() -> None:
 
     # # پردازش ۱۰ محصول نمونه از دیتابیس
     # test_product = await pipeline.process( 20127115 )
-    test_ids = await repo.list_raw_product_ids( limit=100 )
+    test_ids = await repo.list_raw_product_ids()
     products = []
     for pid in test_ids:
         prod = await pipeline.process( pid )

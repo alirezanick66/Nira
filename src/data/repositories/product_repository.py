@@ -57,17 +57,21 @@ class ProductRepository:
                 log_message( LG.DATABASE, f"خطای خواندن محصول {product_id}: {exc}", LogLevel.ERROR )
                 return None
 
-    async def list_raw_product_ids( self, limit: int = 50 ) -> list[ int ]:
+    async def list_raw_product_ids( self, limit: int | None = None ) -> list[ int ]:
         """‫دریافت لیست شناسه‌های محصولات خام از دیتابیس
 
         Args:
-            limit: حداکثر تعداد ID برای بازگرداندن
+            limit: در صورت مقداردهی، تعداد نتایج را محدود می‌کند
 
         Returns:
             لیست شناسه‌های عددی
         """
 
-        stmt = ( select( distinct( ProductRawCache.product_id ) ).order_by( ProductRawCache.product_id ).limit( limit ) )
+        stmt = ( select( distinct( ProductRawCache.product_id ) ).order_by( ProductRawCache.product_id ) )
+
+        if limit is not None:
+            stmt = stmt.limit( limit )
+
         async with self._db.session_maker() as session:
             result = await session.execute( stmt )
             return [ row[ 0 ] for row in result.all() ]

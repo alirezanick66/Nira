@@ -9,6 +9,8 @@ import re
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 
+from src.services.embedding_service import EmbeddingService
+from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_payload import QdrantProductPayload
@@ -17,13 +19,12 @@ from src.core.vector.qdrant_payload import QdrantProductPayload
 class QdrantHybridRetriever:
     """‫بازیاب هوشمند با پشتیبانی از جستجوی معنایی + کلیدواژه‌ای + فیلتربرداری"""
 
-    def __init__( self, client: QdrantClient | None = None ) -> None:
+    def __init__( self, client: QdrantClient | None = None, embedding_service: EmbeddingService | None = None ) -> None:
         self._settings = get_settings()
-        self._client = client or QdrantClient(
-            url=self._settings.QDRANT_URL,
-            prefer_grpc=False,
-        )
+        self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False )
         self._collection = self._settings.QDRANT_COLLECTION
+        self._embedder = embedding_service or EmbeddingService.get_instance()
+        log_message( LG.RETRIEVAL, "QdrantHybridRetriver Loaded", LogLevel.INFO )
 
     def _text_to_sparse_vector( self, query: str ) -> models.SparseVector:
         """‫تبدیل متن کوئری به بردار Sparse (شبیه‌سازی BM25 ساده برای MVP)"""
@@ -59,24 +60,20 @@ class QdrantHybridRetriever:
     def search(
         self,
         query: str,
-        dense_vector: list[ float ] | None = None,
         filters: dict[ str, object ] | None = None,
         top_k: int = 10,
     ) -> list[ QdrantProductPayload ]:
-        """‫اجرای جستجوی ترکیبی (Dense + Sparse) با ادغام RRF"""
-        if dense_vector is None:
-            dense_vector = [ 0.0 ] * self._settings.EMBEDDING_DIM
-            log_message( LG.RETRIEVAL, "⚠️ بردار Dense خالی استفاده شد (Placeholder)", LogLevel.WARNING )
-
-        sparse_vector = self._text_to_sparse_vector( query )
+        """‫اجرای جستجوی ترکیبی واقعی (Dense Embedding + Sparse BM25) با RRF"""
+        # ✅ تولید بردار واقعی به‌جای Placeholder
+        dense_vec = self._embedder.encode( query )[ 0 ]
+        sparse_vec = BM25Vectorizer.query_to_sparse( query )
         query_filter = self._build_metadata_filter( filters )
 
-        # ✅ استفاده از API صحیح qdrant-client >= 1.9 برای Hybrid + RRF
         result = self._client.query_points(
             collection_name=self._collection,
             prefetch=[
-                Prefetch( query=dense_vector, using="dense", limit=top_k * 2 ),          # ✅ افزودن using="dense"
-                Prefetch( query=sparse_vector, using="sparse", limit=top_k * 2 ),
+                Prefetch( query=dense_vec, using="dense", limit=top_k * 2 ),
+                Prefetch( query=sparse_vec, using="sparse", limit=top_k * 2 ),
             ],
             query=FusionQuery( fusion=Fusion.RRF ),
             query_filter=query_filter,
