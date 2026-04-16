@@ -17,10 +17,7 @@ class QdrantIndexer:
 
     def __init__( self, client: QdrantClient | None = None ) -> None:
         self._settings = get_settings()
-        self._client = client or QdrantClient(
-            url=self._settings.QDRANT_URL,
-            prefer_grpc=False,
-        )
+        self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False, timeout=60 )
         self._collection = self._settings.QDRANT_COLLECTION
 
     def ensure_collection( self, vector_size: int ) -> None:

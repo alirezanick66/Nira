@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import Literal
-
+from pathlib import Path
 from pydantic import Field
 from pydantic.fields import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -39,12 +39,9 @@ class Settings( BaseSettings ):
     # ───────────────────── Qdrant Vector DB ─────────────────────
     QDRANT_URL: str = Field( default="http://localhost:6333" )
     QDRANT_COLLECTION: str = Field( default="nira_products" )
-    EMBEDDING_DIM: int = Field( default=1024 )          # پیش‌فرض برای مدل bge-m3
-
-    # ───────────────────── Test Storage ─────────────────────
-    TEST_LIST_IDS_OUTPUT: str = Field( default="data/test/product_ids.json", description="مسیر فایل خام  ایدی محصولات " )
-    TEST_DETAIL_PRODUCT_OUTPUT: str = Field( default="data/test/detail_products.json",
-                                             description=" ‫مسیر فایل خام   جزییات محصولات" )
+    EMBEDDING_DIM: int = Field( default=768, description="ابعاد بردارهای Embedding" )
+    EMBEDDING_MODEL_PATH: Path = Field( default=Path( r"E:\A-Golchin program\Ai\Models\gte-multilingual-base" ),
+                                        description="مسیر محلی مدل Embedding" )
 
     # ───────────────────── Computed Fields ─────────────────────
     @computed_field
