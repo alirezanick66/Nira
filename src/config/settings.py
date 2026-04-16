@@ -36,7 +36,12 @@ class Settings( BaseSettings ):
     APP_ENV: Literal[ "development", "production" ] = "development"
     APP_DEBUG: bool = True
 
-    #───────────────────── Test Storage ─────────────────────
+    # ───────────────────── Qdrant Vector DB ─────────────────────
+    QDRANT_URL: str = Field( default="http://localhost:6333" )
+    QDRANT_COLLECTION: str = Field( default="nira_products" )
+    EMBEDDING_DIM: int = Field( default=1024 )          # پیش‌فرض برای مدل bge-m3
+
+    # ───────────────────── Test Storage ─────────────────────
     TEST_LIST_IDS_OUTPUT: str = Field( default="data/test/product_ids.json", description="مسیر فایل خام  ایدی محصولات " )
     TEST_DETAIL_PRODUCT_OUTPUT: str = Field( default="data/test/detail_products.json",
                                              description=" ‫مسیر فایل خام   جزییات محصولات" )

@@ -1,8 +1,6 @@
 """‫لایهٔ تاب‌آوری برای درخواست‌های HTTP خارجی
 ‫مسئول: Retry هوشمند، Exponential Backoff + Jitter، مدیریت اتصال
 """
-import asyncio
-import random
 from typing import Callable, Awaitable, TypeVar
 from httpx import HTTPStatusError
 from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
