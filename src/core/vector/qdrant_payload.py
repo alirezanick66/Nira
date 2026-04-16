@@ -8,7 +8,7 @@
 
 from pydantic import BaseModel, Field
 
-from .product import PriceRange, Product, QualityLevel
+from ...data.models.core.product import Product
 
 
 class QdrantProductPayload( BaseModel ):
@@ -25,17 +25,12 @@ class QdrantProductPayload( BaseModel ):
     title: str = Field( description="‫عنوان محصول" )
     brand: str | None = Field( default=None, description="‫برند" )
     category: str = Field( description="‫دسته‌بندی (موبایل/هدفون/...)" )
-    url: str = Field( description="‫لینک محصول" )
 
     # ==================== قیمت و موجودی ====================
     price: int = Field( ge=0, description="‫قیمت فروش (تومان)" )
-    discount_percent: int = Field( default=0, ge=0, le=100, description="‫درصد تخفیف" )
     is_available: bool = Field( description="‫موجود؟" )
     has_discount: bool = Field( default=False, description="‫تخفیف‌دار؟" )
-
-    # ==================== امتیاز ====================
-    rating: float = Field( ge=0, le=5, description="‫امتیاز (0-5)" )
-    rating_count: int = Field( ge=0, description="‫تعداد رای‌دهندگان" )
+    discount_percent: int = Field( default=0, ge=0, le=100, description="‫درصد تخفیف" )
 
     # ==================== مشخصات فنی نرمال شده ====================
     ram_gb: int | None = Field( default=None, ge=0, description="‫رم (GB)" )
@@ -53,9 +48,6 @@ class QdrantProductPayload( BaseModel ):
     # ==================== رنگ‌ها ====================
     colors: list[ str ] = Field( default_factory=list, description="‫رنگ‌های موجود" )
 
-    # ==================== تصویر ====================
-    image_url: str | None = Field( default=None, description="‫تصویر اصلی" )
-
     # ==================== خلاصه محتوا ====================
     expert_summary: str | None = Field( default=None, max_length=200, description="‫خلاصه نقد تخصصی" )
 
@@ -63,11 +55,17 @@ class QdrantProductPayload( BaseModel ):
     user_advantages: list[ str ] = Field( default_factory=list, description="‫مزایا از دید کاربران" )
     user_disadvantages: list[ str ] = Field( default_factory=list, description="‫معایب از دید کاربران" )
 
+    # ==================== امتیاز ====================
+    rating: float = Field( ge=0, le=5, description="‫امتیاز (0-5)" )
+    rating_count: int = Field( ge=0, description="‫تعداد رای‌دهندگان" )
+
     # ==================== برچسب‌ها و کیفیت ====================
     tags: list[ str ] = Field( default_factory=list, description="‫برچسب‌های استنتاجی" )
     battery_quality: str = Field( default="unknown", description="‫کیفیت باتری" )
     camera_quality: str = Field( default="unknown", description="‫کیفیت دوربین" )
     value_for_money: str = Field( default="average", description="‫ارزش خرید" )
+
+    search_text: str = Field( description="متن ترکیسی برای بردارسازی (عنوان + خلاصه + مزایا)" )
 
     @classmethod
     def from_product( cls, product: Product ) -> "QdrantProductPayload":
@@ -91,13 +89,17 @@ class QdrantProductPayload( BaseModel ):
             user_advantages = product.user_feedback.advantages
             user_disadvantages = product.user_feedback.disadvantages
 
+        # ‫متن جستجو
+        text_parts = [ product.title ]
+        if product.expert_review: text_parts.append( product.expert_review.get_summary() )
+        if product.user_feedback: text_parts.extend( product.user_feedback.advantages[ :3 ] )
+        search_text = " | ".join( filter( None, text_parts ) )
+
         return cls(
-          # شناسایی
             product_id=product.product_id,
             title=product.title,
             brand=product.brand,
             category=product.category.value,
-            url=product.url,
           # قیمت
             price=product.price,
             discount_percent=product.discount_percent,
@@ -119,7 +121,6 @@ class QdrantProductPayload( BaseModel ):
             price_range=product.price_range.value if product.price_range else "mid",
           # سایر
             colors=product.colors,
-            image_url=product.image_url,
             expert_summary=expert_summary,
             user_advantages=user_advantages,
             user_disadvantages=user_disadvantages,
@@ -127,6 +128,7 @@ class QdrantProductPayload( BaseModel ):
             battery_quality=product.battery_quality.value,
             camera_quality=product.camera_quality.value,
             value_for_money=product.value_for_money.value,
+            search_text=search_text,
         )
 
     def to_dict( self ) -> dict:
