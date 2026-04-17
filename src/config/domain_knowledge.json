@@ -1,0 +1,92 @@
+{
+	"brands": [
+		"اپل",
+		"سامسونگ",
+		"شیائومی",
+		"هواوی",
+		"نوکیا",
+		"وان‌پلاس",
+		"آنر",
+		"موتورولا",
+		"سونی",
+		"ایسوس",
+		"گوگل",
+		"تی‌سی‌ال",
+		"ریلمی",
+		"پوکو",
+		"بلک بری"
+	],
+	"categories": ["موبایل", "هدفون", "هندزفری"],
+	"os_types": ["iOS", "Android", "HarmonyOS"],
+	"colors": [
+		"مشکی",
+		"سفید",
+		"آبی",
+		"سبز",
+		"قرمز",
+		"طلایی",
+		"نقره‌ای",
+		"بنفش",
+		"صورتی",
+		"خاکستری",
+		"زرد",
+		"نارنجی"
+	],
+	"qualitative_mappings": {
+		"ارزان": { "price_range": "budget" },
+		"ارزان‌تر": { "price_range": "budget" },
+		"ارزون": { "price_range": "budget" },
+		"اقتصادی": { "price_range": "budget" },
+		"متوسط": { "price_range": "mid" },
+		"قیمت مناسب": { "price_range": "mid" },
+		"میان‌رده": { "price_range": "mid" },
+		"گران": { "price_range": "flagship" },
+		"گرون": { "price_range": "flagship" },
+		"پرچم‌دار": { "price_range": "flagship" },
+		"دوربین قوی": { "camera_quality": "excellent" },
+		"دوربین خوب": { "camera_quality": "good" },
+		"باتری قوی": { "battery_quality": "excellent" },
+		"باتری ضعیف": { "battery_quality": "poor" },
+		"ارزش خرید بالا": { "value_for_money": "excellent" }
+	},
+	"use_case_rules": {
+		"گیمینگ": { "ram_gb": { "gte": 8 }, "tags": ["gaming"] },
+		"گیم": { "ram_gb": { "gte": 8 }, "tags": ["gaming"] },
+		"عکاسی": { "camera_quality": "excellent", "tags": ["photography"] },
+		"سبک": { "weight_g": { "lte": 170 }, "tags": ["lightweight"] },
+		"سنگین": { "weight_g": { "gte": 200 } },
+		"دانشجویی": { "price_range": "budget" },
+		"حرفه‌ای": { "price_range": "premium" }
+	},
+	"intent_keywords": {
+		"greeting": [
+			"سلام",
+			"درود",
+			"صبح بخیر",
+			"شب بخیر",
+			"خوبی",
+			"وقت بخیر",
+			"چطوری",
+			"خداحافظ"
+		],
+		"compare": [
+			"مقایسه",
+			"فرق",
+			"تفاوت",
+			"کدوم بهتره",
+			"بین",
+			"یا",
+			"در برابر"
+		],
+		"refine": [
+			"ارزونتر",
+			"گرونتر",
+			"سبکتر",
+			"سنگینتر",
+			"دیگه",
+			"بعدی",
+			"یه چیز دیگه",
+			"گزینه دیگه"
+		]
+	}
+}
