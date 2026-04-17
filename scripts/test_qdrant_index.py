@@ -29,6 +29,7 @@ async def main() -> None:
         log_message( LG.DATA_PROCESSING, "هیچ محصولی برای ایندکس‌سازی یافت نشد", LogLevel.WARNING )
         return
 
+    products = [ p for p in products if p.price > 0 ]
     # آپلود به Qdrant
     count = indexer.index_products( products, vector_size=get_settings().EMBEDDING_DIM )
     log_message( LG.DATA_PROCESSING, f"✅ پایان تست | {count} محصول آماده جستجوی ترکیبی", LogLevel.INFO )

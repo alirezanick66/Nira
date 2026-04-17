@@ -65,7 +65,7 @@ class QdrantHybridRetriever:
     ) -> list[ QdrantProductPayload ]:
         """‫اجرای جستجوی ترکیبی واقعی (Dense Embedding + Sparse BM25) با RRF"""
         # ✅ تولید بردار واقعی به‌جای Placeholder
-        dense_vec = self._embedder.encode( query )[ 0 ]
+        dense_vec = self._embedder.encode( query, is_query=True )[ 0 ]
         sparse_vec = BM25Vectorizer.query_to_sparse( query )
         query_filter = self._build_metadata_filter( filters )
 
