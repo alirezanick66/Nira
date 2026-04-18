@@ -1,6 +1,5 @@
 """‫سرویس همگام‌سازی هوشمند با قابلیت Resume و مدیریت خطای لایه‌ای"""
 import asyncio
-
 from src.data.fetchers.digikala_api import DigikalaAPIClient
 from src.data.repositories.product_repository import ProductRepository
 from src.core.progress_tracker import ProgressTracker
@@ -18,7 +17,6 @@ class DigikalaSyncService:
         self._repo = ProductRepository( self._db )
         self._tracker = ProgressTracker( self._db )
 
-    #───────────────────── private methods ─────────────────────
     async def _process_product( self, client: DigikalaAPIClient, product_id: int ) -> bool:
         """‫دریافت، اعتبارسنجی و ذخیرهٔ ایزولهٔ یک محصول"""
         try:
@@ -30,16 +28,20 @@ class DigikalaSyncService:
             log_message( LG.DATA_PROCESSING, f"⚠️ خطا در پردازش محصول {product_id}: {exc}", LogLevel.WARNING )
             return False
 
-    #───────────────────── public methods ─────────────────────
-    async def run( self, max_products: int | None = None, checkpoint_every: int = 1, stop_event: asyncio.Event | None = None ) -> int:
+    async def run(
+        self,
+        max_products: int | None = None,
+        checkpoint_every: int = 50,
+        stop_event: asyncio.Event | None = None,
+    ) -> int:
         """‫اجرای چرخهٔ همگام‌سازی با قابلیت Resume دقیق"""
         last_id, last_page = await self._tracker.load()
         log_message( LG.DATA_PROCESSING, f"شروع همگام‌سازی | ادامه از ID: {last_id} | صفحه: {last_page}", LogLevel.INFO )
 
-        success_count = 0
-        processed_count = 0
-        current_id = last_id
-        current_page = last_page          # ✅ متغیر پویا برای ردیابی صفحه
+        success_count: int = 0
+        processed_count: int = 0
+        current_id: int | None = last_id
+        current_page: int = last_page
 
         try:
             async with DigikalaAPIClient() as client:
@@ -51,9 +53,7 @@ class DigikalaSyncService:
                     if max_products is not None and processed_count >= max_products:
                         break
 
-                    # ✅ به‌روزرسانی ردیاب‌ها
-                    current_id = pid
-                    current_page = page
+                    current_id, current_page = pid, page
 
                     if await self._process_product( client, pid ):
                         success_count += 1
@@ -61,18 +61,17 @@ class DigikalaSyncService:
 
                         if processed_count % checkpoint_every == 0:
                             await self._tracker.save( current_id, page=current_page )
+                            log_message( LG.DATA_PROCESSING, f"📦 چک‌پوینت ذخیره شد | پردازش‌شده: {processed_count}", LogLevel.INFO )
 
-            # ذخیرهٔ نهایی پیش از خروج
             if current_id and current_id != last_id:
                 await self._tracker.save( current_id, page=current_page )
 
         finally:
-            # ✅ اطمینان از Commit نهایی حتی در صورت KeyboardInterrupt
             if current_id and current_id != last_id:
                 try:
                     await self._tracker.save( current_id, page=current_page )
                 except Exception:
-                    pass          # لاگ داخلی tracker مدیریت می‌شود
+                    pass
 
         log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.INFO )
         return success_count

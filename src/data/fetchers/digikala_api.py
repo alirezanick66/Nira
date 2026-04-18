@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from src.core.resilience.api_resilience import ApiResilienceLayer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.api.api_responses import ( DigikaiaProductListResponse, DigikaiaProductDetailResponse )
+from src.data.models.api_responses import ( DigikalaProductListResponse, DigikalaProductDetailResponse )
 
 
 class DigikalaAPIClient:
@@ -92,7 +92,7 @@ class DigikalaAPIClient:
 
     #─────────────────────public methods─────────────────────
 
-    async def fetch_product_list( self, page: int = 1 ) -> DigikaiaProductListResponse:
+    async def fetch_product_list( self, page: int = 1 ) -> DigikalaProductListResponse:
         """‫دریافت لیست محصولات از یک صفحه مشخص
 
         Args:
@@ -108,12 +108,12 @@ class DigikalaAPIClient:
         raw_data = await self._safe_request( "/v1/categories/mobile-phone/search/", params={ "page": page } )
 
         try:
-            return DigikaiaProductListResponse.model_validate( raw_data )
+            return DigikalaProductListResponse.model_validate( raw_data )
         except ValidationError as exc:
             log_message( LG.API, f"خطای اعتبارسنجی لیست محصولات صفحه {page}: {exc}", LogLevel.ERROR )
             raise
 
-    async def fetch_product_detail( self, product_id: int ) -> DigikaiaProductDetailResponse:
+    async def fetch_product_detail( self, product_id: int ) -> DigikalaProductDetailResponse:
         """‫دریافت جزئیات کامل یک محصول بر اساس شناسه
 
         Args:
@@ -129,7 +129,7 @@ class DigikalaAPIClient:
         raw_data = await self._safe_request( f"/v2/product/{product_id}/" )
 
         try:
-            return DigikaiaProductDetailResponse.model_validate( raw_data )
+            return DigikalaProductDetailResponse.model_validate( raw_data )
         except ValidationError as exc:
             log_message( LG.API, f"خطای اعتبارسنجی محصول {product_id}: {exc}", LogLevel.ERROR )
             raise
