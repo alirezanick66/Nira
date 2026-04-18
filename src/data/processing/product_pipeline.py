@@ -11,8 +11,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 #───────────────────── local imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.api.api_responses import DigikaiaProductDetailResponse
-from src.data.models.core.product import Product
+from src.data.models.api_responses import DigikaiaProductDetailResponse
+from data.models.product import Product
 from src.data.repositories.product_repository import ProductRepository
 from src.data.transformers.product_transformer import ProductTransformer
 from src.services.product_enrichment_service import ProductEnrichmentService

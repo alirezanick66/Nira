@@ -8,7 +8,7 @@
 
 from pydantic import BaseModel, Field
 import re
-from src.data.models.core.product import Product
+from src.data.models.product import Product
 
 
 class QdrantProductPayload( BaseModel ):

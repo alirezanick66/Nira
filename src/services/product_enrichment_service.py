@@ -6,7 +6,7 @@
 ‫- تولید tags
 """
 
-from src.data.models.core.product import PriceRange, Product, QualityLevel
+from data.models.product import PriceRange, Product, QualityLevel
 
 
 class ProductEnrichmentService:
