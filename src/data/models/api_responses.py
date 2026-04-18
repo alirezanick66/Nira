@@ -17,56 +17,56 @@ class DigikalaPager( BaseModel ):
     total_items: int = Field( description="‫تعداد کل محصولات" )
 
 
-class DigikaiaProductListItem( BaseModel ):
+class DigikalaProductListItem( BaseModel ):
     """‫آیتم محصول در لیست (فقط ID)"""
 
     id: int = Field( description="‫شناسه محصول" )
 
 
-class DigikaiaProductListData( BaseModel ):
+class DigikalaProductListData( BaseModel ):
     """‫داده‌های اصلی response لیست محصولات"""
 
     pager: DigikalaPager
-    products: list[ DigikaiaProductListItem ]
+    products: list[ DigikalaProductListItem ]
 
 
-class DigikaiaProductListResponse( BaseModel ):
+class DigikalaProductListResponse( BaseModel ):
     """‫Response کامل API لیست محصولات"""
 
     status: int = Field( default=200 )
-    data: DigikaiaProductListData
+    data: DigikalaProductListData
 
 
 # ==================== Product Detail API ====================
 
 
-class DigikaiaURL( BaseModel ):
+class DigikalaURL( BaseModel ):
     """‫ساختار URL محصول"""
 
     uri: str = Field( description="‫مسیر نسبی محصول" )
 
 
-class DigikaiaBrand( BaseModel ):
+class DigikalaBrand( BaseModel ):
     """‫اطلاعات برند"""
 
     title_fa: str | None = Field( default=None, description="‫نام فارسی برند" )
     title_en: str | None = Field( default=None, description="‫نام انگلیسی برند" )
 
 
-class DigikaiaRating( BaseModel ):
+class DigikalaRating( BaseModel ):
     """‫امتیاز محصول"""
 
     rate: float = Field( ge=0, le=100, description="‫امتیاز از 100" )
     count: int = Field( ge=0, description="‫تعداد رای‌دهندگان" )
 
 
-class DigikaiaColor( BaseModel ):
+class DigikalaColor( BaseModel ):
     """‫رنگ محصول"""
     model_config = ConfigDict( extra="ignore" )          # نادیده گرفتن ایمن فیلدهای اضافی
     title: str
 
 
-class DigikaiaImages( BaseModel ):
+class DigikalaImages( BaseModel ):
     """‫تصاویر محصول"""
 
     webp_url: list[ str ] = Field( default_factory=list )
@@ -86,7 +86,7 @@ class DigikaiaImages( BaseModel ):
         return value if isinstance( value, list ) else []
 
 
-class DigikaiaPrice( BaseModel ):
+class DigikalaPrice( BaseModel ):
     """‫قیمت محصول"""
 
     selling_price: int = Field( ge=0, description="‫قیمت فروش (ریال)" )
@@ -96,31 +96,31 @@ class DigikaiaPrice( BaseModel ):
     is_promotion: bool = Field( default=False, description="‫تخفیف‌دار؟" )
 
 
-class DigikaiaProductVariant( BaseModel ):
+class DigikalaProductVariant( BaseModel ):
     """‫Variant محصول (رنگ/گارانتی مختلف)"""
 
     id: int
     status: str = Field( description="‫marketable/stop_production/..." )
-    price: DigikaiaPrice
-    color: DigikaiaColor | None = None
+    price: DigikalaPrice
+    color: DigikalaColor | None = None
 
 
-class DigikaiaSpecAttribute( BaseModel ):
+class DigikalaSpecAttribute( BaseModel ):
     """‫یک ویژگی در specifications"""
 
     title: str = Field( description="‫عنوان ویژگی (مثلاً 'حافظه داخلی')" )
     values: list[ str ] = Field( default_factory=list, description="‫مقادیر (مثلاً ['256 گیگابایت'])" )
 
 
-class DigikaiaSpecification( BaseModel ):
+class DigikalaSpecification( BaseModel ):
     """‫یک دسته از مشخصات فنی"""
     model_config = ConfigDict( populate_by_name=True )          #‫فعالسازی alias
 
     category: str | None = Field( default=None, alias="title", description="عنوان دسته)" )          #‫api از فیلد title استفاده میکنه
-    attributes: list[ DigikaiaSpecAttribute ] = Field( default_factory=list )
+    attributes: list[ DigikalaSpecAttribute ] = Field( default_factory=list )
 
 
-class DigikaiaExpertSectionItem( BaseModel ):
+class DigikalaExpertSectionItem( BaseModel ):
     model_config = ConfigDict( extra="ignore" )
 
     text: str | None = Field( default=None, description="متن بخش نقد تخصصی" )
@@ -134,23 +134,23 @@ class DigikaiaExpertSectionItem( BaseModel ):
         return value if isinstance( value, str ) else str( value )
 
 
-class DigikaiaExpertReviewSection( BaseModel ):
+class DigikalaExpertReviewSection( BaseModel ):
     """‫یک بخش از نقد تخصصی"""
     model_config = ConfigDict( extra="ignore" )
 
     title: str
-    sections: list[ DigikaiaExpertSectionItem ] = Field( default_factory=list )
+    sections: list[ DigikalaExpertSectionItem ] = Field( default_factory=list )
 
 
-class DigikaiaExpertReview( BaseModel ):
+class DigikalaExpertReview( BaseModel ):
     """‫نقد تخصصی محصول"""
     model_config = ConfigDict( extra="ignore" )
 
     description: str = Field( default="", description="‫توضیحات اصلی" )
-    review_sections: list[ DigikaiaExpertReviewSection ] = Field( default_factory=list )
+    review_sections: list[ DigikalaExpertReviewSection ] = Field( default_factory=list )
 
 
-class DigikaiaCommentsOverview( BaseModel ):
+class DigikalaCommentsOverview( BaseModel ):
     """‫خلاصه نظرات کاربران"""
 
     id: int
@@ -159,59 +159,59 @@ class DigikaiaCommentsOverview( BaseModel ):
     disadvantages: list[ str ] = Field( default_factory=list, description="‫معایب از دید کاربران" )
 
 
-class DigikaiaProduct( BaseModel ):
+class DigikalaProduct( BaseModel ):
     """‫اطلاعات کامل محصول از API جزئیات"""
 
     # اطلاعات پایه
     id: int
     title_fa: str
     title_en: str | None = None
-    url: DigikaiaURL
-    brand: DigikaiaBrand | None = None
+    url: DigikalaURL
+    brand: DigikalaBrand | None = None
     status: str = Field( description="‫marketable/stop_production/..." )
 
     # قیمت و موجودی (‫از default_variant)
-    default_variant: DigikaiaProductVariant | None = None
+    default_variant: DigikalaProductVariant | None = None
 
     @field_validator( "default_variant", mode="before" )
     @classmethod
-    def _normalize_default_variant( cls, value: object ) -> DigikaiaProductVariant | None:
+    def _normalize_default_variant( cls, value: object ) -> DigikalaProductVariant | None:
         """‫تبدیل لیست خالی [] به None برای محصولات بدون واریانت"""
         if isinstance( value, list ) and len( value ) == 0:
             return None
         return value          # type: ignore  # Pydantic نوع نهایی را چک می‌کند
 
     # امتیاز
-    rating: DigikaiaRating
+    rating: DigikalaRating
 
     # رنگ‌ها
-    colors: list[ DigikaiaColor ] = Field( default_factory=list )
+    colors: list[ DigikalaColor ] = Field( default_factory=list )
 
     # تصاویر
-    images: DigikaiaImages
+    images: DigikalaImages
 
     # مشخصات فنی
-    specifications: list[ DigikaiaSpecification ] = Field( default_factory=list )
+    specifications: list[ DigikalaSpecification ] = Field( default_factory=list )
 
     # Expert Review (اختیاری)
-    expert_review: DigikaiaExpertReview | None = Field(
+    expert_review: DigikalaExpertReview | None = Field(
         default=None,
         alias="expert_reviews"          # ‫← API می‌فرستد expert_reviews، ما داخلی expert_review صدا می‌زنیم
     )
 
     # Comments Overview (اختیاری)
-    comments_overview: DigikaiaCommentsOverview | None = None
+    comments_overview: DigikalaCommentsOverview | None = None
 
     @field_validator( "comments_overview", mode="before" )
     @classmethod
-    def _normalize_comments_overview( cls, value: object ) -> DigikaiaCommentsOverview | None:
+    def _normalize_comments_overview( cls, value: object ) -> DigikalaCommentsOverview | None:
         """‫تبدیل لیست خالی [] به None برای تحمل ناهمگونی API دیجی‌کالا"""
         # ‫لیست خالی → None
         if isinstance( value, list ) and len( value ) == 0:
             return None
 
         # ‫None یا از قبل معتبر → بازگرداندن مستقیم
-        if value is None or isinstance( value, DigikaiaCommentsOverview ):
+        if value is None or isinstance( value, DigikalaCommentsOverview ):
             return value
 
         # ‫هر نوع دیگر (مثلاً dict خام) → اجازه به Pydantic برای اعتبارسنجی بعدی
@@ -219,14 +219,14 @@ class DigikaiaProduct( BaseModel ):
         return value          # type: ignore[return-value]
 
 
-class DigikaiaProductDetailData( BaseModel ):
+class DigikalaProductDetailData( BaseModel ):
     """‫داده‌های اصلی response جزئیات محصول"""
 
-    product: DigikaiaProduct
+    product: DigikalaProduct
 
 
-class DigikaiaProductDetailResponse( BaseModel ):
+class DigikalaProductDetailResponse( BaseModel ):
     """‫Response کامل API جزئیات محصول"""
 
     status: int = Field( default=200 )
-    data: DigikaiaProductDetailData
+    data: DigikalaProductDetailData

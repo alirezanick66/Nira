@@ -5,7 +5,7 @@
 
 from data.models.product import ( ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback, ProductCategory,
                                   ProductStatus )
-from src.data.models.api_responses import DigikaiaProduct, DigikaiaSpecification
+from src.data.models.api_responses import DigikalaProduct, DigikalaSpecification
 from src.utils.spec_normalizer import SpecNormalizer
 
 
@@ -53,14 +53,14 @@ class ProductTransformer:
         return status_map.get( status, ProductStatus.OUT_OF_STOCK )
 
     @staticmethod
-    def _serialize_specs( specs: list[ DigikaiaSpecification ] ) -> list[ dict[ str, object ] ]:
-        """تبدیل DigikaiaSpecification → dict"""
+    def _serialize_specs( specs: list[ DigikalaSpecification ] ) -> list[ dict[ str, object ] ]:
+        """تبدیل DigikalaSpecification → dict"""
         return [ spec.model_dump() for spec in specs ]
 
     #───────────────────── public methods ─────────────────────
     @classmethod
-    def transform( cls, api_product: DigikaiaProduct ) -> Product:
-        """‫تبدیل DigikaiaProduct به Product
+    def transform( cls, api_product: DigikalaProduct ) -> Product:
+        """‫تبدیل DigikalaProduct به Product
 
         Args:
             api_product: داده خام از API دیجی‌کالا
@@ -69,7 +69,7 @@ class ProductTransformer:
             Product نرمال‌شده و آماده ذخیره
 
         Example:
-            >>> api_response = DigikaiaProductDetailResponse(**api_data)
+            >>> api_response = DigikalaProductDetailResponse(**api_data)
             >>> api_product = api_response.data.product
             >>> product = ProductTransformer.transform(api_product)
         """

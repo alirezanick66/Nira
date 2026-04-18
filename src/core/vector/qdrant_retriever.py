@@ -57,12 +57,7 @@ class QdrantHybridRetriever:
 
         return Filter( must=must_conditions ) if must_conditions else None
 
-    def search(
-        self,
-        query: str,
-        filters: dict[ str, object ] | None = None,
-        top_k: int = 10,
-    ) -> list[ QdrantProductPayload ]:
+    def search( self, query: str, filters: dict[ str, object ] | None = None, top_k: int = 10 ) -> list[ QdrantProductPayload ]:
         """‫اجرای جستجوی ترکیبی واقعی (Dense Embedding + Sparse BM25) با RRF"""
         # ✅ تولید بردار واقعی به‌جای Placeholder
         dense_vec = self._embedder.encode( query, is_query=True )[ 0 ]

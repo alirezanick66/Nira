@@ -2,12 +2,10 @@
 ‫مسئول: مدیریت چرخه کامل Memory → Prompt → Groq → Gemini(Fallback) → Validation
 """
 from __future__ import annotations
-
+import asyncio
 import json
-from typing import Any
-
+from typing import Callable
 from pydantic import TypeAdapter
-
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.llm.clients import GroqClient, GeminiClient
 from src.core.llm.memory import ConversationMemory
@@ -25,47 +23,38 @@ class LLMOrchestrator:
         self._validator = TypeAdapter( LLMResponseSchema )
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
 
-    def generate(
+    async def generate(
         self,
         session_id: str,
         user_query: str,
         intent: str,
         filters_str: str | None,
         products: list[ QdrantProductPayload ],
-    ) -> dict[ str, Any ]:
+    ) -> dict[ str, object ]:
         """‫اجرای کامل پایپلاین تولید پاسخ"""
-        # ‫۱. ذخیره پیام کاربر
         self._memory.add_message( session_id, "user", user_query )
-
-        # ‫۲. ساخت پرامپت
         messages = PromptEngine.build( intent, filters_str, products )
 
-        # ‫۳. افزودن تاریخچه مکالمه برای درک Context
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
             messages.insert( 1, { "role": "system", "content": f"تاریخچه مکالمه:\n{history}" } )
 
-        # ‫۴. تلاش اول: Groq
         raw_json = ""
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
-            raw_json = self._groq.chat_json( messages )
+            raw_json = await self._groq.chat_json( messages )
         except Exception as exc:
             log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
-            # ‫۵. تلاش دوم: Gemini
             try:
                 log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
-                raw_json = self._gemini.chat_json( messages )
+                raw_json = await self._gemini.chat_json( messages )
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
 
-        # ‫۶. اعتبارسنجی JSON
         try:
             cleaned = raw_json.strip( "```json\n" ).strip( "```\n" ).strip()
             validated = self._validator.validate_python( json.loads( cleaned ) )
-
-            # ذخیره پاسخ سیستم در حافظه
             self._memory.add_message( session_id, "assistant", validated.explanation )
             return validated.model_dump()
         except Exception as exc:
@@ -73,7 +62,7 @@ class LLMOrchestrator:
             return self._fallback_response( user_query, products )
 
     @staticmethod
-    def _fallback_response( query: str, products: list[ QdrantProductPayload ] ) -> dict[ str, Any ]:
+    def _fallback_response( query: str, products: list[ QdrantProductPayload ] ) -> dict[ str, object ]:
         """‫پاسخ قطعی در صورت شکست کامل LLM"""
         titles = "، ".join( [ p.title[ :30 ] for p in products[ :2 ] ] )
         return {

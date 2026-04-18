@@ -19,8 +19,8 @@ class KnowledgeCache:
     categories: frozenset[ str ]
     os_types: frozenset[ str ]
     colors: frozenset[ str ]
-    qualitative_mappings: dict[ str, dict[ str, Any ] ]
-    use_case_rules: dict[ str, dict[ str, Any ] ]
+    qualitative_mappings: dict[ str, dict[ str, object ] ]
+    use_case_rules: dict[ str, dict[ str, object ] ]
     intent_keywords: dict[ str, list[ str ] ]
 
     @classmethod

@@ -8,7 +8,7 @@ from qdrant_client.models import ( Distance, PayloadSchemaType )
 
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-from data.models.digikala.product import Product
+from src.data.models.product import Product
 from src.core.vector.qdrant_payload import QdrantProductPayload
 
 
@@ -37,7 +37,7 @@ class QdrantIndexer:
         )
         log_message( LG.DATA_PROCESSING, f"کالکشن {self._collection} با پشتیبانی Hybrid ایجاد شد", LogLevel.INFO )
 
-        # ‫ایندکس‌های Payload برای فیلتربرداری سریع (Rule 5: بدون Any)
+        # ‫ایندکس‌های Payload برای فیلتربرداری سریع
         payload_indexes: dict[ str, PayloadSchemaType ] = {
             "price": PayloadSchemaType.INTEGER,
             "is_available": PayloadSchemaType.BOOL,

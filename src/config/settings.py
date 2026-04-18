@@ -40,19 +40,19 @@ class Settings( BaseSettings ):
     QDRANT_URL: str = Field( default="http://localhost:6333" )
     QDRANT_COLLECTION: str = Field( default="nira_products" )
     EMBEDDING_DIM: int = Field( default=768, description="ابعاد بردارهای Embedding" )
-    EMBEDDING_MODEL_PATH: Path = Field( default=Path( r"E:\A-Golchin program\Ai\Models\embedding\intfloat-multilingual-e5-base" ),
-                                        description="مسیر محلی مدل Embedding" )
+    EMBEDDING_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Embedding" )
 
     #───────────────────── Reranker ─────────────────────
-    RERANKER_MODEL_PATH: Path = Field( default=Path( r"E:\A-Golchin program\Ai\Models\Reranker\bge-reranker-v2-m3" ),
-                                       description="مسیر محلی مدل Reranker" )
+    RERANKER_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Reranker" )
 
     RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_BATCH_SIZE: int = 8
 
     #───────────────────── LLM ─────────────────────
+    #Api Keys
     GROQ_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Groq" )
     GEMINI_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Gemini" )
+    #Model Names
     GROQ_MODEL: str = Field( default="llama-3.3-70b-versatile", description=" ‫مدل Groq برای تولید پاسخ" )
     GEMINI_MODEL: str = Field( default="gemini-2.5-flash", description=" ‫مدل Gemini برای تولید پاسخ " )
 

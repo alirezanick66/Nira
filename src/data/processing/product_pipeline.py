@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 #───────────────────── local imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.api_responses import DigikaiaProductDetailResponse
+from src.data.models.api_responses import DigikalaProductDetailResponse
 from data.models.product import Product
 from src.data.repositories.product_repository import ProductRepository
 from src.data.transformers.product_transformer import ProductTransformer
@@ -51,7 +51,7 @@ class ProductProcessingPipeline:
             return None
 
         try:
-            validated_response = DigikaiaProductDetailResponse.model_validate( raw_data )
+            validated_response = DigikalaProductDetailResponse.model_validate( raw_data )
         except ValidationError as exc:
             log_message( LG.DATA_PROCESSING, f"خطای اعتبارسنجی پاسخ API محصول {product_id}: {exc}", LogLevel.ERROR )
             return None
