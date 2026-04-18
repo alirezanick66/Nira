@@ -8,7 +8,7 @@ from qdrant_client.models import ( Distance, PayloadSchemaType )
 
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-from src.data.models.core.product import Product
+from data.models.digikala.product import Product
 from src.core.vector.qdrant_payload import QdrantProductPayload
 
 
@@ -47,6 +47,7 @@ class QdrantIndexer:
             "brand": PayloadSchemaType.KEYWORD,
             "os": PayloadSchemaType.KEYWORD,
             "tags": PayloadSchemaType.KEYWORD,
+            "ram_gb": PayloadSchemaType.INTEGER,
             "battery_quality": PayloadSchemaType.KEYWORD,
             "camera_quality": PayloadSchemaType.KEYWORD,
             "value_for_money": PayloadSchemaType.KEYWORD,

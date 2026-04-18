@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import torch
-from pathlib import Path
 from typing import Sequence
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -40,25 +39,27 @@ class RerankerService:
 
     @staticmethod
     def _prepare_document_text( payload: QdrantProductPayload ) -> str:
-        """‫ساخت متن فشرده و اطلاعاتی برای هر محصول جهت Reranking"""
+        """‫ساخت متن طبیعی و غنی برای تطبیق بهتر با Cross-Encoder"""
         parts = [ payload.title ]
-        if payload.camera_summary:
-            parts.append( payload.camera_summary )
+        if payload.expert_summary:
+            parts.append( payload.expert_summary )
+        elif payload.camera_summary:
+            parts.append( f"دوربین: {payload.camera_summary}" )
         if payload.user_advantages:
-            parts.extend( payload.user_advantages[ :2 ] )          # دو مزیت اول کاربران
-        parts.append( f"رنج قیمت: {payload.price_range}" )
+            parts.append( "مزایا: " + "، ".join( payload.user_advantages[ :3 ] ) )
+        if payload.price_range:
+            parts.append( f"رنج قیمت: {payload.price_range}" )
         if payload.tags:
-            parts.append( " | ".join( payload.tags[ :3 ] ) )
-        return " | ".join( parts )
+            parts.append( "ویژگی‌ها: " + "، ".join( payload.tags[ :3 ] ) )
+        return " | ".join( filter( None, parts ) )
 
     def rerank(
-            self,
-            query: str,
-            payloads: Sequence[ QdrantProductPayload ],
-            top_k: int = 3,
-            min_score: float = 0.3,          # ✅ کاهش آستانه برای MVP
+        self,
+        query: str,
+        payloads: Sequence[ QdrantProductPayload ],
+        top_k: int = 3,
     ) -> list[ QdrantProductPayload ]:
-        """‫رتبه‌بندی مجدد محصولات بر اساس تطبیق معنایی دقیق کوئری"""
+        """‫رتبه‌بندی مجدد محصولات (بدون آستانهٔ مطلق برای پایداری MVP)"""
         if not payloads:
             return []
 
@@ -76,15 +77,12 @@ class RerankerService:
                         batch_scores = [ batch_scores ]
                     scores.extend( batch_scores )
 
-            # لاگ شفاف امتیازات برای دیباگ
+            # مرتب‌سازی نسبی (بدون حذف بر اساس آستانهٔ مطلق)
             scored = sorted( zip( payloads, scores ), key=lambda x: x[ 1 ], reverse=True )
-            for p, s in scored[ :top_k ]:
-                log_message( LG.RETRIEVAL, f"  📊 {p.title[:40]}... | امتیاز: {s:.3f}", LogLevel.DEBUG )
 
-            # فیلتر نرم + بازگشت top_k
-            final = [ p for p, s in scored if s >= min_score ]
-            return final[ :top_k ] if final else [ p for p, _ in scored[ :top_k ] ]
+            log_message( LG.RETRIEVAL, f"✅ Reranking تکمیل | {len(payloads)} → {top_k} محصول", LogLevel.DEBUG )
+            return [ p for p, _ in scored[ :top_k ] ]
 
         except Exception as exc:
-            log_message( LG.RETRIEVAL, f"خطا در Reranking، بازگشت به ترتیب اولیه: {exc}", LogLevel.WARNING )
+            log_message( LG.RETRIEVAL, f"خطا در Reranking، بازگشت به ترتیب RRF: {exc}", LogLevel.WARNING )
             return list( payloads[ :top_k ] )
