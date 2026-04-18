@@ -1,19 +1,20 @@
 """‫نقطهٔ ورود وب‌سرور FastAPI
-‫مسئول: مدیریت چرخه عمر اپلیکیشن، تعریف Routeها، و اجرای هماهنگ پایپلاین
+‫مسئول: مدیریت چرخه عمر اپلیکیشن، تعریف Routeها، و اجرای هماهنگ پایپلاین NLU → Retrieval → Rerank → LLM
 """
 from __future__ import annotations
 
+import uuid
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, HTTPException, status
 from contextlib import asynccontextmanager
 
 from src.api.schemas import SearchRequest, SearchResponse, SearchResultItem
-from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.nlu_pipeline import nlu_pipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
+from src.core.llm.orchestrator import LLMOrchestrator
 
 
 @asynccontextmanager
@@ -21,59 +22,59 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     """‫مدیریت راه‌اندازی و خاموشی سرویس‌های سنگین (Lifespan Context)"""
     log_message( LG.API, "🚀 در حال بارگذاری سرویس‌های پایه...", LogLevel.INFO )
 
-    # بارگذاری Singletonها در حافظهٔ اپلیکیشن
+    # بارگذاری Singletonها در حافظهٔ اپلیکیشن (یک‌بار در طول حیات سرویس)
     app.state.nlu = nlu_pipeline
     app.state.retriever = QdrantHybridRetriever()
     app.state.reranker = RerankerService.get_instance()
+    app.state.llm = LLMOrchestrator()
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield
 
-    log_message( LG.API, "🛑 پایان چرخه عمر سرویس‌ها", LogLevel.INFO )
+    log_message( LG.API, "🛑 پایان چرخه عمر سرویس‌ها و آزادسازی منابع", LogLevel.INFO )
 
 
 app = FastAPI(
     title="Nira AI Shopping Assistant",
-    description="دستیار هوشمند خرید موبایل مبتنی بر جستجوی ترکیبی و درک زبان طبیعی",
+    description="دستیار هوشمند خرید موبایل مبتنی بر جستجوی ترکیبی، درک زبان طبیعی و تولید پاسخ ساختاریافته",
     version="1.0.0-MVP",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 
 @app.post( "/api/v1/search", response_model=SearchResponse, status_code=status.HTTP_200_OK )
-async def search_products(
-        request: SearchRequest,
-        nlu=Depends( get_nlu_pipeline ),
-        retriever=Depends( get_retriever ),
-        reranker=Depends( get_reranker ),
-) -> SearchResponse:
-    """‫پردازش کوئری کاربر و بازگرداندن محصولات پیشنهادی
+async def search_products( request: SearchRequest ) -> SearchResponse:
+    """‫پردازش کوئری کاربر و بازگرداندن محصولات پیشنهادی + توضیح LLM
+
     Args:
-        request: دادهٔ ورودی شامل متن کوئری و تعداد نتایج
-        nlu: خط لوله درک زبان طبیعی
-        retriever: سرویس بازیابی ترکیبی
-        reranker: سرویس مرتب‌سازی نهایی
+        request: دادهٔ ورودی شامل متن کوئری، تعداد نتایج و شناسه نشست
+
     Returns:
-        ساختار پاسخ استاندارد شامل نیت، فیلترها و لیست محصولات
+        ساختار پاسخ استاندارد شامل نیت، فیلترها، نتایج و توضیحات LLM
     """
+    session_id = request.session_id or str( uuid.uuid4() )
+
     try:
-        # ‫گام ۱: پردازش NLU
-        nlu_out = nlu.process( request.query )
+        # 🔹 گام ۱: درک زبان طبیعی (NLU)
+        nlu_out = app.state.nlu.process( request.query )
 
         if nlu_out.is_greeting:
             return SearchResponse( intent="greeting",
                                    semantic_query=request.query,
                                    applied_filters={},
                                    results=[],
-                                   message="سلام! چطور می‌تونم در انتخاب گوشی مناسب کمکتون کنم؟" )
+                                   message="سلام! چطور می‌تونم در انتخاب گوشی مناسب کمکتون کنم؟",
+                                   llm_explanation="پاسخ خوشامدگویی سیستم",
+                                   next_suggestion="نیازهای خود را به زبان محاوره‌ای بنویسید." )
 
-        # ‫گام ۲: بازیابی ترکیبی (Dense + Sparse + RRF + Metadata)
-        candidates = retriever.search(
+        # 🔹 گام ۲: بازیابی ترکیبی (Dense + Sparse + RRF + Metadata Filter)
+        candidates = app.state.retriever.search(
             query=nlu_out.semantic_query,
             filters=nlu_out.metadata_filters,
-            top_k=request.top_k * 2          # ‫دریافت کاندیدای بیشتر برای دقت Reranker
+            top_k=max( request.top_k * 2, 10 )          # کاندیدای بیشتر برای دقت Reranker
         )
 
         if not candidates:
@@ -81,15 +82,26 @@ async def search_products(
                                    semantic_query=nlu_out.semantic_query,
                                    applied_filters=nlu_out.metadata_filters,
                                    results=[],
-                                   message="متأسفانه محصولی با این مشخصات پیدا نشد. پیشنهاد می‌کنم فیلترها را کمی گسترده‌تر کنید." )
+                                   message="متأسفانه محصولی با این مشخصات پیدا نشد. پیشنهاد می‌کنم فیلترها را کمی گسترده‌تر کنید.",
+                                   llm_explanation="هیچ تطابقی در پایگاه داده یافت نشد.",
+                                   next_suggestion="برند یا رنج قیمت را تغییر دهید." )
 
-        # ‫گام ۳: مرتب‌سازی نهایی (Cross-Encoder Reranker)
-        final_products = reranker.rerank(
-            query=request.query,          # ‫استفاده از متن کامل برای درک Context
+        # 🔹 گام ۳: مرتب‌سازی نهایی (Cross-Encoder Reranker)
+        final_products = app.state.reranker.rerank(
+            query=request.query,          # متن کامل برای درک بهتر Context
             payloads=candidates,
             top_k=request.top_k )
 
-        # ‫نگاشت به مدل پاسخ استاندارد
+        # 🔹 گام ۴: تولید پاسخ هوشمند (LLM Orchestrator + Memory)
+        llm_out = app.state.llm.generate(
+            session_id=session_id,
+            user_query=request.query,
+            intent=nlu_out.intent,
+            filters_str=str( nlu_out.metadata_filters ),
+            products=final_products,
+        )
+
+        # 🔹 گام ۵: نگاشت به مدل پاسخ استاندارد
         results = [
             SearchResultItem(
                 product_id=p.product_id,
@@ -98,7 +110,7 @@ async def search_products(
                 price_range=p.price_range or "نامشخص",
                 camera_quality=p.camera_quality or "نامشخص",
                 tags=p.tags or [],
-                relevance_score=0.0          # ‫رزرو برای فاز Post-MVP
+                relevance_score=0.0          # رزرو برای فاز Post-MVP
             ) for p in final_products
         ]
 
@@ -106,10 +118,12 @@ async def search_products(
                                semantic_query=nlu_out.semantic_query,
                                applied_filters=nlu_out.metadata_filters,
                                results=results,
-                               message="✅ نتایج بر اساس نیاز شما مرتب‌سازی شدند." )
+                               message=llm_out.get( "explanation", "نتایج بر اساس نیاز شما مرتب شدند." ),
+                               llm_explanation=llm_out.get( "explanation", "" ),
+                               next_suggestion=llm_out.get( "next_suggestion", "می‌توانید فیلترها را دقیق‌تر کنید." ) )
 
     except HTTPException:
-        raise          # ‫خطاهای اعتبارسنجی/سرویس مستقیم به کلاینت برگردند
+        raise          # خطاهای اعتبارسنجی/سرویس مستقیم به کلاینت برگردند
     except Exception as exc:
         log_message( LG.API, f"خطای پیش‌بینی‌نشده در Endpoint جستجو: {exc}", LogLevel.ERROR )
         raise HTTPException( status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="خطای داخلی سرور. لطفاً مجدداً تلاش کنید." )

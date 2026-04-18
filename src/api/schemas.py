@@ -10,6 +10,7 @@ class SearchRequest( BaseModel ):
     """‫ساختار درخواست جستجو از کلاینت"""
     query: str = Field( min_length=1, max_length=200, description="متن کوئری کاربر به زبان طبیعی (فارسی/انگلیسی)" )
     top_k: int = Field( default=5, ge=1, le=10, description="تعداد نتایج نهایی مورد نیاز" )
+    session_id: str | None = Field( default=None, description="شناسه نشست برای حفظ حافظه مکالمه" )
 
 
 class SearchResultItem( BaseModel ):
@@ -30,3 +31,5 @@ class SearchResponse( BaseModel ):
     applied_filters: dict = Field( description="فیلترهای متادیتا اعمال‌شده در Qdrant" )
     results: list[ SearchResultItem ]
     message: str = Field( description="پیام سیستمی یا راهنما برای کاربر" )
+    llm_explanation: str = Field( description="توضیح تولیدشده توسط LLM" )
+    next_suggestion: str = Field( description="پیشنهاد اقدام بعدی" )
