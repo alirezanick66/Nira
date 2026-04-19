@@ -76,8 +76,18 @@ class GeminiClient( _BaseLLMClient ):
         """‫ارسال درخواست و دریافت پاسخ JSON-محور"""
 
         def _call() -> str:
-            system_text = next( ( m[ "content" ] for m in messages if m[ "role" ] == "system" ), None )
-            user_messages = [ m for m in messages if m[ "role" ] != "system" ]
+            # جداسازی System Prompt با دسترسی ایمن
+            system_text = next( ( m.get( "content" ) for m in messages if m.get( "role" ) == "system" ), None )
+
+            # ✅ استخراج صریح و ایمن برای رفع خطای Type Checker
+            user_contents: list[ str ] = []
+            for m in messages:
+                if m.get( "role" ) in ( "user", "assistant" ):
+                    content = m.get( "content" )
+                    if isinstance( content, str ):
+                        user_contents.append( content )
+
+            contents_payload = user_contents[ 0 ] if len( user_contents ) == 1 else user_contents
 
             config = types.GenerateContentConfig(
                 temperature=0.3,
@@ -86,7 +96,7 @@ class GeminiClient( _BaseLLMClient ):
             )
             response = self._client.models.generate_content(
                 model=self._model,
-                contents=user_messages,
+                contents=contents_payload,
                 config=config,
             )
             content = response.text

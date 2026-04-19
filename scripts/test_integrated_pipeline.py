@@ -1,6 +1,8 @@
 """‫اسکریپت تست یکپارچه کل پایپلاین: NLU → Hybrid Retrieval → Reranker"""
+#───────────────────── imports ─────────────────────
 import asyncio
 
+#───────────────────── local imports ─────────────────────
 from src.core.nlu.nlu_pipeline import nlu_pipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
