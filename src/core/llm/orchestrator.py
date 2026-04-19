@@ -55,6 +55,7 @@ class LLMOrchestrator:
 
         try:
             cleaned = raw_json.strip( "```json\n" ).strip( "```\n" ).strip()
+            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {raw_json[:200]}", LogLevel.DEBUG )
             validated = self._validator.validate_python( json.loads( cleaned ) )
             self._memory.add_message( session_id, "assistant", validated.explanation )
             return validated.model_dump()
