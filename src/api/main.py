@@ -1,23 +1,29 @@
 """‫نقطهٔ ورود وب‌سرور FastAPI
 ‫مسئول: مدیریت چرخه عمر اپلیکیشن، تعریف Routeها، و اجرای هماهنگ پایپلاین NLU → Retrieval → Rerank → LLM
 """
+#─────────────────────imports─────────────────────
 from __future__ import annotations
 import uuid
+import asyncio
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, status
 from contextlib import asynccontextmanager
+
+#─────────────────────local imports─────────────────────
+
 from src.api.schemas import SearchRequest, SearchResponse, SearchResultItem
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.core.llm.orchestrator import LLMOrchestrator
-from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker
+from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm
 
 
 @asynccontextmanager
 async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     """‫مدیریت راه‌اندازی و خاموشی سرویس‌های سنگین (Lifespan Context)"""
+
     log_message( LG.API, "🚀 در حال بارگذاری سرویس‌های پایه...", LogLevel.INFO )
     app.state.nlu = NLUPipeline()
     app.state.retriever = QdrantHybridRetriever()
@@ -45,8 +51,9 @@ async def search_products(
         nlu: NLUPipeline = Depends( get_nlu_pipeline ),
         retriever: QdrantHybridRetriever = Depends( get_retriever ),
         reranker: RerankerService = Depends( get_reranker ),
+        llm: LLMOrchestrator = Depends( get_llm ),
 ) -> SearchResponse:
-    """‫پردازش کوئری کاربر و بازگرداندن محصولات پیشنهادی + توضیح LLM"""
+    """پردازش کوئری کاربر و بازگرداندن محصولات پیشنهادی + توضیح LLM"""
     session_id = request.session_id or str( uuid.uuid4() )
 
     try:
@@ -61,9 +68,10 @@ async def search_products(
                                    llm_explanation="پاسخ خوشامدگویی سیستم",
                                    next_suggestion="نیازهای خود را به زبان محاوره‌ای بنویسید." )
 
-        candidates = retriever.search( query=nlu_out.semantic_query,
-                                       filters=nlu_out.metadata_filters,
-                                       top_k=max( request.top_k * 2, 10 ) )
+        candidates = await asyncio.to_thread( retriever.search,
+                                              query=nlu_out.semantic_query,
+                                              filters=nlu_out.metadata_filters,
+                                              top_k=max( request.top_k * 2, 10 ) )
 
         if not candidates:
             return SearchResponse( intent=nlu_out.intent,
@@ -74,9 +82,9 @@ async def search_products(
                                    llm_explanation="هیچ تطابقی در پایگاه داده یافت نشد.",
                                    next_suggestion="برند یا رنج قیمت را تغییر دهید." )
 
-        final_products = reranker.rerank( query=request.query, payloads=candidates, top_k=request.top_k )
+        final_products = await asyncio.to_thread( reranker.rerank, query=request.query, payloads=candidates, top_k=request.top_k )
 
-        llm_out = app.state.llm.generate(
+        llm_out = await llm.generate(
             session_id=session_id,
             user_query=request.query,
             intent=nlu_out.intent,
@@ -98,9 +106,9 @@ async def search_products(
                                semantic_query=nlu_out.semantic_query,
                                applied_filters=nlu_out.metadata_filters,
                                results=results,
-                               message=llm_out.get( "explanation", "نتایج بر اساس نیاز شما مرتب شدند." ),
-                               llm_explanation=llm_out.get( "explanation", "" ),
-                               next_suggestion=llm_out.get( "next_suggestion", "می‌توانید فیلترها را دقیق‌تر کنید." ) )
+                               message=str( llm_out.get( "explanation", "نتایج بر اساس نیاز شما مرتب شدند." ) ),
+                               llm_explanation=str( llm_out.get( "explanation", "" ) ),
+                               next_suggestion=str( llm_out.get( "next_suggestion", "می‌توانید فیلترها را دقیق‌تر کنید." ) ) )
 
     except HTTPException:
         raise

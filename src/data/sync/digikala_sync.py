@@ -1,5 +1,10 @@
 """‫سرویس همگام‌سازی هوشمند با قابلیت Resume و مدیریت خطای لایه‌ای"""
+#───────────────────── Imports ─────────────────────
 import asyncio
+
+from httpx import HTTPStatusError
+
+#───────────────────── Local Imports ─────────────────────
 from src.data.fetchers.digikala_api import DigikalaAPIClient
 from src.data.repositories.product_repository import ProductRepository
 from src.core.progress_tracker import ProgressTracker
@@ -24,6 +29,9 @@ class DigikalaSyncService:
             await self._repo.save_raw( product_id, detail.model_dump() )
             log_message( LG.DATA_PROCESSING, f"✅ محصول {product_id} ذخیره شد", LogLevel.DEBUG )
             return True
+        except HTTPStatusError as exc:
+            log_message( LG.DATA_PROCESSING, f"🚫 خطای HTTP برای محصول {product_id}: {exc.response.status_code}", LogLevel.DEBUG )
+            return False
         except Exception as exc:
             log_message( LG.DATA_PROCESSING, f"⚠️ خطا در پردازش محصول {product_id}: {exc}", LogLevel.WARNING )
             return False
@@ -31,10 +39,10 @@ class DigikalaSyncService:
     async def run(
         self,
         max_products: int | None = None,
-        checkpoint_every: int = 50,
+        checkpoint_every: int = 10,
         stop_event: asyncio.Event | None = None,
     ) -> int:
-        """‫اجرای چرخهٔ همگام‌سازی با قابلیت Resume دقیق"""
+        """اجرای چرخهٔ همگام‌سازی با قابلیت Resume دقیق"""
         last_id, last_page = await self._tracker.load()
         log_message( LG.DATA_PROCESSING, f"شروع همگام‌سازی | ادامه از ID: {last_id} | صفحه: {last_page}", LogLevel.INFO )
 
@@ -42,12 +50,12 @@ class DigikalaSyncService:
         processed_count: int = 0
         current_id: int | None = last_id
         current_page: int = last_page
+        last_saved_id: int | None = None          # ✅ ردیابی آخرین چک‌پوینت ثبت‌شده
 
         try:
             async with DigikalaAPIClient() as client:
-                async for pid, page in client.stream_product_ids( start_page=last_page ):
+                async for pid, page in client.stream_product_ids( start_page=current_page ):
                     if stop_event and stop_event.is_set():
-                        log_message( LG.DATA_PROCESSING, "🛑 توقف درخواست شد — ذخیرهٔ چک‌پوینت نهایی...", LogLevel.INFO )
                         break
 
                     if max_products is not None and processed_count >= max_products:
@@ -59,15 +67,14 @@ class DigikalaSyncService:
                         success_count += 1
                         processed_count += 1
 
-                        if processed_count % checkpoint_every == 0:
+                        if processed_count % checkpoint_every == 0 and current_id != last_saved_id:
                             await self._tracker.save( current_id, page=current_page )
-                            log_message( LG.DATA_PROCESSING, f"📦 چک‌پوینت ذخیره شد | پردازش‌شده: {processed_count}", LogLevel.INFO )
-
-            if current_id and current_id != last_id:
-                await self._tracker.save( current_id, page=current_page )
+                            last_saved_id = current_id
+                            log_message( LG.DATA_PROCESSING, f"📦 چک‌پوینت ذخیره شد | ID: {current_id}", LogLevel.DEBUG )
 
         finally:
-            if current_id and current_id != last_id:
+            # ✅ ذخیره نهایی فقط در صورتی که تغییر جدیدی نسبت به آخرین چک‌پوینت رخ داده باشد
+            if current_id and current_id != last_saved_id:
                 try:
                     await self._tracker.save( current_id, page=current_page )
                 except Exception:

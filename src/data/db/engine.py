@@ -1,7 +1,10 @@
 """‫مدیریت چرخه حیات اتصال به PostgreSQL
 ‫این ماژول Engine و SessionMaker غیرهمزمان را مدیریت می‌کند.
 """
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+#─────────────────────imports─────────────────────
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+#─────────────────────local imports─────────────────────
 from src.config.settings import get_settings
 from src.data.db.models import Base
 
@@ -18,10 +21,7 @@ class DatabaseEngine:
             max_overflow=10,
             pool_recycle=3600,
         )
-        self._session_maker = async_sessionmaker(
-            bind=self._engine,
-            expire_on_commit=False,
-        )
+        self._session_maker = async_sessionmaker( bind=self._engine, expire_on_commit=False )
 
     async def init_db( self ) -> None:
         """‫ایجاد جداول در صورت عدم وجود (مناسب توسعه)"""
@@ -30,9 +30,10 @@ class DatabaseEngine:
 
     async def close( self ) -> None:
         """‫بستن تمام کانکشن‌ها و آزادسازی منابع"""
-        await self._engine.dispose()
+        if self._engine:
+            await self._engine.dispose()
 
     @property
-    def session_maker( self ) -> async_sessionmaker:
+    def session_maker( self ) -> async_sessionmaker[ AsyncSession ]:
         """‫فکتوری ساخت Sessionهای غیرهمزمان"""
         return self._session_maker

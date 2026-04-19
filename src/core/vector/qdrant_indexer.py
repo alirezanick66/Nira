@@ -1,24 +1,29 @@
 """‫سرویس ایندکس‌سازی و مدیریت بردارهای محصولات در Qdrant
 ‫مسئول: ایجاد کالکشن، پیکربندی Hybrid (Dense+Sparse)، آپلود محصولات
 """
+#───────────────────── Imports ─────────────────────
 from typing import Sequence
-
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import ( Distance, PayloadSchemaType )
 
+#───────────────────── Local Imports ─────────────────────
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.models.product import Product
 from src.core.vector.qdrant_payload import QdrantProductPayload
+from src.services.embedding_service import EmbeddingService
+from src.services.sparse_vectorizer import BM25Vectorizer
 
 
 class QdrantIndexer:
     """‫مدیریت اتصال، ساخت ایندکس و آپلود محصولات به Qdrant"""
 
-    def __init__( self, client: QdrantClient | None = None ) -> None:
+    def __init__( self, client: QdrantClient | None = None, embedding_service: EmbeddingService | None = None ) -> None:
         self._settings = get_settings()
         self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False, timeout=60 )
         self._collection = self._settings.QDRANT_COLLECTION
+        self._embedder = embedding_service or EmbeddingService.get_instance()
+        log_message( LG.DATA_PROCESSING, "QdrantIndexer با سرویس Embedding فعال راه‌اندازی شد", LogLevel.INFO )
 
     def ensure_collection( self, vector_size: int ) -> None:
         """‫ایجاد Collection و ایندکس‌های Payload در صورت عدم وجود"""
@@ -73,17 +78,18 @@ class QdrantIndexer:
         self.ensure_collection( vector_size )
         points = []
 
-        for prod in products:
+        texts = [ f"passage: {p.title}" for p in products ]
+        dense_vectors = self._embedder.encode( texts, is_query=False )
+
+        for idx, prod in enumerate( products ):
             payload = QdrantProductPayload.from_product( prod )
-            # ‫‫🟡 Placeholder: در گام بعدی، مدل Embedding واقعی برای dense و‫ BM25 برای sparse جایگزین می‌شود
-            dense_vec = [ 0.0 ] * vector_size
-            sparse_vec = models.SparseVector( indices=[], values=[] )
+            sparse_vec = BM25Vectorizer.query_to_sparse( payload.search_text or payload.title )
 
             points.append(
                 models.PointStruct(
                     id=payload.product_id,
                     vector={
-                        "dense": dense_vec,
+                        "dense": dense_vectors[ idx ],
                         "sparse": sparse_vec
                     },
                     payload=payload.model_dump( exclude_none=True ),

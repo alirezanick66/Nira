@@ -1,9 +1,13 @@
 """‫سرویس تولید بردارهای متنی (Dense Embedding) برای جستجوی معنایی"""
+#───────────────────── Imports ─────────────────────
+import warnings
 from sentence_transformers import SentenceTransformer
+import torch
+from transformers import logging as transformers_logging
+
+#───────────────────── Local Imports ─────────────────────
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
-import warnings
-from transformers import logging as transformers_logging
 
 
 class EmbeddingService:
@@ -17,7 +21,8 @@ class EmbeddingService:
         if not path.exists():
             raise FileNotFoundError( f"مسیر مدل Embedding یافت نشد: {path}" )
 
-        # ✅ حذف هشدارهای معماری مدل
+        # پیکربندی Torch برای پایداری محیط وب (جلوگیری از اشغال تمام هسته‌های CPU)
+        torch.set_num_threads( 1 )
         warnings.filterwarnings( "ignore", message=".*UNEXPECTED.*" )
         transformers_logging.set_verbosity_error()
 
