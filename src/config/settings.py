@@ -56,6 +56,12 @@ class Settings( BaseSettings ):
     GROQ_MODEL: str = Field( default="llama-3.3-70b-versatile", description=" ‫مدل Groq برای تولید پاسخ" )
     GEMINI_MODEL: str = Field( default="gemini-2.5-flash", description=" ‫مدل Gemini برای تولید پاسخ " )
 
+    # ───────────────────── ONNX Runtime ─────────────────────
+    USE_ONNX: bool = Field( default=True, description="فعال‌سازی ONNX Runtime برای کاهش مصرف CPU/RAM" )
+    ONNX_EMBEDDING_PATH: Path = Field( default=Path( __file__ ).resolve().parents[ 2 ] / "models" / "onnx" / "e5-opt-int8",
+                                       description="مسیر مدل Embedding کوانتایز شده (INT8)" )
+    ONNX_RERANKER_PATH: Path = Field( default=Path( __file__ ).resolve().parents[ 2 ] / "models" / "onnx" / "reranker-opt-int8",
+                                      description="مسیر مدل Reranker کوانتایز شده (INT8)" )
     # ───────────────────── Computed Fields ─────────────────────
     @computed_field
     @property
