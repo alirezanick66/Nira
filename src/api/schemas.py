@@ -21,7 +21,8 @@ class SearchResultItem( BaseModel ):
     price_range: str
     camera_quality: str
     tags: list[ str ]
-    relevance_score: float = Field( default=0.0, description=" ‫امتیاز تطبیق پس از Reranking (در MVP رزرو)" )
+    image_url: str | None = Field( default=None, description="لینک تصویر محصول" )
+    relevance_score: float = Field( default=0.0, description=" ‫امتیاز تطبیق پس از Reranking" )
 
 
 class SearchResponse( BaseModel ):
@@ -33,3 +34,9 @@ class SearchResponse( BaseModel ):
     message: str = Field( description="پیام سیستمی یا راهنما برای کاربر" )
     llm_explanation: str = Field( description="توضیح تولیدشده توسط LLM" )
     next_suggestion: str = Field( description="پیشنهاد اقدام بعدی" )
+
+
+class ErrorLog( BaseModel ):
+    message: str
+    source: str
+    lineno: int

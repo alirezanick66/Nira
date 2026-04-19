@@ -8,10 +8,11 @@ import asyncio
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, status
 from contextlib import asynccontextmanager
-
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 #─────────────────────local imports─────────────────────
 
-from src.api.schemas import SearchRequest, SearchResponse, SearchResultItem
+from src.api.schemas import ErrorLog, SearchRequest, SearchResponse, SearchResultItem
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
@@ -99,6 +100,7 @@ async def search_products(
                               price_range=p.price_range or "نامشخص",
                               camera_quality=p.camera_quality or "نامشخص",
                               tags=p.tags or [],
+                              image_url=p.image_url,
                               relevance_score=0.0 ) for p in final_products
         ]
 
@@ -115,3 +117,14 @@ async def search_products(
     except Exception as exc:
         log_message( LG.API, f"خطای پیش‌بینی‌نشده در Endpoint جستجو: {exc}", LogLevel.ERROR )
         raise HTTPException( status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="خطای داخلی سرور. لطفاً مجدداً تلاش کنید." )
+
+
+@app.post( "/api/log-error" )
+async def log_error( error: ErrorLog ):
+    #چاپ خطاهای جاوا اسکریپت
+    log_message( LG.API, f"{error.message} at {error.source}:{error.lineno}" )
+
+
+FRONTEND_DIR = Path( __file__ ).resolve().parents[ 2 ] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount( "/", StaticFiles( directory=str( FRONTEND_DIR ), html=True ), name="frontend" )

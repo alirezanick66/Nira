@@ -69,6 +69,9 @@ class QdrantProductPayload( BaseModel ):
     video_4k: bool = Field( default=False, description="پشتیبانی از فیلمبرداری 4K؟" )
     camera_summary: str | None = Field( default=None, description="خلاصه متنی مشخصات دوربین" )
 
+    #====================عکس====================
+    image_url: str | None = Field( default=None, description="لینک تصویر محصول" )
+
     value_for_money: str = Field( default="average", description="‫ارزش خرید" )
 
     search_text: str = Field( description="متن ترکیسی برای بردارسازی (عنوان + خلاصه + مزایا)" )
