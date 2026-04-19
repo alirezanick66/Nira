@@ -2,13 +2,13 @@
 ‫مسئول: تبدیل کوئری متنی به بردارهای Dense + Sparse، اجرای جستجوی ترکیبی با RRF،
 ‫و اعمال فیلترهای متادیتا از خروجی NLU Pipeline
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
-
 import re
-
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 
+#───────────────────── Local Imports ─────────────────────
 from src.services.embedding_service import EmbeddingService
 from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
@@ -37,11 +37,11 @@ class QdrantHybridRetriever:
         return models.SparseVector( indices=indices, values=values )
 
     def _build_metadata_filter( self, filters: dict[ str, object ] | None ) -> Filter | None:
-        """‫ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU"""
+        """ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
         if not filters:
             return None
 
-        must_conditions: list[ Condition ] = []          # ✅ رفع خطای Type Variance
+        must_conditions: list[ Condition ] = []
 
         for key, value in filters.items():
             if isinstance( value, dict ):
@@ -52,7 +52,7 @@ class QdrantHybridRetriever:
                     elif op == ">=": must_conditions.append( FieldCondition( key=key, range=Range( gte=val ) ) )
             elif isinstance( value, list ):
                 must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
-            elif isinstance( value, ( str, int, bool ) ):          # ✅ Narrowing برای رفع خطای MatchValue
+            elif isinstance( value, ( str, int, bool ) ):
                 must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
 
         return Filter( must=must_conditions ) if must_conditions else None

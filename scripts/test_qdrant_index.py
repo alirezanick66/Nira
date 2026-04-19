@@ -1,5 +1,8 @@
 """‫اسکریپت تست ایندکس‌سازی محصولات در Qdrant"""
+#───────────────────── Imports ─────────────────────
 import asyncio
+
+#───────────────────── Local Imports ─────────────────────
 from src.data.db.engine import DatabaseEngine
 from src.data.repositories.product_repository import ProductRepository
 from src.data.processing.product_pipeline import ProductProcessingPipeline

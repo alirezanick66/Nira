@@ -1,9 +1,12 @@
 """‫کلاینت‌های LLM با پشتیبانی از JSON Mode و مدیریت خطای Rate Limit
 ‫مسئول: ارتباط ایمن با Groq (Primary) و Gemini (Fallback)
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
 import asyncio
-from typing import Callable, Awaitable
+from typing import Callable
+
+#───────────────────── Local Imports ─────────────────────
 import groq
 import google.genai as genai
 from google.genai import types
@@ -13,13 +16,13 @@ from src.config.logging_config import log_message, LogLevel, LG
 
 
 class _BaseLLMClient:
-    """‫کلاس پایه مشترک برای مدیریت Retry و لاگ‌گذاری"""
+    """ ‫کلاس پایه مشترک برای مدیریت Retry و لاگ‌گذاری"""
     MAX_RETRIES: int = 2
     BACKOFF_FACTOR: float = 1.5
 
     @staticmethod
     async def _retry_on_429( func: Callable[..., str ], *args: object, **kwargs: object ) -> str:
-        """‫اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests (پلن رایگان)"""
+        """ ‫اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests (پلن رایگان)"""
         for attempt in range( _BaseLLMClient.MAX_RETRIES ):
             try:
                 return await asyncio.to_thread( func, *args, **kwargs )

@@ -2,12 +2,12 @@
 ‫مسئولیت: دریافت کاندیداهای بازیابی‌شده، محاسبه امتیاز تطبیق دقیق کوئری-محصول،
 ‫و بازگرداندن بهترین نتایج برای لایه پاسخ‌دهی.
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
-
 import torch
-from typing import Sequence
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+#───────────────────── Local Imports ─────────────────────
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_payload import QdrantProductPayload
@@ -53,13 +53,8 @@ class RerankerService:
             parts.append( "ویژگی‌ها: " + "، ".join( payload.tags[ :3 ] ) )
         return " | ".join( filter( None, parts ) )
 
-    def rerank(
-        self,
-        query: str,
-        payloads: Sequence[ QdrantProductPayload ],
-        top_k: int = 3,
-    ) -> list[ QdrantProductPayload ]:
-        """‫رتبه‌بندی مجدد محصولات (بدون آستانهٔ مطلق برای پایداری MVP)"""
+    def rerank( self, query: str, payloads: list[ QdrantProductPayload ], top_k: int = 3 ) -> list[ QdrantProductPayload ]:
+        """رتبه‌بندی مجدد محصولات با مدل Cross-Encoder"""
         if not payloads:
             return []
 
@@ -77,12 +72,10 @@ class RerankerService:
                         batch_scores = [ batch_scores ]
                     scores.extend( batch_scores )
 
-            # مرتب‌سازی نسبی (بدون حذف بر اساس آستانهٔ مطلق)
             scored = sorted( zip( payloads, scores ), key=lambda x: x[ 1 ], reverse=True )
-
             log_message( LG.RETRIEVAL, f"✅ Reranking تکمیل | {len(payloads)} → {top_k} محصول", LogLevel.DEBUG )
             return [ p for p, _ in scored[ :top_k ] ]
 
         except Exception as exc:
-            log_message( LG.RETRIEVAL, f"خطا در Reranking، بازگشت به ترتیب RRF: {exc}", LogLevel.WARNING )
+            log_message( LG.RETRIEVAL, f"خطا در Reranking، بازگشت به ترتیب اولیه: {exc}", LogLevel.WARNING )
             return list( payloads[ :top_k ] )

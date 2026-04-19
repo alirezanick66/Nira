@@ -3,11 +3,10 @@
 """
 #───────────────────── Imports ─────────────────────
 
-from sqlalchemy import select
+from sqlalchemy import select, distinct
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
-from sqlalchemy import select, distinct
 
 #───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG

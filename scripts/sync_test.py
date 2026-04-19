@@ -3,6 +3,7 @@
 import asyncio
 import signal
 import sys
+
 #───────────────────── local imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.sync.digikala_sync import DigikalaSyncService
@@ -32,7 +33,6 @@ async def main() -> None:
         sync_service = DigikalaSyncService()
         success_count = await sync_service.run(
             max_products=None,
-            checkpoint_every=1,
             stop_event=stop_event,
         )
         log_message( LG.DATA_PROCESSING, f"✅ پایان همگام‌سازی | محصولات موفق: {success_count}", LogLevel.INFO )
