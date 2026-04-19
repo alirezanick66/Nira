@@ -30,3 +30,6 @@ Thumbs.db
 
 # FRONTEND
 frontend/node_modules/**
+
+#Onnx
+/models
