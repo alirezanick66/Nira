@@ -1,12 +1,13 @@
 """‫لودر و کش دانش دامنه (برندها، نگاشت‌های کیفی، قواعد استفاده)
 ‫مسئولیت: بارگذاری یک‌باره فایل JSON و ارائه دسترسی سریع و ایمن به NLU Pipeline
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any
 
+#───────────────────── local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 
 
@@ -24,7 +25,7 @@ class KnowledgeCache:
     intent_keywords: dict[ str, list[ str ] ]
 
     @classmethod
-    def get_instance( cls, json_path: Path | None = None ) -> "KnowledgeCache":
+    def get_instance( cls, json_path: Path | None = None ) -> KnowledgeCache:
         if cls._instance is None:
             cls._instance = cls( json_path )
         return cls._instance

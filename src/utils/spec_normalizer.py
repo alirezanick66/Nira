@@ -2,7 +2,7 @@
 
 ‫این ماژول برای استخراج و تبدیل مشخصات فنی از متن فارسی طراحی شده
 """
-
+#───────────────────── Imports ─────────────────────
 import re
 from typing import Any
 
@@ -25,165 +25,7 @@ class SpecNormalizer:
         "هرتز": "Hz",
         "گیگاهرتز": "GHz",
     }
-
-    @staticmethod
-    def extract_number( text: str ) -> int | None:
-        """‫استخراج اولین عدد از متن
-
-        Examples:
-            "256 گیگابایت" → 256
-            "4832 میلی آمپر ساعت" → 4832
-            "6.9 اینچ" → 6 (int)
-
-        Args:
-            text: متن ورودی
-
-        Returns:
-            عدد استخراج شده یا None
-        """
-        if not text:
-            return None
-
-        # ‫حذف کاما و فاصله
-        text = text.replace( ",", "" ).replace( "٬", "" )
-
-        # ‫پیدا کردن اولین عدد
-        match = re.search( r"\d+", text )
-        if match:
-            try:
-                return int( match.group() )
-            except ValueError:
-                return None
-
-        return None
-
-    @staticmethod
-    def extract_float( text: str ) -> float | None:
-        """‫استخراج عدد اعشاری از متن
-
-        Examples:
-            "6.9 اینچ" → 6.9
-            "۴.۵ میلی آمپر" → 4.5
-
-        Args:
-            text: متن ورودی
-
-        Returns:
-            عدد اعشاری یا None
-        """
-        if not text:
-            return None
-
-        # ‫تبدیل اعداد فارسی به انگلیسی
-        persian_to_english = str.maketrans( "۰۱۲۳۴۵۶۷۸۹", "0123456789" )
-        text = text.translate( persian_to_english )
-
-        # ‫حذف کاما
-        text = text.replace( ",", "" ).replace( "٬", "" )
-
-        # ‫پیدا کردن عدد اعشاری
-        match = re.search( r"\d+\.?\d*", text )
-        if match:
-            try:
-                return float( match.group() )
-            except ValueError:
-                return None
-
-        return None
-
-    @classmethod
-    def extract_unit( cls, text: str ) -> str | None:
-        """‫استخراج واحد از متن
-
-        Examples:
-            "256 گیگابایت" → "GB"
-            "4832 میلی آمپر ساعت" → "mAh"
-
-        Args:
-            text: متن ورودی
-
-        Returns:
-            واحد استاندارد یا None
-        """
-        if not text:
-            return None
-
-        text_lower = text.lower()
-        for persian_unit, english_unit in cls.UNIT_MAP.items():
-            if persian_unit in text_lower:
-                return english_unit
-
-        return None
-
-    @classmethod
-    def normalize_spec( cls, text: str, extract_as_float: bool = False ) -> dict[ str, Any ]:
-        """‫نرمال‌سازی کامل یک مشخصه
-
-        Args:
-            text: متن ورودی (مثلاً "256 گیگابایت")
-            extract_as_float: آیا به صورت float استخراج بشه؟
-
-        Returns:
-            dict شامل:
-                - value_text: متن اصلی
-                - value_numeric: عدد استخراج شده
-                - unit: واحد استاندارد
-
-        Example:
-            >>> normalize_spec("256 گیگابایت")
-            {
-                "value_text": "256 گیگابایت",
-                "value_numeric": 256,
-                "unit": "GB"
-            }
-        """
-        result = {
-            "value_text": text,
-            "value_numeric": None,
-            "unit": None,
-        }
-
-        if not text:
-            return result
-
-        # ‫استخراج عدد
-        if extract_as_float:
-            result[ "value_numeric" ] = cls.extract_float( text )
-        else:
-            result[ "value_numeric" ] = cls.extract_number( text )
-
-        # ‫استخراج واحد
-        result[ "unit" ] = cls.extract_unit( text )
-
-        return result
-
-    @staticmethod
-    def extract_year( text: str ) -> int | None:
-        """‫استخراج سال از متن
-
-        Examples:
-            "09 سپتامبر 2025" → 2025
-            "معرفی شده در 2024" → 2024
-
-        Args:
-            text: متن ورودی
-
-        Returns:
-            سال (4 رقمی) یا None
-        """
-        if not text:
-            return None
-
-        # ‫پیدا کردن عدد 4 رقمی که با 20 شروع بشه
-        match = re.search( r"20\d{2}", text )
-        if match:
-            year = int( match.group() )
-            # ‫اعتبارسنجی ساده (بین 2000 تا 2030)
-            if 2000 <= year <= 2030:
-                return year
-
-        return None
-
+    #─────────────────────public methods─────────────────────
     @classmethod
     def extract_specifications( cls, raw_specs: list[ dict ] ) -> dict[ str, Any ]:
         """‫استخراج و نرمال‌سازی کامل مشخصات فنی
@@ -233,29 +75,29 @@ class SpecNormalizer:
 
                 # ‫RAM
                 if "ram" in title or "رم" in title:
-                    specs[ "ram_gb" ] = cls.extract_number( value_text )
+                    specs[ "ram_gb" ] = cls._extract_number( value_text )
 
                 # ‫Storage
                 elif "حافظه داخلی" in title or "storage" in title:
-                    specs[ "storage_gb" ] = cls.extract_number( value_text )
+                    specs[ "storage_gb" ] = cls._extract_number( value_text )
 
                 # ‫Battery
                 elif "باتری" in title or "battery" in title:
-                    specs[ "battery_mah" ] = cls.extract_number( value_text )
+                    specs[ "battery_mah" ] = cls._extract_number( value_text )
 
                 # ‫Screen Size
                 elif "اندازه" in title or "سایز" in title or "صفحه" in title:
                     if "اینچ" in value_text or "inch" in value_text.lower():
-                        specs[ "screen_size_inch" ] = cls.extract_float( value_text )
+                        specs[ "screen_size_inch" ] = cls._extract_float( value_text )
 
                 # ‫Camera
                 elif "دوربین" in title or "camera" in title:
                     if "مگاپیکسل" in value_text or "mp" in value_text.lower():
-                        specs[ "camera_mp" ] = cls.extract_number( value_text )
+                        specs[ "camera_mp" ] = cls._extract_number( value_text )
 
                 # ‫Weight
                 elif "وزن" in title or "weight" in title:
-                    specs[ "weight_g" ] = cls.extract_number( value_text )
+                    specs[ "weight_g" ] = cls._extract_number( value_text )
 
                 # ‫OS
                 elif "سیستم عامل" in title or "operating system" in title:
@@ -274,6 +116,123 @@ class SpecNormalizer:
 
                 # ‫Release Date/Year
                 elif "معرفی" in title or "زمان معرفی" in title or "تاریخ" in title:
-                    specs[ "release_year" ] = cls.extract_year( value_text )
+                    specs[ "release_year" ] = cls._extract_year( value_text )
 
         return specs
+
+    #─────────────────────private methods─────────────────────
+    @staticmethod
+    def _extract_number( text: str ) -> int | None:
+        """‫استخراج اولین عدد از متن
+
+        Examples:
+            "256 گیگابایت" → 256
+            "4832 میلی آمپر ساعت" → 4832
+            "6.9 اینچ" → 6 (int)
+
+        Args:
+            text: متن ورودی
+
+        Returns:
+            عدد استخراج شده یا‫ None
+        """
+        if not text:
+            return None
+
+        # ‫حذف کاما و فاصله
+        text = text.replace( ",", "" ).replace( "٬", "" )
+
+        # ‫پیدا کردن اولین عدد
+        match = re.search( r"\d+", text )
+        if match:
+            try:
+                return int( match.group() )
+            except ValueError:
+                return None
+
+        return None
+
+    @staticmethod
+    def _extract_float( text: str ) -> float | None:
+        """‫استخراج عدد اعشاری از متن
+
+        Examples:
+            "6.9 اینچ" → 6.9
+            "۴.۵ میلی آمپر" → 4.5
+
+        Args:
+            text: متن ورودی
+
+        Returns:
+           ‫ عدد اعشاری یا None
+        """
+        if not text:
+            return None
+
+        # ‫تبدیل اعداد فارسی به انگلیسی
+        persian_to_english = str.maketrans( "۰۱۲۳۴۵۶۷۸۹", "0123456789" )
+        text = text.translate( persian_to_english )
+
+        # ‫حذف کاما
+        text = text.replace( ",", "" ).replace( "٬", "" )
+
+        # ‫پیدا کردن عدد اعشاری
+        match = re.search( r"\d+\.?\d*", text )
+        if match:
+            try:
+                return float( match.group() )
+            except ValueError:
+                return None
+
+        return None
+
+    @classmethod
+    def _extract_unit( cls, text: str ) -> str | None:
+        """‫استخراج واحد از متن
+
+        Examples:
+            "256 گیگابایت" → "GB"
+            "4832 میلی آمپر ساعت" → "mAh"
+
+        Args:
+            text: متن ورودی
+
+        Returns:
+           ‫ واحد استاندارد یا None
+        """
+        if not text:
+            return None
+
+        text_lower = text.lower()
+        for persian_unit, english_unit in cls.UNIT_MAP.items():
+            if persian_unit in text_lower:
+                return english_unit
+
+        return None
+
+    @staticmethod
+    def _extract_year( text: str ) -> int | None:
+        """‫استخراج سال از متن
+
+        Examples:
+            "09 سپتامبر 2025" → 2025
+            "معرفی شده در 2024" → 2024
+
+        Args:
+            text: متن ورودی
+
+        Returns:
+            سال (4 رقمی) یا None
+        """
+        if not text:
+            return None
+
+        # ‫پیدا کردن عدد 4 رقمی که با 20 شروع بشه
+        match = re.search( r"20\d{2}", text )
+        if match:
+            year = int( match.group() )
+            # ‫اعتبارسنجی ساده (بین 2000 تا 2030)
+            if 2000 <= year <= 2030:
+                return year
+
+        return None

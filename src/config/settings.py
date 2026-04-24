@@ -33,18 +33,17 @@ class Settings( BaseSettings ):
     sync_concurrency: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
 
     # ───────────────────── FastApi ─────────────────────
-    APP_ENV: Literal[ "development", "production" ] = "development"
+    APP_NAME: str = "Nira"
     APP_DEBUG: bool = True
 
     # ───────────────────── Qdrant Vector DB ─────────────────────
     QDRANT_URL: str = Field( default="http://localhost:6333" )
     QDRANT_COLLECTION: str = Field( default="nira_products" )
-    EMBEDDING_DIM: int = Field( default=768, description="ابعاد بردارهای Embedding" )
     EMBEDDING_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Embedding" )
+    EMBEDDING_DIM: int = Field( default=768, description="ابعاد بردارهای Embedding" )
 
     #───────────────────── Reranker ─────────────────────
     RERANKER_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Reranker" )
-
     RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_BATCH_SIZE: int = 8
 
@@ -58,10 +57,9 @@ class Settings( BaseSettings ):
 
     # ───────────────────── ONNX Runtime ─────────────────────
     USE_ONNX: bool = Field( default=True, description="فعال‌سازی ONNX Runtime برای کاهش مصرف CPU/RAM" )
-    ONNX_EMBEDDING_PATH: Path = Field( default=Path( __file__ ).resolve().parents[ 2 ] / "models" / "onnx" / "e5-opt-int8",
-                                       description="مسیر مدل Embedding کوانتایز شده (INT8)" )
-    ONNX_RERANKER_PATH: Path = Field( default=Path( __file__ ).resolve().parents[ 2 ] / "models" / "onnx" / "reranker-opt-int8",
-                                      description="مسیر مدل Reranker کوانتایز شده (INT8)" )
+    ONNX_EMBEDDING_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Embedding کوانتایز شده (INT8)" )
+    ONNX_RERANKER_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Reranker کوانتایز شده (INT8)" )
+
     # ───────────────────── Computed Fields ─────────────────────
     @computed_field
     @property

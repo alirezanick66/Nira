@@ -1,9 +1,12 @@
 # Python
 __pycache__/
+*.py[cod]
 *.pyc
 *.pyo
 *.pyd
 *.env
+build/
+dist/
 .env.local
 venv/
 
