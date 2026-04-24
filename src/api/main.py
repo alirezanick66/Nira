@@ -10,8 +10,8 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-#─────────────────────local imports─────────────────────
 
+#─────────────────────local imports─────────────────────
 from src.api.schemas import ErrorLog, SearchRequest, SearchResponse, SearchResultItem
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.nlu_pipeline import NLUPipeline
@@ -19,6 +19,7 @@ from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.core.llm.orchestrator import LLMOrchestrator
 from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm
+from src.config.settings import get_settings
 
 
 @asynccontextmanager
@@ -36,7 +37,7 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
 
 
 app = FastAPI(
-    title="Nira AI Shopping Assistant",
+    title=get_settings().APP_NAME,
     description="دستیار هوشمند خرید موبایل مبتنی بر جستجوی ترکیبی، درک زبان طبیعی و تولید پاسخ ساختاریافته",
     version="1.0.0-MVP",
     lifespan=lifespan,
