@@ -45,7 +45,7 @@ MODEL_CLASS_MAP = {
 
 
 def _free_memory() -> None:
-    """آزادسازی RAM و VRAM (اگر CUDA موجود باشد)."""
+    """ ‫آزادسازی RAM و VRAM (اگر CUDA موجود باشد)."""
     gc.collect()
     if torch is not None and torch.cuda.is_available():
         torch.cuda.empty_cache()
