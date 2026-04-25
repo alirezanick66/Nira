@@ -1,7 +1,6 @@
 """‫سرویس همگام‌سازی هوشمند با قابلیت Resume و مدیریت خطای لایه‌ای"""
 #───────────────────── Imports ─────────────────────
 import asyncio
-
 from httpx import HTTPStatusError
 
 #───────────────────── Local Imports ─────────────────────
@@ -22,20 +21,7 @@ class DigikalaSyncService:
         self._repo = ProductRepository( self._db )
         self._tracker = ProgressTracker( self._db )
 
-    async def _process_product( self, client: DigikalaAPIClient, product_id: int ) -> bool:
-        """‫دریافت، اعتبارسنجی و ذخیرهٔ ایزولهٔ یک محصول"""
-        try:
-            detail = await client.fetch_product_detail( product_id )
-            await self._repo.save_raw( product_id, detail.model_dump() )
-            log_message( LG.DATA_PROCESSING, f"✅ محصول {product_id} ذخیره شد", LogLevel.DEBUG )
-            return True
-        except HTTPStatusError as exc:
-            log_message( LG.DATA_PROCESSING, f"🚫 خطای HTTP برای محصول {product_id}: {exc.response.status_code}", LogLevel.DEBUG )
-            return False
-        except Exception as exc:
-            log_message( LG.DATA_PROCESSING, f"⚠️ خطا در پردازش محصول {product_id}: {exc}", LogLevel.WARNING )
-            return False
-
+    #───────────────────── public methods ─────────────────────
     async def run(
         self,
         max_products: int | None = None,
@@ -82,3 +68,18 @@ class DigikalaSyncService:
 
         log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.INFO )
         return success_count
+
+    #───────────────────── private  methods ─────────────────────
+    async def _process_product( self, client: DigikalaAPIClient, product_id: int ) -> bool:
+        """‫دریافت، اعتبارسنجی و ذخیرهٔ ایزولهٔ یک محصول"""
+        try:
+            detail = await client.fetch_product_detail( product_id )
+            await self._repo.save_raw( product_id, detail.model_dump() )
+            log_message( LG.DATA_PROCESSING, f"✅ محصول {product_id} ذخیره شد", LogLevel.DEBUG )
+            return True
+        except HTTPStatusError as exc:
+            log_message( LG.DATA_PROCESSING, f"🚫 خطای HTTP برای محصول {product_id}: {exc.response.status_code}", LogLevel.DEBUG )
+            return False
+        except Exception as exc:
+            log_message( LG.DATA_PROCESSING, f"⚠️ خطا در پردازش محصول {product_id}: {exc}", LogLevel.WARNING )
+            return False

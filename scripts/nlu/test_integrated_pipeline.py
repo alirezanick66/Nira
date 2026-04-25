@@ -1,18 +1,18 @@
-"""‫اسکریپت تست یکپارچه کل پایپلاین: NLU → Hybrid Retrieval → Reranker"""
-#───────────────────── imports ─────────────────────
+"""اسکریپت تست یکپارچه کل پایپلاین: NLU → Hybrid Retrieval → Reranker"""
 import asyncio
-
-#───────────────────── local imports ─────────────────────
-from src.core.nlu.nlu_pipeline import nlu_pipeline
+from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.config.logging_config import log_message, LogLevel, LG
+from src.config.settings import get_settings
 
 
 async def main() -> None:
-    log_message( LG.RETRIEVAL, "🧪 شروع تست یکپارچه کل پایپلاین...", LogLevel.INFO )
+    settings = get_settings()
+    log_message( LG.RETRIEVAL, f"🧪 شروع تست یکپارچه پایپلاین | ONNX: {settings.USE_ONNX}", LogLevel.INFO )
 
-    # بارگذاری سرویس‌ها (یک‌بار، با الگوی Singleton)
+    # ✅ بارگذاری سرویس‌ها با معماری جدید (بدون Singleton)
+    nlu = NLUPipeline()
     retriever = QdrantHybridRetriever()
     reranker = RerankerService()
 
@@ -25,7 +25,7 @@ async def main() -> None:
         log_message( LG.RETRIEVAL, f"\n🚀 کوئری: '{query}'", LogLevel.INFO )
 
         # 🔹 گام ۱: درک زبان طبیعی (NLU)
-        nlu_out = nlu_pipeline.process( query )
+        nlu_out = nlu.process( query )
         log_message( LG.RETRIEVAL, f"   🔹 Intent: {nlu_out.intent} | Filters: {nlu_out.metadata_filters}", LogLevel.DEBUG )
 
         if nlu_out.is_greeting:
@@ -34,34 +34,26 @@ async def main() -> None:
 
         if nlu_out.intent == "compare":
             log_message( LG.RETRIEVAL, "   🔄 Intent: compare → نیاز به LLM Comparison Engine (فاز بعدی)", LogLevel.INFO )
-            log_message( LG.RETRIEVAL, "   📦 کاندیداهای بازیابی‌شده برای مقایسه:", LogLevel.DEBUG )
-            for i, p in enumerate( candidates[ :2 ], 1 ):
-                log_message( LG.RETRIEVAL, f"      {i}. {p.title[:60]}...", LogLevel.DEBUG )
             continue
 
         if nlu_out.intent == "refine":
             log_message( LG.RETRIEVAL, "   🔄 Intent: refine → نیاز به Conversation Memory (فاز بعدی)", LogLevel.INFO )
-            log_message( LG.RETRIEVAL, f"   🔍 فعلاً با فیلتر مطلق پردازش شد: {nlu_out.metadata_filters}", LogLevel.DEBUG )
 
-        # 🔹 گام ۲: بازیابی ترکیبی (Dense + Sparse + RRF + Metadata Filter)
-        candidates = retriever.search(
-            query=nlu_out.semantic_query,
-            filters=nlu_out.metadata_filters,
-            top_k=10          # دریافت ۱۰ کاندیدا برای رتبه‌بندی دقیق‌تر
-        )
+        # 🔹 گام ۲: بازیابی ترکیبی (اجرای غیرمسدودکننده در ThreadPool)
+        candidates = await asyncio.to_thread( retriever.search,
+                                              query=nlu_out.semantic_query,
+                                              filters=nlu_out.metadata_filters,
+                                              top_k=10 )
         log_message( LG.RETRIEVAL, f"   🔍 بازیابی: {len(candidates)} کاندیدا از Qdrant", LogLevel.DEBUG )
 
         if not candidates:
             log_message( LG.RETRIEVAL, "   ⚠️ محصولی با فیلترهای درخواستی یافت نشد", LogLevel.WARNING )
             continue
 
-        # 🔹 گام ۳: مرتب‌سازی نهایی (Cross-Encoder Reranker)
-        final_results = reranker.rerank(
-            query=query,          # استفاده از متن کامل برای درک بهتر Context
-            payloads=candidates,
-            top_k=3 )
+        # 🔹 گام ۳: مرتب‌سازی نهایی (اجرای غیرمسدودکننده)
+        final_results = await asyncio.to_thread( reranker.rerank, query=query, payloads=candidates, top_k=3 )
 
-        log_message( LG.RETRIEVAL, f"   🎯 نتایج نهایی پس از Rerank:", LogLevel.INFO )
+        log_message( LG.RETRIEVAL, "   🎯 نتایج نهایی پس از Rerank:", LogLevel.INFO )
         for i, p in enumerate( final_results, 1 ):
             log_message( LG.RETRIEVAL, f"      {i}. {p.title[:65]}... | 💰 {p.price:,} | 📷 {p.camera_quality} | 🏷️ {p.price_range}",
                          LogLevel.INFO )

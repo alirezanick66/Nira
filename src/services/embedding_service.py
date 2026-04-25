@@ -63,7 +63,7 @@ class EmbeddingService:
     #───────────────────── private methods ─────────────────────
     @staticmethod
     def _mean_pooling( model_output: dict[ str, np.ndarray ], attention_mask: np.ndarray ) -> np.ndarray:
-        """محاسبهٔ میانگین بردارها روی توکن‌ها (Mean Pooling برای مدل‌های E5)"""
+        """ ‫محاسبهٔ میانگین بردارها روی توکن‌ها (Mean Pooling برای مدل‌های E5)"""
         token_embeddings = model_output[ "last_hidden_state" ]
         input_mask_expanded = np.expand_dims( attention_mask, axis=-1 )
         sum_embeddings = np.sum( token_embeddings * input_mask_expanded, axis=1 )

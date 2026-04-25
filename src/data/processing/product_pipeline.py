@@ -29,6 +29,7 @@ class ProductProcessingPipeline:
         self._transformer = transformer or ProductTransformer()
         self._enricher = enricher or ProductEnrichmentService()
 
+    #───────────────────── public methods ─────────────────────
     async def process( self, product_id: int ) -> Product | None:
         """‫پردازش کامل یک محصول از حالت خام تا غنی‌شده
 
