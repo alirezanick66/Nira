@@ -17,7 +17,7 @@ def cosine_similarity( a: list[ float ], b: list[ float ] ) -> float:
 
 async def run_evaluation() -> None:
     log_message( LG.RETRIEVAL, "🧪 شروع ارزیابی مدل Embedding...", LogLevel.INFO )
-    embedder = EmbeddingService.get_instance()
+    embedder = EmbeddingService()
 
     # ==================== سناریوهای تست ====================
     tests = {

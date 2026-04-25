@@ -20,7 +20,7 @@ class SearchResultItem( BaseModel ):
     price: int
     price_range: str
     camera_quality: str
-    tags: list[ str ]
+    tags: list[ str ] = []
     image_url: str | None = Field( default=None, description="لینک تصویر محصول" )
     relevance_score: float = Field( default=0.0, description=" ‫امتیاز تطبیق پس از Reranking" )
 

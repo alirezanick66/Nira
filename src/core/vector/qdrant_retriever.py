@@ -4,8 +4,7 @@
 """
 #───────────────────── Imports ─────────────────────
 from __future__ import annotations
-import re
-from qdrant_client import QdrantClient, models
+from qdrant_client import QdrantClient
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 
 #───────────────────── Local Imports ─────────────────────
@@ -26,37 +25,7 @@ class QdrantHybridRetriever:
         self._embedder = embedding_service or EmbeddingService()
         log_message( LG.RETRIEVAL, "QdrantHybridRetriver Loaded", LogLevel.INFO )
 
-    def _text_to_sparse_vector( self, query: str ) -> models.SparseVector:
-        """‫تبدیل متن کوئری به بردار Sparse (شبیه‌سازی BM25 ساده برای MVP)"""
-        tokens = re.findall( r'[\u0600-\u06FF\u0660-\u0669a-zA-Z0-9]{2,}', query.lower() )
-        stop_words = { "از", "به", "در", "با", "برای", "که", "و", "یا", "اگر", "نه", "بله" }
-        filtered = [ t for t in tokens if t not in stop_words ]
-
-        indices = [ abs( hash( t ) ) % 10000 for t in set( filtered ) ]
-        values = [ 1.0 ] * len( indices )
-        return models.SparseVector( indices=indices, values=values )
-
-    def _build_metadata_filter( self, filters: dict[ str, object ] | None ) -> Filter | None:
-        """ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
-        if not filters:
-            return None
-
-        must_conditions: list[ Condition ] = []
-
-        for key, value in filters.items():
-            if isinstance( value, dict ):
-                for op, val in value.items():
-                    if op == "<": must_conditions.append( FieldCondition( key=key, range=Range( lt=val ) ) )
-                    elif op == ">": must_conditions.append( FieldCondition( key=key, range=Range( gt=val ) ) )
-                    elif op == "<=": must_conditions.append( FieldCondition( key=key, range=Range( lte=val ) ) )
-                    elif op == ">=": must_conditions.append( FieldCondition( key=key, range=Range( gte=val ) ) )
-            elif isinstance( value, list ):
-                must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
-            elif isinstance( value, ( str, int, bool ) ):
-                must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
-
-        return Filter( must=must_conditions ) if must_conditions else None
-
+    #───────────────────── public  methods ─────────────────────
     def search( self, query: str, filters: dict[ str, object ] | None = None, top_k: int = 10 ) -> list[ QdrantProductPayload ]:
         """‫اجرای جستجوی ترکیبی واقعی (Dense Embedding + Sparse BM25) با RRF"""
         # ✅ تولید بردار واقعی به‌جای Placeholder
@@ -86,3 +55,25 @@ class QdrantHybridRetriever:
 
         log_message( LG.RETRIEVAL, f"✅ {len(payloads)} محصول با Hybrid Search + RRF بازیابی شد", LogLevel.DEBUG )
         return payloads
+
+    #───────────────────── private  methods ─────────────────────
+    def _build_metadata_filter( self, filters: dict[ str, object ] | None ) -> Filter | None:
+        """ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
+        if not filters:
+            return None
+
+        must_conditions: list[ Condition ] = []
+
+        for key, value in filters.items():
+            if isinstance( value, dict ):
+                for op, val in value.items():
+                    if op == "<": must_conditions.append( FieldCondition( key=key, range=Range( lt=val ) ) )
+                    elif op == ">": must_conditions.append( FieldCondition( key=key, range=Range( gt=val ) ) )
+                    elif op == "<=": must_conditions.append( FieldCondition( key=key, range=Range( lte=val ) ) )
+                    elif op == ">=": must_conditions.append( FieldCondition( key=key, range=Range( gte=val ) ) )
+            elif isinstance( value, list ):
+                must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
+            elif isinstance( value, ( str, int, bool ) ):
+                must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
+
+        return Filter( must=must_conditions ) if must_conditions else None

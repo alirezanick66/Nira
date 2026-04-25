@@ -9,7 +9,7 @@ async def main() -> None:
     log_message( LG.RETRIEVAL, "🧪 شروع تست یکپارچه Retrieval + Rerank...", LogLevel.INFO )
 
     retriever = QdrantHybridRetriever()
-    reranker = RerankerService.get_instance()
+    reranker = RerankerService()
 
     query = "گوشی سبک با دوربین عالی برای عکاسی شب و قیمت مناسب"
     log_message( LG.RETRIEVAL, f"🔍 کوئری: {query}", LogLevel.INFO )
