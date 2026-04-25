@@ -29,7 +29,7 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     log_message( LG.API, "🚀 در حال بارگذاری سرویس‌های پایه...", LogLevel.INFO )
     app.state.nlu = NLUPipeline()
     app.state.retriever = QdrantHybridRetriever()
-    app.state.reranker = RerankerService.get_instance()
+    app.state.reranker = RerankerService()
     app.state.llm = LLMOrchestrator()
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield

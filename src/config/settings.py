@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Literal
 from pathlib import Path
 from pydantic import Field
 from pydantic.fields import computed_field
@@ -20,6 +19,7 @@ class Settings( BaseSettings ):
     DIGIKALA_BASE_URL: str = "https://api.digikala.com"
     REQUEST_TIMEOUT: int = 30
     REQUEST_DELAY_SECONDS: float = 0.5
+    REQUEST_DELAY_RANGE: float = 0.5
     MAX_RETRIES: int = 3
 
     #───────────────────── Database ─────────────────────
@@ -29,6 +29,8 @@ class Settings( BaseSettings ):
     DB_PORT: int = Field( default=5432 )
     DB_NAME: str = Field( default="nira_db" )
     DB_ECHO: bool = False
+    POOL_SIZE: int = Field( default=5 )
+    MAX_OVERFLOW: int = Field( default=10 )
 
     sync_concurrency: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
 

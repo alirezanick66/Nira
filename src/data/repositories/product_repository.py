@@ -1,5 +1,6 @@
-"""‫ریپازیتوری مدیریت ذخیره و بازیابی داده‌های خام محصول
-‫این کلاس تنها نقطهٔ تعامل با جدول product_raw_cache است.
+"""ریپازیتوری مدیریت ذخیره و بازیابی داده‌های خام محصول
+مسئولیت: تنها نقطهٔ تعامل با جدول product_raw_cache،
+پیاده‌سازی الگوی Repository برای جداسازی لایهٔ داده از منطق تجاری.
 """
 #───────────────────── Imports ─────────────────────
 
@@ -20,8 +21,10 @@ class ProductRepository:
     def __init__( self, db_engine: DatabaseEngine ) -> None:
         self._db = db_engine
 
+    #─────────────────────public methods─────────────────────
     async def save_raw( self, product_id: int, raw_data: dict[ str, object ] ) -> None:
-        """‫ذخیره یا به‌روزرسانی داده خام محصول در جدول کش دیتابیس
+        """ذخیره یا به‌روزرسانی داده خام محصول در جدول کش دیتابیس
+       ‫ در صورت تکرار شناسه، عملیات Update انجام می‌شود.
         Args:
             product_id: شناسه محصول
             raw_data: دیکشنری داده خام برای ذخیره
@@ -45,7 +48,7 @@ class ProductRepository:
             product_id: شناسه محصول
 
         Returns:
-            دیکشنری خام یا None در صورت عدم وجود
+           ‫ دیکشنری خام یا None در صورت عدم وجود
         """
         stmt = select( ProductRawCache.raw_payload ).where( ProductRawCache.product_id == product_id )
         async with self._db.session_maker() as session:
@@ -60,7 +63,7 @@ class ProductRepository:
         """‫دریافت لیست شناسه‌های محصولات خام از دیتابیس
 
         Args:
-            limit: در صورت مقداردهی، تعداد نتایج را محدود می‌کند
+            limit: در صورت مقداردهی، تعداد نتایج را محدود می‌کند. مقادیر <1 نادیده گرفته می‌شوند.
 
         Returns:
             لیست شناسه‌های عددی
@@ -68,7 +71,7 @@ class ProductRepository:
 
         stmt = ( select( distinct( ProductRawCache.product_id ) ).order_by( ProductRawCache.product_id ) )
 
-        if limit is not None:
+        if limit is not None and limit >= 1:
             stmt = stmt.limit( limit )
 
         async with self._db.session_maker() as session:

@@ -3,7 +3,6 @@
 ‫ویژگی‌ها:
 ‫- مدیریت چرخه حیات با Async Context Manager
 ‫- Rate Limiting داخلی (Semaphore + Delay)
-‫- Retry خودکار برای خطاهای شبکه با Tenacity
 ‫- اعتبارسنجی صریح خروجی API توسط مدل‌های Pydantic
 """
 #───────────────────── Imports ─────────────────────
@@ -11,7 +10,6 @@ import asyncio
 import random
 from typing import AsyncIterator, Self
 from httpx import AsyncClient, HTTPStatusError
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from pydantic import ValidationError
 
 #───────────────────── Imports داخلی پروژه─────────────────────
@@ -30,7 +28,6 @@ class DigikalaAPIClient:
         self._resilience = ApiResilienceLayer()
         self._semaphore = asyncio.Semaphore( 3 )
 
-        # ‫خواندن تنظیمات از Settings یا Environment Variables
         self._base_url = self._settings.DIGIKALA_BASE_URL
         self._headers = {
             "Accept":
@@ -39,59 +36,7 @@ class DigikalaAPIClient:
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
 
-    #─────────────────────private methods─────────────────────
-
-    async def __aenter__( self ) -> Self:
-        """‫راه‌اندازی کلاینت HTTP و بازگرداندن نمونه جهت استفاده در async with"""
-        self._client = AsyncClient(
-            base_url=self._base_url,
-            timeout=self._settings.REQUEST_TIMEOUT,
-            follow_redirects=True,
-            headers=self._headers,
-        )
-        log_message( LG.API, "کلاینت API دیجی‌کالا با موفقیت راه‌اندازی شد", LogLevel.DEBUG )
-        return self
-
-    async def __aexit__( self, exc_type, exc_val, exc_tb ) -> bool:
-        """‫بستن کلاینت و آزادسازی منابع شبکه"""
-        if self._client:
-            await self._client.aclose()
-            log_message( LG.API, "کلاینت API دیجی‌کالا بسته شد", LogLevel.DEBUG )
-        return False
-
-    @retry(
-        stop=stop_after_attempt( get_settings().MAX_RETRIES ),
-        wait=wait_exponential( multiplier=1, min=2, max=10 ),
-        retry=retry_if_exception_type( HTTPStatusError ),
-        reraise=True,
-    )
-    async def _safe_request( self, url: str, params: dict[ str, str | int ] | None = None ) -> dict[ str, object ]:
-        """‫اجرای درخواست HTTP با مدیریت خطا، Retry و کنترل نرخ درخواست
-
-        Args:
-            url: مسیر نسبی Endpoint
-            params: پارامترهای کوئری (اختیاری)
-
-        Returns:
-            دیکشنری خام پاسخ JSON
-
-        Raises:
-            RuntimeError: اگر کلاینت قبل از ورود به Context Manager فراخوانی شود
-            HTTPStatusError: در صورت خطای HTTP پس از اتمام تلاش‌های مجدد
-        """
-        async with self._semaphore:
-            if self._client is None:
-                raise RuntimeError( "کلاینت HTTP راه‌اندازی نشده است. از `async with` استفاده کنید." )
-
-            response = await self._resilience.execute( self._client.get, url, params=params )
-            response.raise_for_status()
-
-            # ‫رعایت Rate Limiting بین درخواست‌ها
-            await asyncio.sleep( random.uniform( 0.3, 0.8 ) )
-            return response.json()
-
     #─────────────────────public methods─────────────────────
-
     async def fetch_product_list( self, page: int = 1 ) -> DigikalaProductListResponse:
         """‫دریافت لیست محصولات از یک صفحه مشخص
 
@@ -102,7 +47,7 @@ class DigikalaAPIClient:
             مدل اعتبارسنجی‌شده لیست محصولات
 
         Raises:
-            ValidationError: اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
+            ValidationError: ‫اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
         log_message( LG.API, f"درخواست لیست محصولات | صفحه: {page}", LogLevel.DEBUG )
         raw_data = await self._safe_request( "/v1/categories/mobile-phone/search/", params={ "page": page } )
@@ -123,7 +68,7 @@ class DigikalaAPIClient:
             مدل اعتبارسنجی‌شده جزئیات محصول
 
         Raises:
-            ValidationError: اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
+            ValidationError: ‫اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
         log_message( LG.API, f"درخواست جزئیات محصول | ID: {product_id}", LogLevel.DEBUG )
         raw_data = await self._safe_request( f"/v2/product/{product_id}/" )
@@ -136,11 +81,10 @@ class DigikalaAPIClient:
 
     async def stream_product_ids( self, start_page: int = 1, max_pages: int | None = None ) -> AsyncIterator[ tuple[ int, int ] ]:
         """‫ژنراتور غیرهمزمان با خروجی (product_id, current_page)
-        ‫حذف resume_from_id: ترتیب ID در APIهای فروشگاهی تضمین‌شده نیست.
         ‫مدیریت تکراری‌ها بر عهدهٔ ON CONFLICT در PostgreSQL است.
         """
         current_page = start_page
-        while max_pages is None or current_page <= max_pages + start_page - 1:
+        while max_pages is None or current_page < start_page + max_pages:
             try:
                 list_response = await self.fetch_product_list( page=current_page )
 
@@ -165,3 +109,49 @@ class DigikalaAPIClient:
             except ValidationError as exc:
                 log_message( LG.API, f"خطای اعتبارسنجی صفحه {current_page}: {exc}", LogLevel.ERROR )
                 break
+
+    #─────────────────────private methods─────────────────────
+
+    async def __aenter__( self ) -> Self:
+        """‫راه‌اندازی کلاینت HTTP و بازگرداندن نمونه جهت استفاده در async with"""
+        self._client = AsyncClient(
+            base_url=self._base_url,
+            timeout=self._settings.REQUEST_TIMEOUT,
+            follow_redirects=True,
+            headers=self._headers,
+        )
+        log_message( LG.API, "کلاینت API دیجی‌کالا با موفقیت راه‌اندازی شد", LogLevel.DEBUG )
+        return self
+
+    async def __aexit__( self, exc_type, exc_val, exc_tb ) -> bool:
+        """‫بستن کلاینت و آزادسازی منابع شبکه"""
+        if self._client:
+            await self._client.aclose()
+            log_message( LG.API, "کلاینت API دیجی‌کالا بسته شد", LogLevel.DEBUG )
+        return False
+
+    async def _safe_request( self, url: str, params: dict[ str, str | int ] | None = None ) -> dict[ str, object ]:
+        """‫اجرای درخواست HTTP با مدیریت خطا، Retry و کنترل نرخ درخواست
+
+        Args:
+            url: مسیر نسبی Endpoint
+            params: پارامترهای کوئری (اختیاری)
+
+        Returns:
+            دیکشنری خام پاسخ JSON
+
+        Raises:
+            RuntimeError: ‫اگر کلاینت قبل از ورود به Context Manager فراخوانی شود
+            HTTPStatusError: ‫در صورت خطای HTTP پس از اتمام تلاش‌های مجدد
+        """
+        async with self._semaphore:
+            if self._client is None:
+                raise RuntimeError( " ‫کلاینت HTTP راه‌اندازی نشده است. از `async with` استفاده کنید." )
+
+            response = await self._resilience.execute( self._client.get, url, params=params )
+            response.raise_for_status()
+
+            # ‫رعایت Rate Limiting بین درخواست‌ها
+            delay = self._settings.REQUEST_DELAY_SECONDS
+            await asyncio.sleep( delay + random.uniform( -0.1, 0.1 ) )
+            return response.json()
