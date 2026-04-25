@@ -1,5 +1,5 @@
-"""‫اسکریپت تست خط لوله NLU روی سناریوهای واقعی فارسی"""
-from src.core.nlu.nlu_pipeline import nlu_pipeline
+"""اسکریپت تست خط لوله NLU روی سناریوهای واقعی فارسی"""
+from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.config.logging_config import log_message, LogLevel, LG
 
 
@@ -12,12 +12,16 @@ def main() -> None:
         "دوربین عالی برای عکاسی شب و قیمت مناسب"
     ]
 
+    # ✅ نمونه‌سازی استاندارد (بدون وابستگی به Singleton سراسری)
+    nlu = NLUPipeline()
+
     for query in test_cases:
         log_message( LG.NLU, f"🔹 ورودی: {query}", LogLevel.INFO )
-        result = nlu_pipeline.process( query )
-        log_message( LG.NLU, f"   Intent: {result.intent} | IsGreeting: {result.is_greeting}", LogLevel.DEBUG )
-        log_message( LG.NLU, f"   Semantic: {result.semantic_query[:50]}...", LogLevel.DEBUG )
-        log_message( LG.NLU, f"   Filters: {result.metadata_filters}", LogLevel.DEBUG )
+        result = nlu.process( query )
+
+        log_message( LG.NLU, f"   🎯 Intent: {result.intent} | IsGreeting: {result.is_greeting}", LogLevel.DEBUG )
+        log_message( LG.NLU, f"   📝 Semantic: {result.semantic_query[:50]}...", LogLevel.DEBUG )
+        log_message( LG.NLU, f"   🔒 Filters: {result.metadata_filters}", LogLevel.DEBUG )
         log_message( LG.NLU, "-" * 60, LogLevel.DEBUG )
 
 

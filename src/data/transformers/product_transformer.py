@@ -12,51 +12,6 @@ from src.utils.spec_normalizer import SpecNormalizer
 class ProductTransformer:
     """‫تبدیل‌گر API Response به Product Model"""
 
-    #───────────────────── private  methods ─────────────────────
-    @staticmethod
-    def _determine_category( title: str ) -> ProductCategory:
-        """‫تشخیص category از عنوان محصول
-
-        Args:
-            title: عنوان محصول
-
-        Returns:
-            ProductCategory enum
-        """
-        title_lower = title.lower()
-
-        if "موبایل" in title_lower or "گوشی" in title_lower or "phone" in title_lower:
-            return ProductCategory.MOBILE
-        elif "هدفون" in title_lower or "headphone" in title_lower:
-            return ProductCategory.HEADPHONE
-        elif "هندزفری" in title_lower or "earphone" in title_lower or "ایرفون" in title_lower:
-            return ProductCategory.EARPHONE
-
-        # ‫پیش‌فرض
-        return ProductCategory.MOBILE
-
-    @staticmethod
-    def _map_status( status: str ) -> ProductStatus:
-        """‫نگاشت status API به ProductStatus enum
-
-        Args:
-            status: وضعیت از API (marketable, stop_production, ...)
-
-        Returns:
-            ProductStatus enum
-        """
-        status_map = {
-            "marketable": ProductStatus.MARKETABLE,
-            "out_of_stock": ProductStatus.OUT_OF_STOCK,
-        }
-
-        return status_map.get( status, ProductStatus.OUT_OF_STOCK )
-
-    @staticmethod
-    def _serialize_specs( specs: list[ DigikalaSpecification ] ) -> list[ dict[ str, object ] ]:
-        """تبدیل DigikalaSpecification → dict"""
-        return [ spec.model_dump() for spec in specs ]
-
     #───────────────────── public methods ─────────────────────
     @classmethod
     def transform( cls, api_product: DigikalaProduct ) -> Product:
@@ -144,3 +99,48 @@ class ProductTransformer:
         )
 
         return product
+
+    #───────────────────── private  methods ─────────────────────
+    @staticmethod
+    def _determine_category( title: str ) -> ProductCategory:
+        """‫تشخیص category از عنوان محصول
+
+        Args:
+            title: عنوان محصول
+
+        Returns:
+            ProductCategory enum
+        """
+        title_lower = title.lower()
+
+        if "موبایل" in title_lower or "گوشی" in title_lower or "phone" in title_lower:
+            return ProductCategory.MOBILE
+        elif "هدفون" in title_lower or "headphone" in title_lower:
+            return ProductCategory.HEADPHONE
+        elif "هندزفری" in title_lower or "earphone" in title_lower or "ایرفون" in title_lower:
+            return ProductCategory.EARPHONE
+
+        # ‫پیش‌فرض
+        return ProductCategory.MOBILE
+
+    @staticmethod
+    def _map_status( status: str ) -> ProductStatus:
+        """‫نگاشت status API به ProductStatus enum
+
+        Args:
+            status: وضعیت از API (marketable, stop_production, ...)
+
+        Returns:
+            ProductStatus enum
+        """
+        status_map = {
+            "marketable": ProductStatus.MARKETABLE,
+            "out_of_stock": ProductStatus.OUT_OF_STOCK,
+        }
+
+        return status_map.get( status, ProductStatus.OUT_OF_STOCK )
+
+    @staticmethod
+    def _serialize_specs( specs: list[ DigikalaSpecification ] ) -> list[ dict[ str, object ] ]:
+        """تبدیل DigikalaSpecification → dict"""
+        return [ spec.model_dump() for spec in specs ]
