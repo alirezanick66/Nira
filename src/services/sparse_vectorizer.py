@@ -1,5 +1,8 @@
 """‫سرویس تولید بردارهای تنک (Sparse) مبتنی بر توکنایز و وزن‌دهی BM25"""
+#───────────────────── Imports  ─────────────────────
 import re
+import zlib
+#─────────────────────local imports─────────────────────
 from qdrant_client import models
 
 
@@ -9,18 +12,14 @@ class BM25Vectorizer:
     _STOP_WORDS = frozenset( { "از", "به", "در", "با", "برای", "که", "و", "یا", "اگر", "نه", "بله", "این", "آن", "است" } )
 
     @classmethod
-    def tokenize( cls, text: str ) -> list[ str ]:
-        """‫توکنایز، نرمال‌سازی و حذف کلمات توقف"""
-        return [ t for t in cls._TOKEN_PATTERN.findall( text.lower() ) if t not in cls._STOP_WORDS ]
-
-    @classmethod
     def query_to_sparse( cls, query: str ) -> models.SparseVector:
-        """‫تبدیل کوئری کاربر به SparseVector
-
-        ‫در MVP: وزن ۱.۰ برای هر توکن یکتا.
-        ‫در فاز بعدی: ترکیب با IDF محاسبه‌شده روی کل Corpus برای دقت BM25 کامل.
-        """
-        tokens = cls.tokenize( query )
-        indices = [ abs( hash( t ) ) % 100000 for t in set( tokens ) ]
+        tokens = cls._tokenize( query )
+        # ✅ جایگزینی hash() با zlib.crc32 برای تضمین یکتایی و پایداری بین ری‌استارت‌ها
+        indices = [ zlib.crc32( t.encode( "utf-8" ) ) & 0xFFFFFFFF for t in set( tokens ) ]
         values = [ 1.0 ] * len( indices )
         return models.SparseVector( indices=indices, values=values )
+
+    @classmethod
+    def _tokenize( cls, text: str ) -> list[ str ]:
+        """‫توکنایز، نرمال‌سازی و حذف کلمات توقف"""
+        return [ t for t in cls._TOKEN_PATTERN.findall( text.lower() ) if t not in cls._STOP_WORDS ]
