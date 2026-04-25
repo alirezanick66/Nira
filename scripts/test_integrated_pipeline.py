@@ -14,7 +14,7 @@ async def main() -> None:
 
     # بارگذاری سرویس‌ها (یک‌بار، با الگوی Singleton)
     retriever = QdrantHybridRetriever()
-    reranker = RerankerService.get_instance()
+    reranker = RerankerService()
 
     test_queries = [
         "یه گوشی سبک و ارزون برای عکاسی میخوام", "گوشی گیمینگ با رم بالا زیر 30 میلیون تومان", "بین آیفون و سامسونگ کدوم بهتره؟",

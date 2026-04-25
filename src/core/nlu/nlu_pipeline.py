@@ -1,14 +1,15 @@
 """‫خط لوله درک زبان طبیعی (NLU Pipeline) - نسخه MVP مبتنی بر قواعد
 ‫مسئول: نرمال‌سازی، تشخیص نیت، استخراج Slotها، نگاشت مفاهیم نسبی به فیلترهای عددی
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
-
 import re
 import unicodedata
 
+#───────────────────── Local Imports ─────────────────────
 from src.config.knowledge_loader import KnowledgeCache
 from src.config.logging_config import log_message, LogLevel, LG
-from src.core.nlu.normalizer import persian_normalizer
+from src.core.nlu.normalizer import PersianNormalizer
 from src.core.nlu.schemas import NLUFilterQuery
 
 
@@ -19,10 +20,39 @@ class NLUPipeline:
         self._knowledge = KnowledgeCache.get_instance()
         self._price_pattern = re.compile( r'(زیر|بالای|حدود|کمتر|بیشتر)?\s*(\d+(?:\.\d+)?)\s*(میلیون|میلیارد)?\s*(تومان|ت)?' )
         self._ram_pattern = re.compile( r'(\d{1,2})\s*(?:گیگ|gb)\s*رم', re.IGNORECASE )
+        self._normalizer = PersianNormalizer()
 
+    #───────────────────── public  methods ─────────────────────
+    def process( self, user_input: str ) -> NLUFilterQuery:
+        """‫پردازش کامل کوئری و تولید ساختار فیلتر
+
+        Args:
+            user_input: متن خام کاربر
+
+        Returns:
+            مدل NLUFilterQuery آماده استفاده
+        """
+        processed = self._preprocess_query( user_input )
+        intent = self._detect_intent( processed )
+
+        if intent == "greeting":
+            return NLUFilterQuery( intent=intent, semantic_query=processed, is_greeting=True, metadata_filters={} )
+
+        filters = self._extract_slots( processed )
+
+        # حذف کلمات فیلترساز از semantic_query برای جلوگیری از نویز در بردارسازی
+        stop_words = { "زیر", "بالای", "کمتر", "بیشتر", "تومان", "ت", "حدود" }
+        semantic_parts = [ w for w in processed.split() if w not in stop_words ]
+        semantic_query = " ".join( semantic_parts ).strip() or processed
+
+        log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters}", LogLevel.DEBUG )
+
+        return NLUFilterQuery( intent=intent, semantic_query=semantic_query, metadata_filters=filters, is_greeting=False )
+
+    #───────────────────── private  methods ─────────────────────
     def _preprocess_query( self, text: str ) -> str:
         """‫نرمال‌سازی کامل + تبدیل اعداد به لاتین برای پارسینگ دقیق"""
-        normalized = persian_normalizer.normalize( text )
+        normalized = self._normalizer.normalize( text )
         return unicodedata.normalize( "NFKC", normalized )
 
     def _detect_intent( self, text: str ) -> str:
@@ -98,32 +128,3 @@ class NLUPipeline:
                         filters[ key ] = val
 
         return filters
-
-    def process( self, user_input: str ) -> NLUFilterQuery:
-        """‫پردازش کامل کوئری و تولید ساختار فیلتر
-
-        Args:
-            user_input: متن خام کاربر
-
-        Returns:
-            مدل NLUFilterQuery آماده استفاده
-        """
-        processed = self._preprocess_query( user_input )
-        intent = self._detect_intent( processed )
-
-        if intent == "greeting":
-            return NLUFilterQuery( intent=intent, semantic_query=processed, is_greeting=True, metadata_filters={} )
-
-        filters = self._extract_slots( processed )
-
-        # حذف کلمات فیلترساز از semantic_query برای جلوگیری از نویز در بردارسازی
-        stop_words = { "زیر", "بالای", "کمتر", "بیشتر", "تومان", "ت", "حدود" }
-        semantic_parts = [ w for w in processed.split() if w not in stop_words ]
-        semantic_query = " ".join( semantic_parts ).strip() or processed
-
-        log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters}", LogLevel.DEBUG )
-
-        return NLUFilterQuery( intent=intent, semantic_query=semantic_query, metadata_filters=filters, is_greeting=False )
-
-
-nlu_pipeline = NLUPipeline()

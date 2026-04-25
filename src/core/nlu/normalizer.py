@@ -137,7 +137,3 @@ class PersianNormalizer:
             log_message( LG.DATA_PROCESSING, f"خطا در نرمال‌سازی متن: {str(e)}", LogLevel.WARNING )
             # بازگشت حداقلی متن تمیز شده در صورت خطا
             return " ".join( text.split() )
-
-
-# Instance سراسری
-persian_normalizer = PersianNormalizer()

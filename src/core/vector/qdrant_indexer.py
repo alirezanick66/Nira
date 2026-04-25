@@ -22,7 +22,7 @@ class QdrantIndexer:
         self._settings = get_settings()
         self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False, timeout=60 )
         self._collection = self._settings.QDRANT_COLLECTION
-        self._embedder = embedding_service or EmbeddingService.get_instance()
+        self._embedder = embedding_service or EmbeddingService()
         log_message( LG.DATA_PROCESSING, "QdrantIndexer با سرویس Embedding فعال راه‌اندازی شد", LogLevel.INFO )
 
     def ensure_collection( self, vector_size: int ) -> None:

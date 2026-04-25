@@ -173,7 +173,8 @@ class QdrantProductPayload( BaseModel ):
                     if isinstance( attr, dict ):
                         title = str( attr.get( "title", "" ) ).strip()
                         values = attr.get( "values", [] )
-                        val_text = " ".join( str( v ) for v in values if isinstance( values, list ) )
+                        # ✅ رفع باگ: بررسی نوع تک‌تک آیتم‌ها به‌جای بررسی خود لیست
+                        val_text = " ".join( str( v ) for v in values if isinstance( v, ( str, int, float ) ) )
                         if title and val_text:
                             all_attrs.append( ( title, val_text ) )
 
