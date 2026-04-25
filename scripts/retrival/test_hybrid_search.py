@@ -11,7 +11,7 @@ async def main() -> None:
 
     # ‫تست ۱: کوئری ساده بدون فیلتر
     results = retriever.search(
-        query="گوشی سبک با دوربین خوب",
+        query="گوشی  با دوربین خوب",
         top_k=5,
     )
     log_message( LG.RETRIEVAL, f"📋 نتایج کوئری ساده: {len(results)} محصول", LogLevel.INFO )
@@ -23,7 +23,7 @@ async def main() -> None:
         query="آیفون ارزان",
         filters={
             "price": {
-                "<": 50_000_000
+                "<": 200000000
             },
             "brand": "اپل"
         },
