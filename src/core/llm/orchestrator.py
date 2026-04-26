@@ -1,10 +1,13 @@
-"""‫ارکستراتور اصلی LLM
-‫مسئول: مدیریت چرخه کامل Memory → Prompt → Groq → Gemini(Fallback) → Validation
+"""ارکستراتور اصلی LLM
+مسئول: مدیریت چرخه کامل Memory → Prompt → Groq → Gemini(Fallback) → Validation
 """
-#───────────────────── Imports ─────────────────────
+#─────────────────────  Imports ─────────────────────
 from __future__ import annotations
+import re
 import json
 from pydantic import TypeAdapter
+from typing import cast
+from groq.types.chat import ChatCompletionMessageParam
 
 #───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
@@ -32,13 +35,16 @@ class LLMOrchestrator:
         filters_str: str | None,
         products: list[ QdrantProductPayload ],
     ) -> dict[ str, object ]:
-        """‫اجرای کامل پایپلاین تولید پاسخ"""
+        """اجرای کامل پایپلاین تولید پاسخ"""
         self._memory.add_message( session_id, "user", user_query )
         messages = PromptEngine.build( intent, filters_str, products )
 
+        # ✅ اصلاح: تزریق صحیح تاریخچه به‌عنوان پیام‌های user/assistant
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
-            messages.insert( 1, { "role": "system", "content": f"تاریخچه مکالمه:\n{history}" } )
+            # درج پیام‌های قبلی قبل از پیام فعلی
+            for msg in history[ :-1 ]:
+                messages.insert( -1, cast( ChatCompletionMessageParam, msg ) )
 
         raw_json = ""
         try:
@@ -54,8 +60,10 @@ class LLMOrchestrator:
                 return self._fallback_response( user_query, products )
 
         try:
-            cleaned = raw_json.strip( "```json\n" ).strip( "```\n" ).strip()
-            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {raw_json[:200]}", LogLevel.DEBUG )
+            # ✅ اصلاح: استخراج ایمن بلاک JSON با Regex به‌جای strip شکننده
+            match = re.search( r'\{.*\}', raw_json, re.DOTALL )
+            cleaned = match.group( 0 ) if match else raw_json.strip()
+            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {cleaned[:200]}", LogLevel.DEBUG )
             validated = self._validator.validate_python( json.loads( cleaned ) )
             self._memory.add_message( session_id, "assistant", validated.explanation )
             return validated.model_dump()
@@ -65,7 +73,7 @@ class LLMOrchestrator:
 
     @staticmethod
     def _fallback_response( query: str, products: list[ QdrantProductPayload ] ) -> dict[ str, object ]:
-        """‫پاسخ قطعی در صورت شکست کامل LLM"""
+        """پاسخ قطعی در صورت شکست کامل LLM"""
         titles = "، ".join( [ p.title[ :30 ] for p in products[ :2 ] ] )
         return {
             "product_ids": [ p.product_id for p in products[ :2 ] ],
