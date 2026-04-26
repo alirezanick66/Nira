@@ -5,11 +5,11 @@
 from __future__ import annotations
 import asyncio
 from typing import Callable
-
-#───────────────────── Local Imports ─────────────────────
 import groq
 import google.genai as genai
 from google.genai import types
+
+#───────────────────── Local Imports ─────────────────────
 from groq.types.chat import ChatCompletionMessageParam
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
@@ -22,12 +22,15 @@ class _BaseLLMClient:
 
     @staticmethod
     async def _retry_on_429( func: Callable[..., str ], *args: object, **kwargs: object ) -> str:
-        """ ‫اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests (پلن رایگان)"""
+        """اجرای مجدد هوشمند در صورت خطای ‫429 Too Many Requests (پلن رایگان)"""
         for attempt in range( _BaseLLMClient.MAX_RETRIES ):
             try:
                 return await asyncio.to_thread( func, *args, **kwargs )
             except Exception as exc:
-                if "429" in str( exc ) and attempt < _BaseLLMClient.MAX_RETRIES - 1:
+                # ✅ اصلاح: تشخیص ایمن محدودیت نرخ با اولویت‌بندی ویژگی‌های رسمی خطا
+                is_rate_limit = ( isinstance( exc, groq.RateLimitError ) or getattr( exc, "status_code", None ) == 429
+                                  or getattr( exc, "code", None ) == 429 )
+                if is_rate_limit and attempt < _BaseLLMClient.MAX_RETRIES - 1:
                     wait: float = _BaseLLMClient.BACKOFF_FACTOR ** attempt
                     log_message( LG.LLM, f"⏳ محدودیت نرخ API. تلاش مجدد پس از {wait:.1f}s...", LogLevel.WARNING )
                     await asyncio.sleep( wait )

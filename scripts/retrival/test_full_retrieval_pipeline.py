@@ -1,13 +1,16 @@
 """ ‫تست هدفمند Embedding + Reranker روی سناریوهای شکست Embedding"""
+#─────────────────────  Imports ─────────────────────
 import asyncio
 from typing import List, Tuple
+
+#───────────────────── Local Imports ─────────────────────
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 
 
-# ── مجموعه تست با هدف پوشش ضعف‌های Embedding ──
+# ── ‫مجموعه تست با هدف پوشش ضعف‌های Embedding ──
 def get_challenge_queries() -> List[ Tuple[ str, str, str ] ]:
     """
    ‫ برمی‌گرداند: (دسته, کوئری, شرح نتیجهٔ ایده‌آل)
@@ -24,7 +27,6 @@ def get_challenge_queries() -> List[ Tuple[ str, str, str ] ]:
 
 
 async def test_weakness_scenarios() -> None:
-    settings = get_settings()
     log_message( LG.RETRIEVAL, "🧪 شروع تست هدفمند Embedding + Reranker روی نقاط ضعف", LogLevel.INFO )
 
     retriever = QdrantHybridRetriever()
