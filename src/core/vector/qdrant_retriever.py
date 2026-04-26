@@ -6,7 +6,7 @@
 from __future__ import annotations
 from qdrant_client import QdrantClient
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
-
+from typing import cast
 #───────────────────── Local Imports ─────────────────────
 from src.services.embedding_service import EmbeddingService
 from src.services.sparse_vectorizer import BM25Vectorizer
@@ -64,7 +64,16 @@ class QdrantHybridRetriever:
 
         must_conditions: list[ Condition ] = []
 
+        must_not_conditions: list[ Condition ] = []
+
         for key, value in filters.items():
+            # ✅ پشتیبانی از فیلترهای منفی (مثلاً: brand_not = ["اپل"])
+            if key.endswith( "_not" ):
+                base_key = key[ :-4 ]
+                vals = value if isinstance( value, list ) else [ value ]
+                must_not_conditions.append( FieldCondition( key=base_key, match=MatchAny( any=cast( "list[str]", vals ) ) ) )
+                continue
+
             if isinstance( value, dict ):
                 for op, val in value.items():
                     if op == "<": must_conditions.append( FieldCondition( key=key, range=Range( lt=val ) ) )
@@ -76,4 +85,8 @@ class QdrantHybridRetriever:
             elif isinstance( value, ( str, int, bool ) ):
                 must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
 
-        return Filter( must=must_conditions ) if must_conditions else None
+        if not must_conditions and not must_not_conditions:
+            return None
+
+        return Filter( must=must_conditions if must_conditions else None,
+                       must_not=must_not_conditions if must_not_conditions else None )
