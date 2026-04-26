@@ -11,14 +11,17 @@ async def main() -> None:
     settings = get_settings()
     log_message( LG.RETRIEVAL, f"🧪 شروع تست یکپارچه پایپلاین | ONNX: {settings.USE_ONNX}", LogLevel.INFO )
 
-    # ✅ بارگذاری سرویس‌ها با معماری جدید (بدون Singleton)
     nlu = NLUPipeline()
     retriever = QdrantHybridRetriever()
     reranker = RerankerService()
 
     test_queries = [
-        "یه گوشی سبک و ارزون برای عکاسی میخوام", "گوشی گیمینگ با رم بالا زیر 30 میلیون تومان", "بین آیفون و سامسونگ کدوم بهتره؟",
-        "یه چیز گرونتر ولی با باتری قویتر نشون بده"
+        "یه گوشی  ارزون برای عکاسی میخوام",
+        "گوشی گیمینگ با رم بالا زیر 30 میلیون تومان",
+        "بین آیفون و سامسونگ کدوم بهتره؟",
+        "یه چیز گرونتر ولی با باتری قویتر نشون بده",
+        "گوشی با دوربین خوب که ارزش خرید بالایی داشته باشه",
+        "یه موبایل گیمینگ خوب به جز برند شیائومی",
     ]
 
     for query in test_queries:
@@ -30,10 +33,6 @@ async def main() -> None:
 
         if nlu_out.is_greeting:
             log_message( LG.RETRIEVAL, "   🤝 پاسخ سیستمی: سلام! چطور می‌تونم در انتخاب محصول کمکتون کنم؟", LogLevel.INFO )
-            continue
-
-        if nlu_out.intent == "compare":
-            log_message( LG.RETRIEVAL, "   🔄 Intent: compare → نیاز به LLM Comparison Engine (فاز بعدی)", LogLevel.INFO )
             continue
 
         if nlu_out.intent == "refine":

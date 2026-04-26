@@ -20,7 +20,7 @@ User Input (Farsi)
       │
       ▼
 ⚖️ Reranker Service
-  └─ Cross-Encoder (bge-reranker-v2-m3) → Top 3
+  └─ Cross-Encoder (bge-reranker-v2-m3 | ONNX INT8) → Top 3
       │
       ▼
 💬 LLM Orchestrator + Memory
@@ -31,19 +31,22 @@ User Input (Farsi)
       │
       ▼
 ✅ Structured JSON Response → Client
+├─ FastAPI (`/api/v1/search`)
+├─Frontend: Typewriter Effect + Quick Actions + Session Memory
 ```
 
 ---
 
 ## 🧩 مؤلفه‌های اصلی
 
-|         لایه         |               مسئولیت                |                                     پیاده‌سازی فعلی                                     |
-| :------------------: | :----------------------------------: | :-------------------------------------------------------------------------------------: |
-|   **NLU Pipeline**   | نرمال‌سازی، تشخیص نیت، استخراج فیلتر |     `NLUPipeline` + `domain_knowledge.json` (Rule-Based، سرعت آنی، هزینه توکن صفر)      |
-|    **Retrieval**     |       جستجوی ترکیبی در Qdrant        |        `QdrantHybridRetriever` (Dense E5 + Sparse BM25 + RRF + Metadata Filter)         |
-|     **Reranker**     |         مرتب‌سازی نهایی دقیق         |         `RerankerService` (`bge-reranker-v2-m3` Cross-Encoder، Batch Inference)         |
-| **LLM Orchestrator** |        تولید پاسخ ساختاریافته        | `LLMOrchestrator` (Groq→Gemini Fallback + `response_format=json` + Pydantic Validation) |
-|      **Memory**      |        مدیریت Context مکالمه         |     `ConversationMemory` (Sliding Window `max=3`، Session-based UUID، Thread-Safe)      |
+|         لایه         |               مسئولیت                |                                          پیاده‌سازی فعلی                                           |
+| :------------------: | :----------------------------------: | :------------------------------------------------------------------------------------------------: |
+| **NLU Pipeline** | نرمال‌سازی، تشخیص نیت، استخراج فیلتر (شامل `*_not`) | `NLUPipeline` + `domain_knowledge.json` (پارسر واحد-آگاه، پشتیبانی از فیلترهای منفی، اولویت‌بندی نیت‌ها) |
+| **Retrieval** | جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant | `QdrantHybridRetriever` (Dense + Sparse + RRF + پشتیبانی صریح از `must_not` برای حذف برندها/تگ‌ها) |
+|     **Reranker**     |         مرتب‌سازی نهایی دقیق         |                 `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8 فعال)                 |
+| **LLM Orchestrator** |        تولید پاسخ ساختاریافته        |      `LLMOrchestrator` (Groq→Gemini Fallback + `response_format=json` + Pydantic Validation)       |
+|      **Memory**      |        مدیریت Context مکالمه         |           `ConversationMemory` (Sliding Window `max=3`، Session-based UUID، Thread-Safe)           |
+|     **Frontend**     |       رابط کاربری دمو و تعامل        | `Vanilla HTML/CSS/JS` سرو شده توسط FastAPI، `localStorage` Session، تم‌دهی پویا، Typewriter Effect |
 
 
 ## 📂 ساختار پروژه (Project Structure)
@@ -58,6 +61,14 @@ User Input (Farsi)
 ├── data/                     # لاگ‌ها و دیتای تست
 │   ├── logs/
 │   └── test/
+├── frontend/ # رابط کاربری دمو (Vanilla JS)
+│ ├── index.html
+│ ├── style.css
+│ └── script.js
+├── models/ # مدل‌های هوشمند (FP32 & ONNX INT8)
+│ ├── embedding/
+│ ├── reranker/
+│ └── onnx/
 ├── pyproject.toml            # مدیریت وابستگی‌ها و تنظیمات ابزارها
 ├── scripts/                  # اسکریپت‌های تست و سناریوهای یکپارچه
 ├── src/                      # سورس‌کد اصلی (ماژولار)
@@ -77,14 +88,18 @@ User Input (Farsi)
 
 ## ⚙️ تصمیمات طراحی کلیدی (Key Design Decisions)
 
-|                     تصمیم                      |                                                                  دلیل فنی (Rationale)                                                                  |                               اثر/مزیت (Impact)                                |
-| :--------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------: |
-|              **حذف RAG/Chunking**              |                       هر محصول = ۱ سند ساختاریافته در Qdrant. Chunking باعث تکه‌تکه شدن متادیتا و کاهش دقت فیلترهای عددی می‌شود.                       |         ✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس         |
-|         **استفاده از Rule-Based NLU**          |                 `NLUPipeline` + `domain_knowledge.json` تشخیص نیت را **بدون تأخیر شبکه، بدون هزینه توکن و با دقت قطعی** انجام می‌دهد.                  |      ✅ کاهش Latency، هزینهٔ صفر توکن برای Intent Detection، پایداری ۱۰۰٪       |
-|          **پیاده‌سازی Hybrid Search**          | ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند. |        ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative         |
-|              **اجبار خروجی JSON**              |     استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.     | ✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار |
-|        **مدیریت Rate Limit پلن رایگان**        |                            `Retry` با `Exponential Backoff` روی خطای `429` + Fallback خودکار به سرویس دوم (Groq → Gemini).                             |     ✅ پایداری سرویس با وجود محدودیت‌های API رایگان، کاهش خطای کاربر نهایی      |
-| **عدم استفاده از LangChain/LlamaIndex در MVP** |                                             کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                              |                 ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                 |
+|                     تصمیم                      |                                                                  دلیل فنی (Rationale)                                                                  |                                                                                                         اثر/مزیت (Impact)                                                                                                          |
+| :--------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|              **حذف RAG/Chunking**              |                       هر محصول = ۱ سند ساختاریافته در Qdrant. Chunking باعث تکه‌تکه شدن متادیتا و کاهش دقت فیلترهای عددی می‌شود.                       |                                                                                   ✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس                                                                                   |
+|         **استفاده از Rule-Based NLU**          |                 `NLUPipeline` + `domain_knowledge.json` تشخیص نیت را **بدون تأخیر شبکه، بدون هزینه توکن و با دقت قطعی** انجام می‌دهد.                  |                                                                                ✅ کاهش Latency، هزینهٔ صفر توکن برای Intent Detection، پایداری ۱۰۰٪                                                                                 |
+|          **پیاده‌سازی Hybrid Search**          | ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند. |                                                                                  ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative                                                                                   |
+|              **اجبار خروجی JSON**              |     استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.     |                                                                           ✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار                                                                           |
+|        **مدیریت Rate Limit پلن رایگان**        |                            `Retry` با `Exponential Backoff` روی خطای `429` + Fallback خودکار به سرویس دوم (Groq → Gemini).                             |                                                                               ✅ پایداری سرویس با وجود محدودیت‌های API رایگان، کاهش خطای کاربر نهایی                                                                                |
+| **عدم استفاده از LangChain/LlamaIndex در MVP** |                                             کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                              |                                                                                           ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                                                                                           |
+|    **بهینه‌سازی ONNX + INT8 Quantization**     |    تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`)     | تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`). \| ✅ کاهش ~۶۰٪ مصرف RAM/CPU، کاهش زمان پاسخ به `<3s`، حفظ دقت در حد نویز محاسباتی |
+|     **فرانت‌اند Vanilla + FastAPI Static**     |                                   حذف سربار `npm`/`Vite`/`React` برای فاز دمو. سرو مستقیم `index.html` توسط FastAPI                                    |                                                                          ✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تمرکز بر بک‌اند                                                                           |
+|      **تزریق وابستگی و مدیریت چرخه حیات**      |                                 جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`                                 |                                       این تغییر باعث جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر و امکان `Mock` کردن سرویس‌ها در تست‌های واحد شده است.                                        |
+|                                                |                                                                                                                                                        |                                                                                                                                                                                                                                    |
 
 ---
 
@@ -110,6 +125,7 @@ User Input (Farsi)
 4️⃣ Indexing → QdrantIndexer
    ├─ تک‌سند به‌ازای هر محصول (بدون Chunking)
    ├─ Payload Indexes: INTEGER (price), KEYWORD (brand/tags), BOOL (is_available)
+     ├─ تزریق صریح `EmbeddingService` و `BM25Vectorizer` برای تولید بردار واقعی
    └─ Collection: nira_products_mvp (Cosine distance, configurable dims)
 ```
 
@@ -178,7 +194,7 @@ System: "تو دستیار خرید {domain_topic} هستی. معیارهای ک
 - 🎯 **`Faithfulness`**: عدم تناقض پاسخ LLM با متادیتای واقعی محصول
 - 🔍 **`Context Precision`**: کیفیت و ارتباط داده‌های بازیابی‌شده با کوئری کاربر
 - 💬 **`Answer Relevancy`**: پاسخ‌دهی دقیق به نیاز واقعی (نه فقط تطبیق کلیدواژه)
-- ⏱️ **`Latency`**: `<1.5s` برای کل چرخه (NLU → Retrieval → Rerank → LLM)
+- ⏱️ **`Latency`**: `<3 s` برای کل چرخه (NLU → Retrieval → Rerank → LLM)
 
 ### حلقه بازخورد و آنالیتیکس
 
@@ -191,3 +207,4 @@ System: "تو دستیار خرید {domain_topic} هستی. معیارهای ک
 - 🔹 **RAGAS** یا **DeepEval** برای سنجش خودکار کیفیت پاسخ‌ها
 - 🔹 **Logging ساختاریافته** با `src/config/logging_config.py` برای ردیابی خطاها
 - 🔹 **Semantic Cache Hit-Rate** برای اندازه‌گیری کارایی کش کوئری‌های تکراری
+- `validate_quantization_drift.py` برای پایش دوره‌ای افت دقت مدل‌های ONNX
