@@ -55,21 +55,12 @@
 
 		"باتری ضعیف": { "battery_quality": "poor" },
 		"باتری قوی": { "battery_quality": "excellent" },
-<<<<<<< HEAD
-
-		"دوربین خوب": { "camera_quality": "good" },
-		"دوربین قوی": { "camera_quality": "excellent" },
-		"دوربین عالی": { "camera_quality": "excellent" },
-		"اینستاگرام": { "tags": ["social_media"] },
-		"فیلمبرداری": { "tags": ["videography"] },
-=======
 		"باتری بزرگ": { "battery_quality": "excellent" },
 		"باتری خوب": { "battery_quality": "good" },
 		"دوربین خوب": { "camera_quality": "good" },
 		"دوربین قوی": { "camera_quality": "excellent" },
 		"دوربین عالی": { "camera_quality": "excellent" },
 		"دوربین حرفه‌ای": { "camera_quality": "excellent" },
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 
 		"ارزش خرید بالا": { "value_for_money": "excellent" },
 		"به‌صرفه": { "value_for_money": "good" }
@@ -80,7 +71,10 @@
 		"بازی": { "ram_gb": { "gte": 8 }, "tags": ["gaming"] },
 		"عکاسی": { "camera_quality": "excellent", "tags": ["photography"] },
 		"عکس": { "camera_quality": "good", "tags": ["photography"] },
-		"فیلمبرداری": { "camera_quality": "excellent", "tags": ["photography"] },
+		"فیلمبرداری": {
+			"camera_quality": "excellent",
+			"tags": ["photography"]
+		},
 		"دانشجویی": { "price_range": "budget" },
 		"حرفه‌ای": { "price_range": "premium" },
 		"سبک": { "tags": ["lightweight"] }
@@ -96,9 +90,6 @@
 			"چطوری",
 			"خداحافظ"
 		],
-<<<<<<< HEAD
-		"compare": ["مقایسه", "فرق", "تفاوت", "کدوم بهتره", "کدام یک بهتر است"],
-=======
 		"compare": [
 			"مقایسه",
 			"فرق",
@@ -109,7 +100,6 @@
 			"در برابر",
 			"vs"
 		],
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 		"refine": [
 			"ارزونتر",
 			"ارزون‌تر",
@@ -125,22 +115,10 @@
 			"قویتر"
 		]
 	},
-<<<<<<< HEAD
-	"negation_keywords": [
-		"نباشه",
-		"نیست",
-		"به‌جز",
-		"به جز",
-		"بدون",
-		"غیر",
-		"غیر از"
-	]
-=======
 	"_mvp_refinement_meta": {
 		"version": "1.1",
 		"notes": "اضافه شدن کلمات محاوره‌ای + برخی مترادف‌های پرتکرار طبق فاز MVP Refinement روادمپ",
 		"unit_aware": true,
 		"conflict_aware": true
 	}
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 }

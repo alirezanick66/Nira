@@ -25,17 +25,6 @@ class NLUPipeline:
 
     def __init__( self ) -> None:
         self._knowledge = KnowledgeCache.get_instance()
-<<<<<<< HEAD
-
-        self._price_pattern = re.compile( r'(زیر|بالای|حدود|کمتر|بیشتر)?\s*(\d+(?:\.\d+)?)\s*(میلیون|میلیارد)?\s*(تومان|ت)?' )
-        # ✅ بهبود: پشتیبانی از "رم 8 گیگ"، "حداقل 12 گیگ"، "بالای 16 گیگابایت"
-        self._ram_pattern = re.compile( r'(?:رم)?\s*(?:حداقل|بالای|حدود)?\s*(\d{1,2})\s*(?:گیگ|gb|گیگابایت)', re.IGNORECASE )
-        # ✅ جدید: پشتیبانی از "حافظه 256"، "فضای 1 ترابایت"، "هارد 512 گیگ"
-        self._storage_pattern = re.compile(
-            r'(?:حافظه(?:ی داخلی)?|فضا|هارد)\s*(?:حداقل|بالای|حدود)?\s*(\d{2,4})\s*(گیگ(?:ابایت)?|ترابایت|tb)?', re.IGNORECASE )
-
-=======
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
         self._normalizer = PersianNormalizer()
         self._unit_parser = UnitParser()
         self._conflict_resolver = ConflictResolver()
@@ -67,32 +56,8 @@ class NLUPipeline:
         # ‫1) استخراج اولیه فیلترها
         filters = self._extract_slots( processed )
 
-<<<<<<< HEAD
-        # حذف کلمات فیلترساز از semantic_query برای جلوگیری از نویز در بردارسازی
-        stop_words = { "زیر", "بالای", "کمتر", "بیشتر", "تومان", "ت", "حدود" }
-        semantic_parts = [ w for w in processed.split() if w not in stop_words ]
-        semantic_query = processed
-
-        brand_not = filters.get( "brand_not", [] )
-        if isinstance( brand_not, str ):
-            brand_not = [ brand_not ]
-        elif not isinstance( brand_not, ( list, tuple, set ) ):
-            brand_not = []
-
-        for brand in brand_not:
-            for neg_kw in self._knowledge.negation_keywords:
-                semantic_query = semantic_query.replace( f"{brand} {neg_kw}", "" ).replace( f"{neg_kw} {brand}",
-                                                                                            "" ).replace( f"{brand}{neg_kw}", "" )
-        semantic_query = " ".join( semantic_query.split() )          # نرمال‌سازی فاصله‌های اضافی
-
-        # حذف کلمات فیلترساز (کدهای قبلی خودت)
-        stop_words = { "زیر", "بالای", "کمتر", "بیشتر", "تومان", "ت", "حدود" }
-        semantic_parts = [ w for w in semantic_query.split() if w not in stop_words ]
-        semantic_query = " ".join( semantic_parts ).strip() or semantic_query
-=======
         # ‫2) حل تضاد فیلترها (MVP Refinement #5)
         filters, conflict_report = self._conflict_resolver.resolve( filters, processed )
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 
         # ‫3) ساخت semantic_query تمیز
         semantic_query = self._build_semantic_query( processed )
@@ -130,7 +95,7 @@ class NLUPipeline:
     def _build_semantic_query( self, processed: str ) -> str:
         """‫حذف کلمات فیلترساز از متن برای بردارسازی تمیزتر"""
         stop_words = {
-            # ‫نشانگرهای قیمت
+          # ‫نشانگرهای قیمت
             "زیر",
             "بالای",
             "کمتر",
@@ -143,11 +108,11 @@ class NLUPipeline:
             "حداکثر",
             "تا",
             "الی",
-            # ‫واحدها
+          # ‫واحدها
             "میلیون",
             "میلیارد",
             "هزار",
-            # ‫کلمات اضافه
+          # ‫کلمات اضافه
             "از",
             "ولی",
             "اما",
@@ -158,13 +123,9 @@ class NLUPipeline:
     def _extract_slots( self, text: str ) -> dict[ str, object ]:
         """‫استخراج فیلترها با پارسر هوشمند MVP Refinement"""
         filters: dict[ str, object ] = {}
-
-<<<<<<< HEAD
-        # ✅ تشخیص برندهای منفی‌شده (انعطاف‌پذیرتر برای محاوره)
         neg_brands: list[ str ] = []
-=======
+
         # ────────── 1. تشخیص برند ──────────
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
         for brand in self._knowledge.brands:
             if brand in text and any( neg_kw in text for neg_kw in self._knowledge.negation_keywords ):
                 neg_brands.append( brand )
@@ -180,56 +141,6 @@ class NLUPipeline:
                 filters[ "brand" ] = brand
                 break
 
-<<<<<<< HEAD
-        # ۳. استخراج قیمت (بازهٔ صریح اولویت دارد)
-        range_match = re.search( r'بین\s*(\d+)\s*تا\s*(\d+)\s*(میلیون|میلیارد|تومان|ت)?', text )
-        if range_match:
-            min_val = float( range_match.group( 1 ) )
-            max_val = float( range_match.group( 2 ) )
-            unit = range_match.group( 3 ) or ""
-            mult = 1_000_000 if "میلیون" in unit else 1_000_000_000 if "میلیارد" in unit else 1
-            filters[ "price" ] = { ">=": min_val * mult, "<=": max_val * mult }
-        else:
-            price_match = self._price_pattern.search( text )
-            if price_match:
-                op_str = price_match.group( 1 ) or ""
-                amount = float( price_match.group( 2 ) )
-                unit_str = price_match.group( 3 ) or ""
-                currency_str = price_match.group( 4 ) or ""
-                has_indicator = bool( op_str ) or "میلیون" in unit_str or "تومان" in currency_str or "ت" in currency_str
-                if has_indicator:
-                    val = amount * ( 1_000_000_000 if "میلیارد" in unit_str else 1_000_000 if "میلیون" in unit_str else 1 )
-                    op_dict = filters.setdefault( "price", {} )
-                    if isinstance( op_dict, dict ):
-                        if "زیر" in op_str or "کمتر" in op_str: op_dict[ "<" ] = val
-                        elif "بالای" in op_str or "بیشتر" in op_str: op_dict[ ">=" ] = val
-                        else: op_dict[ "<" ] = val * 1.5
-
-        # ۴. استخراج رم و حافظه
-        if ram_match := self._ram_pattern.search( text ):
-            filters[ "ram_gb" ] = int( ram_match.group( 1 ) )
-        if storage_match := self._storage_pattern.search( text ):
-            val = int( storage_match.group( 1 ) )
-            unit = ( storage_match.group( 2 ) or "" ).lower()
-            if "ترابایت" in unit or "tb" in unit: val *= 1000
-            filters[ "storage_gb" ] = val
-
-        # ۵. نگاشت کیفی و قواعد استفاده (بدون بازنویسی فیلترهای صریح)
-        for kw_dict in ( self._knowledge.qualitative_mappings, self._knowledge.use_case_rules ):
-            for keyword, rule in kw_dict.items():
-                if keyword in text:
-                    for key, val in rule.items():
-                        if key not in filters:
-                            if isinstance( val, dict ):
-                                current = filters.setdefault( key, {} )
-                                if isinstance( current, dict ): current.update( val )
-                            elif isinstance( val, list ):
-                                tags = filters.setdefault( "tags", [] )
-                                if isinstance( tags, list ):
-                                    tags.extend( t for t in val if t not in tags )
-                            else:
-                                filters[ key ] = val
-=======
         # ────────── 2. استخراج قیمت با UnitParser ──────────
         # ‫(پشتیبانی از «سی میلیون»، «حدود ۴۰-۵۰»، «۳۰تومن» + اعداد مدل ایمن)
         price_filter = self._unit_parser.extract_price_filter( text )
@@ -288,6 +199,5 @@ class NLUPipeline:
                             tags.extend( [ t for t in val if t not in tags ] )
                     else:
                         filters[ key ] = val
->>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 
         return filters
