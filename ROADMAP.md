@@ -4,6 +4,7 @@
 
 ## 📊 وضعیت کلی پروژه
 
+<<<<<<< HEAD
 |        فاز        |     وضعیت      |                               هدف کلیدی                                |
 | :---------------: | :------------: | :--------------------------------------------------------------------: |
 |      🟢 MVP       |    ✅ تکمیل     |       اثبات مفهوم: NLU → Retrieval → Rerank → LLM JSON → FastAPI       |
@@ -11,6 +12,15 @@
 |   🔵 Post-MVP 1   |   🔵 Planned   | تجربه کاربری هوشمندتر: Cache، Personalization، Feedback، Clarification |
 |   🔵 Post-MVP 2   |   🔵 Planned   |       یکپارچه‌سازی فروشگاه: سبد خرید، اقساط، Analytics، Compare        |
 |   🔵 Post-MVP 3   |   🔵 Planned   |         مقیاس‌پذیری فنی: Multi-Domain، Evaluation Loop، Docker         |
+=======
+|          فاز          |     وضعیت      |                               هدف کلیدی                                |
+| :-------------------: | :------------: | :--------------------------------------------------------------------: |
+|      **🟢 MVP**       |    ✅ تکمیل     |       اثبات مفهوم: NLU → Retrieval → Rerank → LLM JSON → FastAPI       |
+| **🟢 MVP Refinement** |    ✅ تکمیل     |          رفع نقص‌های فنی MVP + بهبود دقت استخراج و رتبه‌بندی           |
+|   **🔵 Post-MVP 1**   |   🔵 Planned   | تجربه کاربری هوشمندتر: Cache، Personalization، Feedback، Clarification |
+|   **🔵 Post-MVP 2**   |   🔵 Planned   |       یکپارچه‌سازی فروشگاه: سبد خرید، اقساط، Analytics، Compare        |
+|   **🔵 Post-MVP 3**   |   🔵 Planned   |          مقیاس‌پذیری فنی: ONNX، Multi-Domain، Evaluation Loop          |
+>>>>>>> 6f214f5c40668076497fb925ec68ada607553252
 
 ---
 
@@ -42,11 +52,11 @@
 |       ⚖️ **گارد منطقی رم/حافظه**       |                اعمال فیلتر بازه معتبر (1≤ram≤64) در Payload + نرمال‌سازی در Enrichment                 | 🔴 بالا  | `qdrant_payload.py` + `ProductEnrichment` | حذف نتایج غیرواقعی (مثل ۳۲ مگابایت رم) بدون نیاز به فیلد `unit` اضافی |
 
 ### 📦 خروجی‌های مورد انتظار
-- [ ] به‌روزرسانی `_extract_slots` در `nlu_pipeline.py` با Regex هوشمند + واحدسنج
-- [ ] افزودن فیلد `unit` به `QdrantProductPayload` برای رم/حافظه/باتری
-- [ ] اسکریپت `calibrate_reranker.py` برای یافتن `min_score` بهینه
-- [ ] لاجیک `relaxed_filters` در `QdrantHybridRetriever.search()`
-- [ ] الگوی `ConflictResolver` در `NLUPipeline` با اولویت‌بندی `price > brand > specs`
+- [x] به‌روزرسانی `_extract_slots` در `nlu_pipeline.py` با Regex هوشمند + واحدسنج (`unit_parser.UnitParser`)
+- [x] افزودن فیلدهای `ram_unit`, `storage_unit`, `battery_unit` به `QdrantProductPayload` و ایندکس‌های Payload
+- [x] اسکریپت `scripts/calibrate_reranker.py` برای یافتن `RERANKER_MIN_SCORE` بهینه (با Precision/Recall/F1)
+- [x] لاجیک `relaxed_filters` در `QdrantHybridRetriever.search()` با ترتیب اولویت‌بندی `weight_g → camera_quality → ... → brand`
+- [x] الگوی `ConflictResolver` در `NLUPipeline` با اولویت‌بندی `price > brand > specs > qualitative`
 
 ---
 

@@ -14,3 +14,4 @@ class NLUFilterQuery( BaseModel ):
     semantic_query: str = Field( description="متن تمیزشده برای جستجوی برداری/کلیدواژه‌ای" )
     metadata_filters: dict = Field( default_factory=dict, description="فیلترهای متادیتا سازگار با Qdrant" )
     is_greeting: bool = Field( default=False )
+    warnings: list[ str ] = Field( default_factory=list, description="هشدارهای ConflictResolver یا اعتبارسنجی فیلتر" )
