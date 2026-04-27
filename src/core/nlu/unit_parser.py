@@ -13,7 +13,6 @@
 from __future__ import annotations
 import re
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass( frozen=True )
@@ -53,7 +52,7 @@ class UnitParser:
 
     # ─────────── 1) اعداد حرفی فارسی ───────────
     _WORD_NUMBERS: dict[ str, int ] = {
-        # دهگان
+          # دهگان
         "ده": 10,
         "بیست": 20,
         "سی": 30,
@@ -63,7 +62,7 @@ class UnitParser:
         "هفتاد": 70,
         "هشتاد": 80,
         "نود": 90,
-        # یکان (برای ترکیب با میلیون/میلیارد)
+          # یکان (برای ترکیب با میلیون/میلیارد)
         "یک": 1,
         "دو": 2,
         "سه": 3,
@@ -73,7 +72,7 @@ class UnitParser:
         "هفت": 7,
         "هشت": 8,
         "نه": 9,
-        # ‫ترکیب‌های پرکاربرد (به‌جای پارسر کامل برای سادگی KISS)
+          # ‫ترکیب‌های پرکاربرد (به‌جای پارسر کامل برای سادگی KISS)
         "صد": 100,
         "دویست": 200,
         "سیصد": 300,
@@ -95,7 +94,7 @@ class UnitParser:
         "هزار": 1_000,
     }
 
-    _CURRENCY_TOKENS: tuple[ str, ... ] = ( "تومان", "تومن", "ت" )
+    _CURRENCY_TOKENS: tuple[ str, ...] = ( "تومان", "تومن", "ت" )
 
     # ─────────── 3) Regex Patterns ───────────
     # عدد قابل پارس (دیجیت یا اعشار)
@@ -106,7 +105,7 @@ class UnitParser:
 
     # ─────────── 4) Stop words & Model number indicators ───────────
     # ‫کلماتی که قبل از یک عدد بیایند، آن عدد به عنوان «شماره مدل» شناخته می‌شود نه قیمت/رم
-    _MODEL_PREFIX_KEYWORDS: tuple[ str, ... ] = (
+    _MODEL_PREFIX_KEYWORDS: tuple[ str, ...] = (
         "آیفون",
         "iphone",
         "گلکسی",
@@ -182,8 +181,7 @@ class UnitParser:
         words_sorted = sorted( cls._WORD_NUMBERS.keys(), key=len, reverse=True )
 
         # ‫الگوی پیچیده: ترکیب دهگان + و + یکان (مثلاً "چهل و پنج")
-        compound_pattern = re.compile(
-            rf"\b(?P<base>{'|'.join(words_sorted)})(?:\s+و\s+(?P<add>{'|'.join(words_sorted)}))?\b" )
+        compound_pattern = re.compile( rf"\b(?P<base>{'|'.join(words_sorted)})(?:\s+و\s+(?P<add>{'|'.join(words_sorted)}))?\b" )
 
         def repl( m: re.Match[ str ] ) -> str:
             base = cls._WORD_NUMBERS[ m.group( "base" ) ]
@@ -255,9 +253,9 @@ class UnitParser:
         unit_alt = "|".join( cls._PRICE_UNITS.keys() )
         currency_alt = "|".join( cls._CURRENCY_TOKENS )
 
-        range_pattern = re.compile( rf"({cls._NUM})\s*({unit_alt})?\s*(?:تا|الی|-)\s*({cls._NUM})\s*({unit_alt})?\s*"
-                                    rf"(?:{currency_alt})?",
-                                    re.IGNORECASE )
+        range_pattern = re.compile(
+            rf"({cls._NUM})\s*({unit_alt})?\s*(?:تا|الی|-)\s*({cls._NUM})\s*({unit_alt})?\s*"
+            rf"(?:{currency_alt})?", re.IGNORECASE )
 
         if m := range_pattern.search( digit_text ):
             low = cls._to_toman( m.group( 1 ), m.group( 2 ) or m.group( 4 ) )
