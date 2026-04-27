@@ -35,7 +35,6 @@ class SlotExtractor:
     def extract( self, text: str ) -> MetadataFilters:
         """‫اجرای چرخهٔ استخراج روی متن نرمال‌شده‫"""
         filters: MetadataFilters = {}
-
         for rule in self._rules:
             pattern = self._compiled_patterns.get( rule.name )
             if not pattern:
@@ -43,7 +42,6 @@ class SlotExtractor:
 
             cues = frozenset( rule.mask_cues )
             mask_res = ModelMasker.mask( text, cues )
-
             matched = pattern.search( mask_res.masked_text )
             if not matched:
                 continue
@@ -67,14 +65,14 @@ class SlotExtractor:
                 filters[ rule.name ] = scaled_value
 
             log_message( LG.NLU, f"اسلات {rule.name} استخراج شد: {value} {unit}", LogLevel.DEBUG )
-
         return filters
 
     def _parse_groups( self, match: re.Match[ str ], rule: SlotRule ) -> tuple[ float | None, str, str ]:
         """‫استخراج و نرمال‌سازی مقادیر از گروه‌های رگکس‫"""
-        num_str = match.groupdict().get( "num", match.groupdict().get( "amount", "" ) )
-        unit = match.groupdict().get( "unit", "" ).lower()
-        op = match.groupdict().get( "op", "" ).lower()
+        # ✅ رفع باگ: حذف فاصلهٔ اضافی از کلیدهای دیکشنری
+        num_str = ( match.groupdict().get( "num" ) or match.groupdict().get( "amount" ) or "" ).strip()
+        unit = ( match.groupdict().get( "unit" ) or "" ).lower()
+        op = ( match.groupdict().get( "op" ) or "" ).lower()
 
         #‫پشتیبانی از اعداد حروفی
         num_value = PersianNumberConverter.convert( num_str )
@@ -87,5 +85,4 @@ class SlotExtractor:
         #‫نگاشت عملگرهای محاوره‌ای
         op_map = { "زیر": "<=", "کمتر": "<=", "بالای": ">=", "بیشتر": ">=", "حدود": "approx" }
         normalized_op = op_map.get( op, op )
-
         return num_value, unit, normalized_op

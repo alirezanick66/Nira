@@ -3,6 +3,8 @@ import re
 from dataclasses import dataclass, field
 from src.config.logging_config import log_message, LogLevel, LG
 
+_RTL = "\u200F"
+
 
 @dataclass( frozen=True )
 class MaskResult:
@@ -13,8 +15,6 @@ class MaskResult:
 
 class ModelMasker:
     """‫شناساگر و ماسک‌کنندهٔ شماره مدل بر اساس کلمات کلیدی دامنه‫"""
-
-    _MODEL_PREFIX_PATTERN: str = r"(?:{keywords})\s*"
     _INLINE_PATTERN: re.Pattern[ str ] = re.compile( r"\b([A-Za-z]{1,5})(\d{1,2})\b" )
     _PLACEHOLDER_TEMPLATE: str = "__MODEL_{idx}__"
 
@@ -28,26 +28,26 @@ class ModelMasker:
         placeholders: dict[ str, str ] = {}
         idx = 0
 
-        #‫الگوی ۱: کلمهٔ کلیدی برند + عدد جداگانه
+        # ✅ الگوی ۱: کلمهٔ کلیدی برند + عدد (بدون اجبار فاصلهٔ پسین)
         keywords_regex = "|".join( re.escape( kw ) for kw in brand_cues )
-        prefix_pat = re.compile( cls._MODEL_PREFIX_PATTERN.format( keywords=keywords_regex ), re.IGNORECASE )
+        prefix_pat = re.compile( rf"\b(?:{keywords_regex})\s*(\d{{1,2}})\b", re.IGNORECASE )
 
         def _replace_prefix( match: re.Match[ str ] ) -> str:
             nonlocal idx
-            matched_group = match.group( 0 ).strip()
-            #‫جستجوی عدد پس از کلمهٔ کلیدی
-            number_match = re.search( r"\d{1,2}", text[ match.end():match.end() + 5 ] )
-            if number_match:
-                original = f"{matched_group} {number_match.group(0)}"
-                placeholder = cls._PLACEHOLDER_TEMPLATE.format( idx=idx )
-                placeholders[ placeholder ] = original
-                idx += 1
-                return f"{matched_group} {placeholder}"
-            return matched_group
+            full_match = match.group( 0 )
+            num_part = match.group( 1 )
+            # یافتن کلمهٔ برند در مچ
+            brand_part = full_match.replace( num_part, "" ).strip()
+
+            original = f"{brand_part} {num_part}"
+            placeholder = cls._PLACEHOLDER_TEMPLATE.format( idx=idx )
+            placeholders[ placeholder ] = original
+            idx += 1
+            return f"{brand_part} {placeholder}"
 
         masked = prefix_pat.sub( _replace_prefix, masked )
 
-        #‫الگوی ۲: ترکیب حرف+عدد چسبیده (S24, A52, Note13)
+        # الگوی ۲: ترکیب حرف+عدد چسبیده (S24, A52, Note13)
         for inline_match in cls._INLINE_PATTERN.finditer( masked ):
             prefix = inline_match.group( 1 ).lower()
             if any( prefix.startswith( cue[ :3 ].lower() )
@@ -58,5 +58,5 @@ class ModelMasker:
                 idx += 1
                 masked = masked.replace( original, inline_match.group( 1 ) + placeholder, 1 )
 
-        log_message( LG.NLU, f"ماسک مدل: {len(placeholders)} مورد شناسایی شد", LogLevel.DEBUG )
+        log_message( LG.NLU, f"{_RTL}ماسک مدل: {len(placeholders)} مورد شناسایی شد", LogLevel.DEBUG )
         return MaskResult( masked_text=masked, placeholders=placeholders )
