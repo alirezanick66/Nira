@@ -49,7 +49,12 @@ class KnowledgeCache:
         self.use_case_rules = data.get( "use_case_rules", {} )
         self.intent_keywords = data.get( "intent_keywords", {} )
         self.negation_keywords = data.get( "negation_keywords", {} )
-
+        self._raw_data = data
         self._loaded = True
         log_message( LG.NLU, f"✅ دانش دامنه بارگذاری شد | {len(self.brands)} برند | {len(self.qualitative_mappings)} نگاشت",
                      LogLevel.INFO )
+
+    @property
+    def domain_data( self ) -> dict[ str, Any ]:
+        """‫دسترسی به دیکشنری خام JSON برای بارگذاری پیکربندی‌های پویا"""
+        return self._raw_data

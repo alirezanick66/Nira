@@ -2,7 +2,7 @@
 ‫مسئول: نرمال‌سازی، تشخیص نیت، استخراج Slotها، نگاشت مفاهیم نسبی به فیلترهای عددی
 
 ‫تغییرات MVP Refinement:
-- پشتیبانی از پارسر هوشمند اعداد/واحد (`UnitParser`)
+- پشتیبانی از پارسر کانفیگ‌محور‫ (`SlotExtractor`)
 - تفکیک شماره‌های مدل از قیمت/رم
 - مدیریت تضاد فیلترها (`ConflictResolver`)
 - بازگشت گزارش هشدارها همراه با فیلترها
@@ -16,8 +16,10 @@ from src.config.knowledge_loader import KnowledgeCache
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.normalizer import PersianNormalizer
 from src.core.nlu.schemas import NLUFilterQuery
-from src.core.nlu.unit_parser import UnitParser
 from src.core.nlu.conflict_resolver import ConflictResolver
+from src.core.nlu.slot_extractor import SlotExtractor, SlotRule
+from src.core.nlu.schemas import MetadataFilters, MetadataFilterValue
+from typing import cast
 
 
 class NLUPipeline:
@@ -26,7 +28,10 @@ class NLUPipeline:
     def __init__( self ) -> None:
         self._knowledge = KnowledgeCache.get_instance()
         self._normalizer = PersianNormalizer()
-        self._unit_parser = UnitParser()
+        #‫بارگذاری قوانین اسلات از کانفیگ دامنه
+        slot_rules_data = self._knowledge.domain_data.get( "slot_definitions", [] )
+        slot_rules = [ SlotRule.model_validate( r ) for r in slot_rules_data ]
+        self._slot_extractor = SlotExtractor( rules=slot_rules )
         self._conflict_resolver = ConflictResolver()
 
         log_message( LG.NLU, "NLUPipeline آماده پردازش کوئری‌ها است", LogLevel.INFO )
@@ -62,12 +67,8 @@ class NLUPipeline:
         # ‫3) ساخت semantic_query تمیز
         semantic_query = self._build_semantic_query( processed )
 
-        log_message(
-            LG.NLU,
-            f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters} | "
-            f"Conflicts: {len(conflict_report.conflicts)}",
-            LogLevel.DEBUG,
-        )
+        log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters} | "
+                     f"Conflicts: {len(conflict_report.conflicts)}", LogLevel.DEBUG )
 
         return NLUFilterQuery(
             intent=intent,
@@ -120,18 +121,18 @@ class NLUPipeline:
         semantic_parts = [ w for w in processed.split() if w not in stop_words ]
         return " ".join( semantic_parts ).strip() or processed
 
-    def _extract_slots( self, text: str ) -> dict[ str, object ]:
+    def _extract_slots( self, text: str ) -> MetadataFilters:
         """‫استخراج فیلترها با پارسر هوشمند MVP Refinement"""
-        filters: dict[ str, object ] = {}
+        filters: MetadataFilters = {}
         neg_brands: list[ str ] = []
 
         # ────────── 1. تشخیص برند ──────────
+        neg_brands: list[ str ] = []
         for brand in self._knowledge.brands:
             if brand in text and any( neg_kw in text for neg_kw in self._knowledge.negation_keywords ):
                 neg_brands.append( brand )
         if neg_brands:
             filters[ "brand_not" ] = neg_brands
-            # ✅ جلوگیری از تداخل: اگر برند مثبت قبلاً ثبت شده، حذفش کن
             if filters.get( "brand" ) in neg_brands:
                 del filters[ "brand" ]
 
@@ -140,39 +141,6 @@ class NLUPipeline:
             if brand in text and brand not in neg_brands:
                 filters[ "brand" ] = brand
                 break
-
-        # ────────── 2. استخراج قیمت با UnitParser ──────────
-        # ‫(پشتیبانی از «سی میلیون»، «حدود ۴۰-۵۰»، «۳۰تومن» + اعداد مدل ایمن)
-        price_filter = self._unit_parser.extract_price_filter( text )
-        if not price_filter.is_empty:
-            filters[ "price" ] = price_filter.to_dict()
-
-        # ────────── 3. استخراج رم با تفکیک واحد ──────────
-        ram_value = self._unit_parser.extract_memory_filter( text, key="ram" )
-        if ram_value is not None:
-            # ‫اگر کاربر «مگابایت» گفت، احتمالاً اشتباه کرده یا منظور حافظه نیست
-            # ‫فقط GB رو به عنوان رم می‌پذیریم (در عمل MB rare است)
-            if ram_value.unit == "GB":
-                filters[ "ram_gb" ] = ram_value.value
-            elif ram_value.unit == "MB":
-                # ‫تبدیل احتمالی - معمولاً اشتباه تایپی
-                filters[ "ram_gb" ] = max( 1, ram_value.value // 1024 )
-
-        # ────────── 4. استخراج حافظه با تفکیک واحد ──────────
-        storage_value = self._unit_parser.extract_memory_filter( text, key="storage" )
-        if storage_value is not None:
-            if storage_value.unit == "TB":
-                filters[ "storage_gb" ] = storage_value.value * 1024
-            elif storage_value.unit == "GB":
-                filters[ "storage_gb" ] = storage_value.value
-            elif storage_value.unit == "MB":
-                # ‫MB در حافظه گوشی غیرواقعی است → نادیده بگیر
-                pass
-
-        # ────────── 5. باتری ──────────
-        battery_value = self._unit_parser.extract_battery_filter( text )
-        if battery_value is not None:
-            filters[ "battery_mah" ] = { ">=": battery_value.value }
 
         # ────────── 6. مفاهیم کیفی ──────────
         for keyword, rule in self._knowledge.qualitative_mappings.items():
@@ -183,7 +151,7 @@ class NLUPipeline:
                         if isinstance( current, dict ):
                             current.update( val )
                     else:
-                        filters[ key ] = val
+                        filters[ key ] = cast( MetadataFilterValue, val )
 
         # ────────── 7. قواعد استفاده ──────────
         for keyword, rule in self._knowledge.use_case_rules.items():
@@ -198,6 +166,6 @@ class NLUPipeline:
                         if isinstance( tags, list ):
                             tags.extend( [ t for t in val if t not in tags ] )
                     else:
-                        filters[ key ] = val
+                        filters[ key ] = cast( MetadataFilterValue, val )
 
         return filters
