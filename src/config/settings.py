@@ -48,6 +48,11 @@ class Settings( BaseSettings ):
     RERANKER_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Reranker" )
     RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_BATCH_SIZE: int = 8
+    # ‫MVP Refinement: آستانه فیلتر نتایج کم‌ربط (Sigmoid Score)
+    # ‫مقدار پیش‌فرض پس از کالیبراسیون با scripts/calibrate_reranker.py تنظیم می‌شود.
+    RERANKER_MIN_SCORE: float = Field( default=0.05, ge=0.0, le=1.0,
+                                       description="حداقل امتیاز Sigmoid برای پذیرش یک نتیجه در Top-k" )
+    RERANKER_TOP_K: int = Field( default=3, ge=1, le=20, description="تعداد محصولات Top-k نهایی پس از Reranking" )
 
     #───────────────────── LLM ─────────────────────
     #Api Keys

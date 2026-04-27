@@ -33,9 +33,14 @@ class QdrantProductPayload( BaseModel ):
     discount_percent: int = Field( default=0, ge=0, le=100, description="‫درصد تخفیف" )
 
     # ==================== مشخصات فنی نرمال شده ====================
+    # ‫نکته MVP Refinement: واحدها صریحاً در Payload ذخیره می‌شوند
+    # ‫تا 32GB RAM با 32MB Storage در جستجو اشتباه گرفته نشود.
     ram_gb: int | None = Field( default=None, ge=0, description="‫رم (GB)" )
+    ram_unit: str = Field( default="GB", description="‫واحد رم - همیشه GB در گوشی‌های مدرن" )
     storage_gb: int | None = Field( default=None, ge=0, description="‫حافظه (GB)" )
+    storage_unit: str = Field( default="GB", description="‫واحد حافظه (GB یا TB)" )
     battery_mah: int | None = Field( default=None, ge=0, description="‫باتری (mAh)" )
+    battery_unit: str = Field( default="mAh", description="‫واحد باتری" )
     screen_size_inch: float | None = Field( default=None, ge=0, description="‫صفحه (inch)" )
     camera_mp: int | None = Field( default=None, ge=0, description="‫دوربین (MP)" )
     weight_g: int | None = Field( default=None, ge=0, description="‫وزن (g)" )
@@ -109,6 +114,11 @@ class QdrantProductPayload( BaseModel ):
             text_parts.extend( product.user_feedback.disadvantages[ :3 ] )
         search_text = " | ".join( filter( None, text_parts ) )
 
+        # ‫MVP Refinement: استنتاج واحد storage بر اساس مقدار
+        # ‫(گوشی‌های مدرن معمولاً 64-512 GB یا 1-2 TB دارند)
+        storage_gb = product.specifications.storage_gb
+        storage_unit = "TB" if storage_gb and storage_gb >= 1024 else "GB"
+
         return cls(
             product_id=product.product_id,
             title=product.title,
@@ -122,10 +132,13 @@ class QdrantProductPayload( BaseModel ):
           # امتیاز
             rating=product.rating,
             rating_count=product.rating_count,
-          # مشخصات
+          # مشخصات (MVP Refinement: واحد صریح)
             ram_gb=product.specifications.ram_gb,
-            storage_gb=product.specifications.storage_gb,
+            ram_unit="GB",
+            storage_gb=storage_gb,
+            storage_unit=storage_unit,
             battery_mah=product.specifications.battery_mah,
+            battery_unit="mAh",
             screen_size_inch=product.specifications.screen_size_inch,
           # دوربین
             camera_mp=product.specifications.camera_mp,
