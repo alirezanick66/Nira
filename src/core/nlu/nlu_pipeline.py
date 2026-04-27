@@ -9,6 +9,7 @@
 """
 #───────────────────── Imports ─────────────────────
 from __future__ import annotations
+import re
 import unicodedata
 
 #───────────────────── Local Imports ─────────────────────
@@ -18,6 +19,7 @@ from src.core.nlu.normalizer import PersianNormalizer
 from src.core.nlu.schemas import NLUFilterQuery
 from src.core.nlu.conflict_resolver import ConflictResolver
 from src.core.nlu.slot_extractor import SlotExtractor, SlotRule
+from src.core.nlu.model_masker import ModelMasker
 from src.core.nlu.schemas import MetadataFilters, MetadataFilterValue
 from typing import cast
 
@@ -124,9 +126,17 @@ class NLUPipeline:
     def _extract_slots( self, text: str ) -> MetadataFilters:
         """‫استخراج فیلترها با پارسر هوشمند MVP Refinement"""
         filters: MetadataFilters = {}
-        neg_brands: list[ str ] = []
 
-        # ────────── 1. تشخیص برند ──────────
+        # ────────── 0. ماسک کردن شماره مدل‌ها قبل از استخراج اسلات ──────────
+        mask_res = ModelMasker.mask( text, frozenset( self._knowledge.brands ) )
+        text_for_slots = re.sub( r'__MODEL_\d+__', '', mask_res.masked_text )
+        text_for_slots = re.sub( r'\s+', ' ', text_for_slots ).strip()
+
+        # ────────── 1. استخراج اسلات‌های کانفیگ‌محور ──────────
+        slot_filters = self._slot_extractor.extract( text_for_slots )
+        filters.update( slot_filters )
+
+        # ────────── 2. تشخیص برند ──────────
         neg_brands: list[ str ] = []
         for brand in self._knowledge.brands:
             if brand in text and any( neg_kw in text for neg_kw in self._knowledge.negation_keywords ):
@@ -136,7 +146,7 @@ class NLUPipeline:
             if filters.get( "brand" ) in neg_brands:
                 del filters[ "brand" ]
 
-        # ۲. تشخیص برند مثبت (اگر در لیست منفی‌ها نیست)
+        # ۳. تشخیص برند مثبت (اگر در لیست منفی‌ها نیست)
         for brand in self._knowledge.brands:
             if brand in text and brand not in neg_brands:
                 filters[ "brand" ] = brand

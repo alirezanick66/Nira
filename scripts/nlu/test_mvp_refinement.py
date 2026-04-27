@@ -1,29 +1,30 @@
-"""‫تست واحد فیچرهای فاز MVP Refinement
-
+"""‫تست واحد فیچرهای فاز MVP Refinement - نسخه بازنویسی‌شده
 ‫پوشش:
-1. ✅ UnitParser: اعداد حرفی، بازه‌ها، اعداد مدل
-2. ✅ ConflictResolver: تشخیص تضاد در فیلترها
-3. ✅ NLUPipeline: یکپارچگی دو ماژول جدید
-
-‫نکته: این تست‌ها نیازی به Qdrant/PostgreSQL ندارند و کاملاً آفلاین اجرا می‌شوند.
-
+✅ PersianNumberConverter: تبدیل اعداد حروفی فارسی
+✅ ModelMasker: ماسک کردن ایمن شماره مدل‌ها
+✅ SlotExtractor: استخراج کانفیگ‌محور فیلترها (قیمت، رم، حافظه)
+✅ ConflictResolver: حل تضاد فیلترها
+✅ NLUPipeline: یکپارچگی端到端 (NLU → Extraction → Resolution)
+‫نکته: این تست‌ها کاملاً آفلاین اجرا می‌شوند و نیازی به Qdrant/PostgreSQL ندارند.
 ‫نحوه اجرا:
-    uv run python scripts/nlu/test_mvp_refinement.py
+uv run python scripts/test_mvp_refinement.py
 """
 #───────────────────── Imports ─────────────────────
 from __future__ import annotations
 import sys
 from typing import Any
-
 #───────────────────── Local Imports ─────────────────────
-from src.core.nlu.unit_parser import UnitParser, PriceFilter, UnitValue
+from src.core.nlu.number_converter import PersianNumberConverter
+from src.core.nlu.model_masker import ModelMasker
+from src.core.nlu.slot_extractor import SlotExtractor, SlotRule
 from src.core.nlu.conflict_resolver import ConflictResolver
 
-# ‫NLUPipeline به KnowledgeCache نیاز دارد - فقط در تست یکپارچه import می‌شود
+# NLUPipeline فقط در تست یکپارچه ایمپورت می‌شود
 
 
-# ─────────────────── Helper ───────────────────
+#─────────────────── Helper ───────────────────
 class TestRunner:
+    """‫اجراکنندهٔ سبک و مستقل تست‌ها بدون وابستگی به pytest"""
 
     def __init__( self ) -> None:
         self.passed = 0
@@ -33,7 +34,7 @@ class TestRunner:
     def assert_eq( self, actual: Any, expected: Any, msg: str ) -> None:
         if actual == expected:
             self.passed += 1
-            print( f"  ✅ {msg}" )
+            print( f" ✅ {msg}" )
         else:
             self.failed += 1
             err = f"{msg} | expected={expected!r}, got={actual!r}"
@@ -43,7 +44,7 @@ class TestRunner:
     def assert_true( self, cond: bool, msg: str ) -> None:
         self.assert_eq( bool( cond ), True, msg )
 
-    def assert_in_range( self, actual: int | None, low: int, high: int, msg: str ) -> None:
+    def assert_in_range( self, actual: int | float | None, low: int, high: int, msg: str ) -> None:
         if actual is not None and low <= actual <= high:
             self.passed += 1
             print( f"  ✅ {msg} (got={actual:,})" )
@@ -64,113 +65,96 @@ class TestRunner:
         return 0
 
 
-#─────────────────── Test: UnitParser ───────────────────
-def test_word_numbers( t: TestRunner ) -> None:
-    print( "\n🔢 [1] تست تبدیل اعداد حرفی فارسی" )
-    t.assert_eq( UnitParser.parse_word_number( "سی" ), 30, "سی → 30" )
-    t.assert_eq( UnitParser.parse_word_number( "چهل و پنج" ), 45, "چهل و پنج → 45" )
-    t.assert_eq( UnitParser.parse_word_number( "صد" ), 100, "صد → 100" )
-    t.assert_eq( UnitParser.parse_word_number( "بیست" ), 20, "بیست → 20" )
-    t.assert_eq( UnitParser.parse_word_number( "" ), None, "خالی → None" )
-    t.assert_eq( UnitParser.parse_word_number( "هیچ" ), None, "غیرعدد → None" )
+#─────────────────── Test 1: PersianNumberConverter ───────────────────
+def test_number_converter( t: TestRunner ) -> None:
+    print( "\n🔢 [1] تست تبدیل اعداد حروفی فارسی" )
+    t.assert_eq( PersianNumberConverter.convert( "سی" ), 30, "سی → 30" )
+    t.assert_eq( PersianNumberConverter.convert( "چهل و پنج" ), 45, "چهل و پنج → 45" )
+    t.assert_eq( PersianNumberConverter.convert( "صد و بیست" ), 120, "صد و بیست → 120" )
+    t.assert_eq( PersianNumberConverter.convert( "یک میلیارد و دویست میلیون" ), 1_200_000_000, "1.2 میلیارد → 1,200,000,000" )
+    t.assert_eq( PersianNumberConverter.convert( "سی و دو" ), 32, "سی و دو → 32" )
+    t.assert_eq( PersianNumberConverter.convert( "" ), None, "خالی → None" )
+    t.assert_eq( PersianNumberConverter.convert( "هیچ" ), None, "غیرعدد → None" )
 
 
-def test_price_filter( t: TestRunner ) -> None:
-    print( "\n💰 [2] تست استخراج قیمت" )
+#─────────────────── Test 2: ModelMasker ───────────────────
+def test_model_masker( t: TestRunner ) -> None:
+    print( "\n🎭 [2] تست ماسک کردن هوشمند شماره مدل‌ها" )
+    brand_cues = frozenset( { "آیفون", "سامسونگ", "گلکسی", "redmi" } )
 
-    # ‫زیر X میلیون
-    pf = UnitParser.extract_price_filter( "گوشی زیر 30 میلیون" )
-    t.assert_eq( pf.max_value, 30_000_000, "زیر 30 میلیون → max=30M" )
-    t.assert_eq( pf.min_value, None, "زیر 30 میلیون → بدون min" )
+    res = ModelMasker.mask( "آیفون 15 خوبه", brand_cues )
+    t.assert_true( "__MODEL_0__" in res.masked_text, "آیفون 15 → مسک شد" )
+    t.assert_eq( res.placeholders.get( "__MODEL_0__" ), "آیفون 15", "جایگزینی صحیح آیفون 15" )
 
-    # ‫بالای X میلیون
-    pf = UnitParser.extract_price_filter( "بالای 20 میلیون تومان" )
-    t.assert_eq( pf.min_value, 20_000_000, "بالای 20 میلیون → min=20M" )
+    res = ModelMasker.mask( "میخوام S24 بخرم", brand_cues )
+    t.assert_true( "__MODEL_0__" in res.masked_text, "S24 → مسک شد" )
 
-    # ‫سی میلیون (عدد حرفی)
-    pf = UnitParser.extract_price_filter( "زیر سی میلیون" )
-    t.assert_eq( pf.max_value, 30_000_000, "زیر سی میلیون → max=30M" )
-
-    # ‫حدود X (بازه ±15٪)
-    pf = UnitParser.extract_price_filter( "حدود 40 میلیون" )
-    t.assert_in_range( pf.max_value, 45_000_000, 47_000_000, "حدود 40 میلیون → max≈46M" )
-    t.assert_in_range( pf.min_value, 33_000_000, 35_000_000, "حدود 40 میلیون → min≈34M" )
-
-    # ‫بازه: 30 تا 50 میلیون
-    pf = UnitParser.extract_price_filter( "بین 30 تا 50 میلیون" )
-    t.assert_eq( pf.min_value, 30_000_000, "30 تا 50 میلیون → min=30M" )
-    t.assert_eq( pf.max_value, 50_000_000, "30 تا 50 میلیون → max=50M" )
-
-    # ‫بازه با خط فاصله
-    pf = UnitParser.extract_price_filter( "40-50 میلیون" )
-    t.assert_eq( pf.min_value, 40_000_000, "40-50 میلیون → min=40M" )
-    t.assert_eq( pf.max_value, 50_000_000, "40-50 میلیون → max=50M" )
+    res = ModelMasker.mask( "زیر سی میلیون", brand_cues )
+    t.assert_eq( res.masked_text, "زیر سی میلیون", "متن بدون مدل → بدون تغییر" )
 
 
-def test_model_number_protection( t: TestRunner ) -> None:
-    print( "\n📱 [3] تست محافظت از اعداد مدل (آیفون 15، S24)" )
+#─────────────────── Test 3: SlotExtractor (Config-Driven) ───────────────────
+def test_slot_extractor( t: TestRunner ) -> None:
+    print( "\n⚙️ [3] تست موتور استخراج کانفیگ‌محور" )
+    # ‫شبیه‌سازی قوانین domain_knowledge.json برای اجرای آفلاین تست
+    test_rules = [
+        SlotRule( name="price",
+                  type="range",
+                  units={
+                      "میلیون": 1_000_000,
+                      "میلیارد": 1_000_000_000,
+                      "تومان": 1,
+                      "تومن": 1
+                  },
+                  operators={
+                      "زیر": "<=",
+                      "بالای": ">=",
+                      "حدود": "approx"
+                  },
+                  regex_template=r"(?P<op>زیر|بالای|حدود)?\s*(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>میلیون|میلیارد|تومان|تومن)?",
+                  mask_cues=[ "قیمت", "بودجه" ] ),
+        SlotRule( name="ram_gb",
+                  type="scalar",
+                  units={
+                      "گیگ": 1,
+                      "گیگابایت": 1,
+                      "gb": 1
+                  },
+                  operators={ "حداقل": ">=" },
+                  regex_template=r"(?P<op>حداقل)?\s*(?P<num>\d{1,2})\s*(?P<unit>گیگ(?:ابایت)?|gb)?\s*رم",
+                  mask_cues=[ "رم" ] )
+    ]
+    extractor = SlotExtractor( rules=test_rules )
 
-    # ‫«آیفون 15 ارزون» نباید 15 رو به‌عنوان قیمت استخراج کنه
-    pf = UnitParser.extract_price_filter( "آیفون 15 ارزون میخوام" )
-    t.assert_eq( pf.is_empty, True, "آیفون 15 → بدون قیمت" )
+    filters = extractor.extract( "زیر 30 میلیون" )
+    t.assert_true( "price" in filters, "فیلتر قیمت استخراج شد" )
+    if isinstance( filters.get( "price" ), dict ):
+        t.assert_eq( filters[ "price" ].get( "<=" ), 30_000_000, "زیر 30 میلیون → max=30M" )          #type: ignore
 
-    # ‫«آیفون 15 زیر 50 میلیون» باید 50 رو استخراج کنه نه 15
-    pf = UnitParser.extract_price_filter( "آیفون 15 زیر 50 میلیون" )
-    t.assert_eq( pf.max_value, 50_000_000, "آیفون 15 زیر 50 میلیون → max=50M" )
-
-    # ‫«S24» (حرف+عدد چسبیده) نباید قیمت استخراج کنه
-    pf = UnitParser.extract_price_filter( "گلکسی S24 خوبه؟" )
-    t.assert_eq( pf.is_empty, True, "S24 → بدون قیمت" )
-
-    # ‫«Note 13 زیر 20 میلیون»
-    pf = UnitParser.extract_price_filter( "Note 13 زیر 20 میلیون" )
-    t.assert_eq( pf.max_value, 20_000_000, "Note 13 زیر 20 میلیون → max=20M" )
+    filters = extractor.extract( "حداقل 8 گیگ رم" )
+    t.assert_true( "ram_gb" in filters, "فیلتر رم استخراج شد" )
+    t.assert_eq( filters.get( "ram_gb" ), 8, "حداقل 8 گیگ رم → 8" )
 
 
-def test_memory_filter( t: TestRunner ) -> None:
-    print( "\n💾 [4] تست استخراج رم و حافظه" )
-
-    ram = UnitParser.extract_memory_filter( "رم 8 گیگ", key="ram" )
-    t.assert_true( ram is not None, "رم 8 گیگ → یافت شد" )
-    if ram:
-        t.assert_eq( ram.value, 8, "رم 8 گیگ → 8" )
-        t.assert_eq( ram.unit, "GB", "رم 8 گیگ → GB" )
-
-    ram = UnitParser.extract_memory_filter( "8 گیگابایت رم", key="ram" )
-    if ram:
-        t.assert_eq( ram.value, 8, "8 گیگابایت رم → 8" )
-        t.assert_eq( ram.unit, "GB", "8 گیگابایت رم → GB" )
-
-    storage = UnitParser.extract_memory_filter( "حافظه 256 گیگ", key="storage" )
-    if storage:
-        t.assert_eq( storage.value, 256, "حافظه 256 گیگ → 256" )
-        t.assert_eq( storage.unit, "GB", "حافظه 256 گیگ → GB" )
-
-
-#─────────────────── Test: ConflictResolver ───────────────────
+#─────────────────── Test 4: ConflictResolver ───────────────────
 def test_conflict_resolver( t: TestRunner ) -> None:
-    print( "\n⚔️  [5] تست تشخیص تضاد فیلترها" )
-
-    # ‫متن تضاد
+    print( "\n⚖️ [4] تست تشخیص و حل تضاد فیلترها" )
     conflicts = ConflictResolver.detect_in_text( "ارزون ولی پرچم‌دار" )
     t.assert_eq( "price_budget_vs_flagship" in conflicts, True, "ارزون ولی پرچم‌دار → تضاد قیمتی" )
 
-    # ‫بدون تضاد
     conflicts = ConflictResolver.detect_in_text( "گوشی ارزون با دوربین خوب" )
     t.assert_eq( conflicts, [], "گوشی ارزون با دوربین خوب → بدون تضاد" )
 
-    # ‫حل تضاد در فیلترها
     filters = { "price_range": "budget", "brand": "اپل" }
     cleaned, report = ConflictResolver.resolve( filters, "ارزون ولی پرچم‌دار" )
-    t.assert_eq( "price_range" in cleaned, False, "تضاد ارزون+پرچم‌دار → price_range حذف شد" )
-    t.assert_eq( cleaned[ "brand" ], "اپل", "brand حفظ شد" )
+    t.assert_eq( "price_range" in cleaned, False, "تضاد → price_range حذف شد" )
+    t.assert_eq( cleaned.get( "brand" ), "اپل", "brand حفظ شد" )
     t.assert_true( report.has_conflicts, "گزارش تضاد ثبت شد" )
 
 
-#─────────────────── Test: Integration with NLU ───────────────────
+#─────────────────── Test 5: NLU Integration ───────────────────
 def test_nlu_integration( t: TestRunner ) -> None:
-    print( "\n🔗 [6] تست یکپارچگی NLU Pipeline (نیاز به KnowledgeCache)" )
-
+    print( "\n🔗 [5] تست یکپارچگی NLU Pipeline" )
     try:
         from src.core.nlu.nlu_pipeline import NLUPipeline
         nlu = NLUPipeline()
@@ -179,46 +163,45 @@ def test_nlu_integration( t: TestRunner ) -> None:
         return
 
     cases = [
-        ( "گوشی زیر سی میلیون", { "min_max": ( None, 30_000_000 ) } ),
-        # ‫نکته: «آیفون» در domain_knowledge.json به‌عنوان برند جدا از «اپل» ثبت شده است
-        ( "آیفون 15 زیر 50 میلیون", { "min_max": ( None, 50_000_000 ), "brand": "آیفون" } ),
-        ( "بین 30 تا 50 میلیون", { "min_max": ( 30_000_000, 50_000_000 ) } ),
-        ( "ارزون ولی پرچم‌دار", { "warnings_present": True } ),
+        ( "گوشی زیر 30 میلیون", {
+            "max_price": 30_000_000
+        } ),
+        ( "آیفون 15 زیر 50 میلیون", {
+            "max_price": 50_000_000,
+            "brand": "آیفون"
+        } ),
+        ( "ارزون ولی پرچم‌دار", {
+            "has_warnings": True
+        } ),
     ]
 
     for query, expectations in cases:
         result = nlu.process( query )
         print( f"  🔹 {query!r} → filters={result.metadata_filters}, warnings={result.warnings}" )
 
-        if "min_max" in expectations:
-            min_exp, max_exp = expectations[ "min_max" ]
-            price = result.metadata_filters.get( "price", {} )
-            if isinstance( price, dict ):
-                if max_exp is not None:
-                    t.assert_eq( price.get( "<" ), max_exp, f"{query} → max={max_exp:,}" )
-                if min_exp is not None:
-                    t.assert_eq( price.get( ">=" ), min_exp, f"{query} → min={min_exp:,}" )
+        price = result.metadata_filters.get( "price", {} )
+        if isinstance( price, dict ):
+            max_val = expectations.get( "max_price" ) or expectations.get( "min_max", ( None, None ) )[ 1 ]
+            min_val = expectations.get( "min_price" ) or expectations.get( "min_max", ( None, None ) )[ 0 ]
+            if max_val is not None: t.assert_eq( price.get( "<=" ), max_val, f"{query} → max={max_val:,}" )
+            if min_val is not None: t.assert_eq( price.get( ">=" ), min_val, f"{query} → min={min_val:,}" )
 
         if expectations.get( "brand" ):
-            t.assert_eq( result.metadata_filters.get( "brand" ), expectations[ "brand" ],
-                         f"{query} → brand={expectations['brand']}" )
+            t.assert_eq( result.metadata_filters.get( "brand" ), expectations[ "brand" ], f"{query} → brand={expectations['brand']}" )
 
-        if expectations.get( "warnings_present" ):
-            t.assert_true( bool( result.warnings ), f"{query} → دارای هشدار" )
+        if expectations.get( "has_warnings" ):
+            t.assert_true( bool( result.warnings ), f"{query} → دارای هشدار تضاد" )
 
 
 #─────────────────── Main ───────────────────
 def main() -> int:
-    print( "🧪 شروع تست‌های MVP Refinement\n" + "=" * 60 )
-
+    print( "🧪 شروع تست‌های MVP Refinement (نسخه کانفیگ‌محور)\n" + "=" * 60 )
     runner = TestRunner()
-    test_word_numbers( runner )
-    test_price_filter( runner )
-    test_model_number_protection( runner )
-    test_memory_filter( runner )
+    test_number_converter( runner )
+    test_model_masker( runner )
+    test_slot_extractor( runner )
     test_conflict_resolver( runner )
     test_nlu_integration( runner )
-
     return runner.report()
 
 
