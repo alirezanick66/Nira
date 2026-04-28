@@ -25,6 +25,7 @@ class QdrantIndexer:
         self._embedder = embedding_service or EmbeddingService()
         log_message( LG.DATA_PROCESSING, "QdrantIndexer با سرویس Embedding فعال راه‌اندازی شد", LogLevel.INFO )
 
+    #───────────────────── Public Methods ─────────────────────
     def ensure_collection( self, vector_size: int ) -> None:
         """‫ایجاد Collection و ایندکس‌های Payload در صورت عدم وجود"""
         if self._client.collection_exists( self._collection ):

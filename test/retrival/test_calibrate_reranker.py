@@ -3,13 +3,15 @@
 Precision و Recall در Top-3 برقرار شود.
 نحوه استفاده: فراخوانی مستقیم تابع calibrate() از کد یا نوت‌بوک.
 """
-from __future__ import annotations
 
+#───────────────────── imports ─────────────────────
+from __future__ import annotations
 import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, NamedTuple
 
+#───────────────────── local imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.config.settings import get_settings
 from src.core.nlu.nlu_pipeline import NLUPipeline
@@ -43,6 +45,7 @@ DEFAULT_QUERIES: list[ QueryCase ] = [
 ]
 
 DEFAULT_THRESHOLDS = [ 0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50 ]
+CALIBRATION_DATASET_PATH = Path( "F:/PythonProjects/Nira/data/calibration/calibration_queries.jsonl" )
 
 
 @dataclass( frozen=True, slots=True )
@@ -188,5 +191,47 @@ def _evaluate_threshold(
     )
 
 
+def load_dataset( path: Path ) -> list[ dict[ str, Any ] ]:
+    """لود کردن دیتاست از JSON یا JSONL"""
+    if not path.exists():
+        raise FileNotFoundError( f"فایل دیتاست یافت نشد: {path}" )
+    if path.suffix == ".jsonl":
+        with path.open( "r", encoding="utf-8" ) as f:
+            return [ json.loads( line ) for line in f if line.strip() ]
+    with path.open( "r", encoding="utf-8" ) as f:
+        return json.load( f )
+
+
+def dataset_to_querycases( data: list[ dict[ str, Any ] ] ) -> list[ QueryCase ]:
+    """تبدیل داده‌های خام دیتاست به لیست QueryCase"""
+    cases = []
+    for item in data:
+        cases.append(
+            QueryCase(
+                query=item[ "query" ],
+                relevant_tags=item.get( "relevant_tags" ),
+                relevant_brand=item.get( "relevant_brand" ),
+                expected_price_range=item.get( "expected_price_range" ),
+                expected_min_ram=item.get( "expected_min_ram" ),
+            ) )
+    return cases
+
+
+def run_calibration() -> None:
+    """اجرای کالیبراسیون با مقادیر ثابت و بدون نیاز به آرگومان"""
+    if not CALIBRATION_DATASET_PATH.exists():
+        log_message(
+            LG.RETRIEVAL,
+            f"⚠️ فایل دیتاست در مسیر {CALIBRATION_DATASET_PATH} یافت نشد. استفاده از کوئری‌های پیش‌فرض.",
+            LogLevel.WARNING,
+        )
+        queries = None
+    else:
+        raw_data = load_dataset( CALIBRATION_DATASET_PATH )
+        queries = dataset_to_querycases( raw_data )
+
+    calibrate( queries=queries, top_k=3, pool_size=20 )
+
+
 if __name__ == "__main__":
-    calibrate()
+    run_calibration()
