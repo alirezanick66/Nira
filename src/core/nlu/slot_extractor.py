@@ -51,9 +51,11 @@ class SlotExtractor:
                 continue
 
             #‫تبدیل واحد و اعمال عملگر
-            scaled_value = value * rule.units.get( unit.lower(), rule.default_unit_multiplier )
-
-            if rule.type == "range":
+            if isinstance( value, dict ) and op == "range":
+                # حالت range
+                filters[ rule.name ] = { ">=": value[ "min" ], "<=": value[ "max" ] }
+            elif rule.type == "range" and isinstance( value, ( int, float ) ):
+                scaled_value = value * rule.units.get( unit.lower(), rule.default_unit_multiplier )
                 if op in { "<=", "<" }:
                     filters[ rule.name ] = { op: scaled_value }
                 elif op in { ">=", ">" }:
@@ -61,18 +63,44 @@ class SlotExtractor:
                 elif op == "approx":
                     margin = int( scaled_value * 0.1 )
                     filters[ rule.name ] = { ">=": scaled_value - margin, "<=": scaled_value + margin }
-            else:
-                filters[ rule.name ] = scaled_value
+            elif isinstance( value, ( int, float ) ):
+                filters[ rule.name ] = value
 
             log_message( LG.NLU, f"اسلات {rule.name} استخراج شد: {value} {unit}", LogLevel.DEBUG )
         return filters
 
-    def _parse_groups( self, match: re.Match[ str ], rule: SlotRule ) -> tuple[ float | None, str, str ]:
+    def _parse_groups( self, match: re.Match[ str ],
+                       rule: SlotRule ) -> tuple[ float | None, str, str ] | tuple[ dict[ str, float ], str, str ]:
         """‫استخراج و نرمال‌سازی مقادیر از گروه‌های رگکس‫"""
-        # ✅ رفع باگ: حذف فاصلهٔ اضافی از کلیدهای دیکشنری
         num_str = ( match.groupdict().get( "num" ) or match.groupdict().get( "amount" ) or "" ).strip()
         unit = ( match.groupdict().get( "unit" ) or "" ).lower()
         op = ( match.groupdict().get( "op" ) or "" ).lower()
+
+        # ✅ پشتیبانی از range "بین X تا Y"
+        min_str = ( match.groupdict().get( "min" ) or "" ).strip()
+        max_str = ( match.groupdict().get( "max" ) or "" ).strip()
+        range_unit = ( match.groupdict().get( "range_unit" ) or match.groupdict().get( "unit" ) or "" ).lower()
+
+        # ── حالت ۱: range (min/max present) ──
+        if min_str and max_str:
+            try:
+                min_val = float( min_str.replace( ",", "." ) )
+                max_val = float( max_str.replace( ",", "." ) )
+            except ( ValueError, TypeError ):
+                return None, range_unit, ""
+
+            # نگاشت عملگر خالی برای range
+            multiplier = rule.units.get( range_unit, rule.default_unit_multiplier )
+            return { "min": min_val * multiplier, "max": max_val * multiplier }, range_unit, "range"
+
+        # ── حالت ۲: single value ──
+        if not num_str:
+            return None, unit, op
+
+        # ✅ فیلتر FP: اعداد کوچک ambiguous بدون unit قیمتی
+        _AMBIGUOUS_NUMBERS = frozenset( { "یه", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه" } )
+        if rule.name == "price" and num_str in _AMBIGUOUS_NUMBERS and not unit:
+            return None, unit, op
 
         #‫پشتیبانی از اعداد حروفی
         num_value = PersianNumberConverter.convert( num_str )
