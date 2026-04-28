@@ -18,6 +18,7 @@ from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_payload import QdrantProductPayload
+from src.core.nlu.schemas import MetadataFilters
 
 
 class QdrantHybridRetriever:
@@ -26,7 +27,7 @@ class QdrantHybridRetriever:
     # ‫ترتیب حذف فیلترها در Smart Fallback (سخت‌ترین → ساده‌ترین)
     # ‫فیلترهایی که در ابتدای لیست هستند، اول حذف می‌شوند.
     # ‫MVP Refinement #4: weight_g و camera_quality سخت‌گیرترین هستند.
-    _RELAXATION_ORDER: tuple[ str, ... ] = (
+    _RELAXATION_ORDER: tuple[ str, ...] = (
         "weight_g",
         "battery_mah",
         "camera_quality",
@@ -54,7 +55,7 @@ class QdrantHybridRetriever:
     def search(
         self,
         query: str,
-        filters: dict[ str, object ] | None = None,
+        filters: MetadataFilters | None = None,
         top_k: int = 10,
         enable_fallback: bool = True,
     ) -> list[ QdrantProductPayload ]:
@@ -79,19 +80,11 @@ class QdrantHybridRetriever:
         # ‫تلاش 1: با فیلترهای کامل
         results = self._execute_search( dense_vec, sparse_vec, filters, top_k )
         if results or not enable_fallback or not filters:
-            log_message(
-                LG.RETRIEVAL,
-                f"✅ {len(results)} محصول با Hybrid Search + RRF بازیابی شد",
-                LogLevel.DEBUG,
-            )
+            log_message( LG.RETRIEVAL, f"✅ {len(results)} محصول با Hybrid Search + RRF بازیابی شد", LogLevel.DEBUG )
             return results
 
         # ‫تلاش‌های Fallback: حذف تدریجی فیلترهای سخت
-        log_message(
-            LG.RETRIEVAL,
-            "🔄 Smart Fallback فعال شد - تلاش با حذف فیلترهای سخت‌گیر",
-            LogLevel.INFO,
-        )
+        log_message( LG.RETRIEVAL, "🔄 Smart Fallback فعال شد - تلاش با حذف فیلترهای سخت‌گیر", LogLevel.INFO )
 
         relaxed_filters = deepcopy( filters )
         for step in range( self._MAX_RELAXATION_STEPS ):
@@ -100,11 +93,7 @@ class QdrantHybridRetriever:
                 # ‫دیگر فیلتری برای حذف نمانده
                 break
 
-            log_message(
-                LG.RETRIEVAL,
-                f"  ↻ گام {step+1}: فیلتر «{removed_key}» حذف شد، تلاش مجدد...",
-                LogLevel.INFO,
-            )
+            log_message( LG.RETRIEVAL, f"  ↻ گام {step+1}: فیلتر «{removed_key}» حذف شد، تلاش مجدد...", LogLevel.INFO )
 
             results = self._execute_search( dense_vec, sparse_vec, relaxed_filters, top_k )
             if results:
@@ -134,7 +123,7 @@ class QdrantHybridRetriever:
         self,
         dense_vec,
         sparse_vec,
-        filters: dict[ str, object ] | None,
+        filters: MetadataFilters | None,
         top_k: int,
     ) -> list[ QdrantProductPayload ]:
         """‫اجرای یک تلاش جستجو با فیلترهای داده‌شده"""
@@ -166,7 +155,7 @@ class QdrantHybridRetriever:
 
         return payloads
 
-    def _relax_one_filter( self, filters: dict[ str, object ] ) -> str | None:
+    def _relax_one_filter( self, filters: MetadataFilters ) -> str | None:
         """‫حذف سخت‌ترین فیلتر باقی‌مانده طبق `_RELAXATION_ORDER`
 
         Args:
@@ -186,7 +175,7 @@ class QdrantHybridRetriever:
             return unknown_key
         return None
 
-    def _build_metadata_filter( self, filters: dict[ str, object ] | None ) -> Filter | None:
+    def _build_metadata_filter( self, filters: MetadataFilters | None ) -> Filter | None:
         """ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
         if not filters:
             return None
