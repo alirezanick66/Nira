@@ -22,6 +22,7 @@
     quantize_from_settings(low_memory_reranker=True)
 """
 
+#─────────────────────IMPORT─────────────────────
 import gc
 from pathlib import Path
 from typing import Literal
@@ -31,6 +32,7 @@ try:
 except ImportError:
     torch = None
 
+#─────────────────────LOCAL IMPORT─────────────────────
 from transformers import AutoTokenizer
 from optimum.onnxruntime import ( ORTModelForFeatureExtraction, ORTModelForSequenceClassification, ORTQuantizer )
 from optimum.onnxruntime.configuration import AutoQuantizationConfig
