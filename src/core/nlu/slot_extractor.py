@@ -72,7 +72,8 @@ class SlotExtractor:
     def _parse_groups( self, match: re.Match[ str ],
                        rule: SlotRule ) -> tuple[ float | None, str, str ] | tuple[ dict[ str, float ], str, str ]:
         """‫استخراج و نرمال‌سازی مقادیر از گروه‌های رگکس‫"""
-        num_str = ( match.groupdict().get( "num" ) or match.groupdict().get( "amount" ) or "" ).strip()
+        num_str = ( match.groupdict().get( "num1" ) or match.groupdict().get( "num2" ) or match.groupdict().get( "num" )
+                    or match.groupdict().get( "amount" ) or "" ).strip()
         unit = ( match.groupdict().get( "unit" ) or "" ).lower()
         op = ( match.groupdict().get( "op" ) or "" ).lower()
 

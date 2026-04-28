@@ -39,7 +39,7 @@ class LLMOrchestrator:
         self._memory.add_message( session_id, "user", user_query )
         messages = PromptEngine.build( intent, filters_str, products )
 
-        # ✅ اصلاح: تزریق صحیح تاریخچه به‌عنوان پیام‌های user/assistant
+        # ‫✅ اصلاح: تزریق صحیح تاریخچه به‌عنوان پیام‌های user/assistant
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
             # درج پیام‌های قبلی قبل از پیام فعلی
@@ -60,7 +60,7 @@ class LLMOrchestrator:
                 return self._fallback_response( user_query, products )
 
         try:
-            # ✅ اصلاح: استخراج ایمن بلاک JSON با Regex به‌جای strip شکننده
+            #‫ ✅ اصلاح: استخراج ایمن بلاک JSON با Regex به‌جای strip شکننده
             match = re.search( r'\{.*\}', raw_json, re.DOTALL )
             cleaned = match.group( 0 ) if match else raw_json.strip()
             log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {cleaned[:200]}", LogLevel.DEBUG )
