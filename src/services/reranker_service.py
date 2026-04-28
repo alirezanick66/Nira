@@ -147,11 +147,46 @@ class RerankerService:
             return [ ( p, 0.0 ) for p in payloads ]
 
     @staticmethod
+    @staticmethod
     def _prepare_document_text( payload: QdrantProductPayload ) -> str:
-        parts = [ payload.title ]
-        if payload.expert_summary: parts.append( payload.expert_summary )
-        elif payload.camera_summary: parts.append( f"دوربین: {payload.camera_summary}" )
-        if payload.user_advantages: parts.append( "مزایا: " + "، ".join( payload.user_advantages[ :3 ] ) )
-        if payload.price_range: parts.append( f"رنج قیمت: {payload.price_range}" )
-        if payload.tags: parts.append( "ویژگی‌ها: " + "، ".join( payload.tags[ :3 ] ) )
+        """‫ساخت متن ورودی Reranker از Payload محصول
+
+        ‫تغییر MVP Refinement: اضافه شدن قیمت واقعی (تومان)، رم، باتری و دوربین
+        ‫به متن — تا Reranker بتواند کوئری‌های عددی مثل «زیر ۱۰ میلیون» یا
+        ‫«رم ۸ گیگ» را با محصول واقعی مقایسه کند، نه فقط برچسب price_range.
+        """
+        parts: list[ str ] = [ payload.title ]
+
+        # ‫قیمت واقعی — حیاتی برای کوئری‌های عددی قیمت
+        if payload.price and payload.price > 0:
+            price_m = payload.price / 1_000_000
+            parts.append( f"قیمت: {price_m:.1f} میلیون تومان ({payload.price_range})" )
+
+        # ‫مشخصات فنی کلیدی
+        specs: list[ str ] = []
+        if payload.ram_gb:
+            specs.append( f"رم {payload.ram_gb}GB" )
+        if payload.storage_gb:
+            specs.append( f"حافظه {payload.storage_gb}GB" )
+        if payload.battery_mah:
+            specs.append( f"باتری {payload.battery_mah}mAh" )
+        if payload.camera_mp:
+            specs.append( f"دوربین {payload.camera_mp}MP" )
+        if specs:
+            parts.append( " | ".join( specs ) )
+
+        # ‫خلاصه تخصصی یا دوربین
+        if payload.expert_summary:
+            parts.append( payload.expert_summary )
+        elif payload.camera_summary:
+            parts.append( f"دوربین: {payload.camera_summary}" )
+
+        # ‫مزایای کاربران
+        if payload.user_advantages:
+            parts.append( "مزایا: " + "، ".join( payload.user_advantages[ :3 ] ) )
+
+        # ‫برچسب‌های کیفی
+        if payload.tags:
+            parts.append( "ویژگی‌ها: " + "، ".join( payload.tags[ :4 ] ) )
+
         return " | ".join( filter( None, parts ) )
