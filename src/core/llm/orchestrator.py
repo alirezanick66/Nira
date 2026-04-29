@@ -36,16 +36,27 @@ class LLMOrchestrator:
         products: list[ QdrantProductPayload ],
     ) -> dict[ str, object ]:
         """اجرای کامل پایپلاین تولید پاسخ"""
+        # ۱. ثبت پیام کاربر در حافظه
         self._memory.add_message( session_id, "user", user_query )
+
+        # ۲. ساخت پرامپت پایه
         messages = PromptEngine.build( intent, filters_str, products )
 
-        # ‫✅ اصلاح: تزریق صحیح تاریخچه به‌عنوان پیام‌های user/assistant
+        # ✅ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
-            # درج پیام‌های قبلی قبل از پیام فعلی
+            # درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
             for msg in history[ :-1 ]:
                 messages.insert( -1, cast( ChatCompletionMessageParam, msg ) )
 
+            # ✅ جایگزینی placeholder در refine با کوئری واقعی
+            if intent == "refine" and messages:
+                last_msg = messages[ -1 ]
+                content = last_msg.get( "content" )
+                if isinstance( content, str ):          # ✅ گارد تایپ: فقط اگر content رشته باشه اجرا می‌شه
+                    last_msg[ "content" ] = content.replace( "{refine_query_placeholder}", user_query )
+
+        # ۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
@@ -59,12 +70,21 @@ class LLMOrchestrator:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
 
+        # ۴. اعتبارسنجی JSON و ثبت پاسخ در حافظه
         try:
-            #‫ ✅ اصلاح: استخراج ایمن بلاک JSON با Regex به‌جای strip شکننده
-            match = re.search( r'\{.*\}', raw_json, re.DOTALL )
-            cleaned = match.group( 0 ) if match else raw_json.strip()
-            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {cleaned[:200]}", LogLevel.DEBUG )
-            validated = self._validator.validate_python( json.loads( cleaned ) )
+            # ✅ پاکسازی احتمالی مارک‌داون و استخراج ایمن بلاک JSON
+            cleaned = raw_json.replace( "```json", "" ).replace( "```", "" ).strip()
+            start_idx = cleaned.find( "{" )
+            end_idx = cleaned.rfind( "}" )
+
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = cleaned[ start_idx:end_idx + 1 ]
+            else:
+                json_str = cleaned          # اگر ساختار پیدا نشد، متن خام پاس داده می‌شه تا json.loads خطا بده و لاگ بشه
+
+            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {json_str[:200]}", LogLevel.DEBUG )
+
+            validated = self._validator.validate_python( json.loads( json_str ) )
             self._memory.add_message( session_id, "assistant", validated.explanation )
             return validated.model_dump()
         except Exception as exc:

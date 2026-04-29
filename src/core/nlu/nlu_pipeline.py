@@ -11,6 +11,7 @@
 from __future__ import annotations
 import re
 import unicodedata
+from typing import cast, Any
 
 #───────────────────── Local Imports ─────────────────────
 from src.config.knowledge_loader import KnowledgeCache
@@ -26,6 +27,11 @@ from typing import cast
 
 class NLUPipeline:
     """‫مدیریت پردازش کوئری کاربر و تولید فیلتر هوشمند"""
+
+    # ‫✅ اضافه شود: نگاشت عملگرهای استنتاجی به فرمت مورد انتظار رتریور
+    _OP_ALIASES: dict[ str, str ] = { "gte": ">=", "lte": "<=", "gt": ">", "lt": "<" }
+    # ‫✅ اضافه شود: الگوی مرز کلمه برای جلوگیری از مچ شدن substring (گیم در بگیرم)
+    _BRAND_BOUNDARY_PAT: str = r"(?:^|(?<=[\s‌\-])){}(?:$|(?=[\s‌\-]))"
 
     def __init__( self ) -> None:
         self._knowledge = KnowledgeCache.get_instance()
@@ -136,46 +142,49 @@ class NLUPipeline:
         slot_filters = self._slot_extractor.extract( text_for_slots )
         filters.update( slot_filters )
 
-        # ────────── 2. تشخیص برند ──────────
+        # ────────── 2 & 3. تشخیص برند (حل مشکل Substring Matching) ──────────
         neg_brands: list[ str ] = []
         for brand in self._knowledge.brands:
-            if brand in text and any( neg_kw in text for neg_kw in self._knowledge.negation_keywords ):
-                neg_brands.append( brand )
+            # اصلاح مشکل ۲: استفاده از regex برای مطابقت کامل کلمه
+            brand_pat = self._BRAND_BOUNDARY_PAT.format( re.escape( brand ) )
+            if re.search( brand_pat, text ):
+                if any( neg_kw in text for neg_kw in self._knowledge.negation_keywords ):
+                    neg_brands.append( brand )
+                else:
+                    # اولویت برند مثبت
+                    filters[ "brand" ] = brand
+
         if neg_brands:
             filters[ "brand_not" ] = neg_brands
+            # اگر برندی هم در مثبت و هم در منفی بود، اولویت با حذف (negation) است
             if filters.get( "brand" ) in neg_brands:
                 del filters[ "brand" ]
 
-        # ۳. تشخیص برند مثبت (اگر در لیست منفی‌ها نیست)
-        for brand in self._knowledge.brands:
-            if brand in text and brand not in neg_brands:
-                filters[ "brand" ] = brand
-                break
+        # ────────── 6 & 7. مفاهیم کیفی و قواعد استفاده (حل مشکل gte) ──────────
+        # ترکیب هر دو منبع برای جلوگیری از تکرار کد
+        rules_to_process = [ self._knowledge.qualitative_mappings.items(), self._knowledge.use_case_rules.items() ]
 
-        # ────────── 6. مفاهیم کیفی ──────────
-        for keyword, rule in self._knowledge.qualitative_mappings.items():
-            if keyword in text:
-                for key, val in rule.items():
-                    if isinstance( val, dict ):
-                        current = filters.setdefault( key, {} )
-                        if isinstance( current, dict ):
-                            current.update( val )
-                    else:
-                        filters[ key ] = cast( MetadataFilterValue, val )
+        for rule_set in rules_to_process:
+            for keyword, rule in rule_set:
+                if keyword in text:
+                    for key, val in rule.items():
+                        if isinstance( val, dict ):
+                            # ‫۱. صراحتاً تایپ دیکشنری میانی را مشخص می‌کنیم تا Pylance متوجه str بودن کلیدها شود
+                            # ‫۲. از str(k) استفاده می‌کنیم تا ابهام کلیدهای احتمالی غیررشته‌ای رفع شود
+                            translated_val: dict[ str, Any ] = {
+                                self._OP_ALIASES.get( str( k ), str( k ) ): v
+                                for k, v in val.items()
+                            }
 
-        # ────────── 7. قواعد استفاده ──────────
-        for keyword, rule in self._knowledge.use_case_rules.items():
-            if keyword in text:
-                for key, val in rule.items():
-                    if isinstance( val, dict ):
-                        current = filters.setdefault( key, {} )
-                        if isinstance( current, dict ):
-                            current.update( val )
-                    elif isinstance( val, list ):
-                        tags = filters.setdefault( "tags", [] )
-                        if isinstance( tags, list ):
-                            tags.extend( [ t for t in val if t not in tags ] )
-                    else:
-                        filters[ key ] = cast( MetadataFilterValue, val )
+                            current = filters.setdefault( key, {} )
+                            if isinstance( current, dict ):
+                                # ۳. استفاده از cast برای متقاعد کردن تایپ‌چکر که current یک دیکشنری قابل آپدیت است
+                                cast( dict[ str, Any ], current ).update( translated_val )
 
+                        elif isinstance( val, list ) and key == "tags":
+                            tags = filters.setdefault( "tags", [] )
+                            if isinstance( tags, list ):
+                                tags.extend( [ t for t in val if t not in tags ] )
+                        else:
+                            filters[ key ] = cast( MetadataFilterValue, val )
         return filters
