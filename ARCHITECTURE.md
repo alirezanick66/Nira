@@ -6,17 +6,18 @@
 User Input (Farsi)
       │
       ▼
-🧩 NLU Pipeline (Rule-Based)
-  ├─ PersianNormalizer (Fast translate + ZWNJ fix)
-  ├─ Intent Detector (Regex + Domain Knowledge)
-  └─ Slot Filler (Price, Brand, RAM, Qualitative → Filters)
+🧩 NLU Pipeline (Rule/Config-Based)
+  ├─ PersianNormalizer + PersianNumberConverter
+  ├─ Intent Detector (greeting → refine → search → compare)
+  ├─ Slot Filler (Price, Brand, RAM, Storage via domain_knowledge.json)
+  └─ ConflictResolver (حذف خودکار فیلترهای متناقض + تولید warnings)
       │
       ▼
 🔍 Hybrid Retrieval (Qdrant)
-  ├─ Dense Vector (E5 Embedding)
-  ├─ Sparse Vector (BM25 Hash)
-  ├─ Metadata Filters (price, brand, tags, etc.)
-  └─ Fusion: RRF (Reciprocal Rank Fusion)
+  ├─ Dense Vector (E5) + Sparse Vector (BM25)
+  ├─ Metadata Filters (price, brand, ram_gb, tags, etc.)
+  ├─ Fusion: RRF (Reciprocal Rank Fusion)
+  └─ 🔄 Smart Fallback: حذف تدریجی فیلترها در صورت 0 نتیجه
       │
       ▼
 ⚖️ Reranker Service
@@ -24,29 +25,30 @@ User Input (Farsi)
       │
       ▼
 💬 LLM Orchestrator + Memory
-  ├─ Groq (Primary) → JSON Mode
-  ├─ Gemini (Fallback) → JSON Mode
-  ├─ Pydantic Validation (Strict Schema)
-  └─ Deterministic Fallback (If both fail)
+  ├─ ConversationMemory (Sliding Window max=3)
+  ├─ Intent: refine → تزریق تاریخچه به Context
+  ├─ Groq (Primary) → Gemini (Fallback) → JSON Mode
+  └─ Pydantic Validation + Deterministic Fallback
       │
       ▼
-✅ Structured JSON Response → Client
-├─ FastAPI (`/api/v1/search`)
-├─Frontend: Typewriter Effect + Quick Actions + Session Memory
+✅ Standardized JSON Response → Client (FastAPI `/api/v1/search`)
+├─ احراز هویت: `X-API-Key` Middleware
+├─ Frontend: Typewriter + Quick Actions + Session Persistence
+└─ B2B: Structured `SearchResponse` + Rate Limiting
 ```
 
 ---
 
 ## 🧩 مؤلفه‌های اصلی
 
-|         لایه         |               مسئولیت                |                                          پیاده‌سازی فعلی                                           |
-| :------------------: | :----------------------------------: | :------------------------------------------------------------------------------------------------: |
-| **NLU Pipeline** | نرمال‌سازی، تشخیص نیت، استخراج فیلتر (شامل `*_not`) | `NLUPipeline` + `domain_knowledge.json` (پارسر واحد-آگاه، پشتیبانی از فیلترهای منفی، اولویت‌بندی نیت‌ها) |
-| **Retrieval** | جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant | `QdrantHybridRetriever` (Dense + Sparse + RRF + پشتیبانی صریح از `must_not` برای حذف برندها/تگ‌ها) |
-|     **Reranker**     |         مرتب‌سازی نهایی دقیق         |                 `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8 فعال)                 |
-| **LLM Orchestrator** |        تولید پاسخ ساختاریافته        |      `LLMOrchestrator` (Groq→Gemini Fallback + `response_format=json` + Pydantic Validation)       |
-|      **Memory**      |        مدیریت Context مکالمه         |           `ConversationMemory` (Sliding Window `max=3`، Session-based UUID، Thread-Safe)           |
-|     **Frontend**     |       رابط کاربری دمو و تعامل        | `Vanilla HTML/CSS/JS` سرو شده توسط FastAPI، `localStorage` Session، تم‌دهی پویا، Typewriter Effect |
+|         لایه         |                      مسئولیت                      |                                                   پیاده‌سازی فعلی                                                    |
+| :------------------: | :-----------------------------------------------: | :------------------------------------------------------------------------------------------------------------------: |
+|   **NLU Pipeline**   | نرمال‌سازی، تشخیص نیت، استخراج اسلات، مدیریت تضاد | `NLUPipeline` + `domain_knowledge.json` + `ConflictResolver` (اولویت `price > brand > specs` + پشتیبانی `brand_not`) |
+|    **Retrieval**     |   جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant    |          `QdrantHybridRetriever` (Dense + Sparse + RRF + پشتیبانی صریح از `must_not` برای حذف برندها/تگ‌ها)          |
+|     **Reranker**     |               مرتب‌سازی نهایی دقیق                |                          `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8 فعال)                          |
+| **LLM Orchestrator** |              تولید پاسخ ساختاریافته               |               `LLMOrchestrator` (Groq→Gemini Fallback + `response_format=json` + Pydantic Validation)                |
+|      **Memory**      |               مدیریت Context مکالمه               |                    `ConversationMemory` (Sliding Window `max=3`، Session-based UUID، Thread-Safe)                    |
+|     **Frontend**     |              رابط کاربری دمو و تعامل              |          `Vanilla HTML/CSS/JS` سرو شده توسط FastAPI، `localStorage` Session، تم‌دهی پویا، Typewriter Effect          |
 
 
 ## 📂 ساختار پروژه (Project Structure)
@@ -55,37 +57,111 @@ User Input (Farsi)
 ├── .env
 ├── .gitignore
 ├── .style.yapf
+├── ARCHITECTURE.md           # مستندات معماری پروژه
+├── FRONT_README.md           # راهنمای رابط کاربری
+├── INSTRUCTIONS.md           # دستورالعمل‌های توسعه و نصب
+├── README.md                 # معرفی کلی پروژه
+├── ROADMAP.md                # نقشهٔ راه و برنامه‌های آینده
 ├── alembic/                  # مدیریت مایگریشن‌های دیتابیس
-│   ├── versions/
-│   └── ...
+│   ├── README
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       ├── 7e357f5fe430_add_sync_progress_table.py
+│       └── b595023ef435_init_product_raw_cache_table.py
+├── alembic.ini               # تنظیمات اتصال و پیکربندی Alembic
 ├── data/                     # لاگ‌ها و دیتای تست
-│   ├── logs/
-│   └── test/
-├── frontend/ # رابط کاربری دمو (Vanilla JS)
-│ ├── index.html
-│ ├── style.css
-│ └── script.js
-├── models/ # مدل‌های هوشمند (FP32 & ONNX INT8)
-│ ├── embedding/
-│ ├── reranker/
-│ └── onnx/
+│   └── logs/
+│       ├── api.log
+│       ├── database.log
+│       ├── dataprocessing.log
+│       ├── llm.log
+│       ├── nlu.log
+│       └── retrieval.log
+├── frontend/                 # رابط کاربری دمو (Vanilla JS)
+│   ├── index.html
+│   ├── script.js
+│   └── style.css
+├── models/                   # مدل‌های هوشمند (FP32 & ONNX INT8)
+│   └── onnx/
+│       ├── e5-opt-int8/      # مدل Embedding بهینه‌شده
+│       └── reranker-opt-int8/ # مدل Reranker بهینه‌شده
 ├── pyproject.toml            # مدیریت وابستگی‌ها و تنظیمات ابزارها
 ├── scripts/                  # اسکریپت‌های تست و سناریوهای یکپارچه
+│   ├── index_qdrant.py
+│   ├── quantize_unified.py
+│   └── sync_test.py
 ├── src/                      # سورس‌کد اصلی (ماژولار)
 │   ├── api/                  # لایهٔ وب: FastAPI، Schemas، Dependencies
+│   │   ├── dependencies.py
+│   │   ├── main.py
+│   │   └── schemas.py
 │   ├── config/               # تنظیمات، لاگینگ، دانش دامنه (JSON)
+│   │   ├── domain_knowledge.json
+│   │   ├── knowledge_loader.py
+│   │   ├── logging_config.py
+│   │   └── settings.py
 │   ├── core/                 # هستهٔ هوش مصنوعی
 │   │   ├── llm/              # Orchestrator، Clients، Memory، Prompts
+│   │   │   ├── clients.py
+│   │   │   ├── memory.py
+│   │   │   ├── orchestrator.py
+│   │   │   ├── prompts.py
+│   │   │   └── schemas.py
 │   │   ├── nlu/              # Pipeline، Normalizer، Schemas
+│   │   │   ├── conflict_resolver.py
+│   │   │   ├── model_masker.py
+│   │   │   ├── nlu_pipeline.py
+│   │   │   ├── normalizer.py
+│   │   │   ├── number_converter.py
+│   │   │   ├── schemas.py
+│   │   │   └── slot_extractor.py
+│   │   ├── progress_tracker.py
 │   │   ├── resilience/       # مدیریت خطا و Retry APIها
+│   │   │   └── api_resilience.py
 │   │   └── vector/           # Qdrant Indexer، Payload، Retriever
+│   │       ├── qdrant_indexer.py
+│   │       ├── qdrant_payload.py
+│   │       └── qdrant_retriever.py
 │   ├── data/                 # لایهٔ داده: Fetchers، Models، Repositories، Transformers
+│   │   ├── db/
+│   │   │   ├── engine.py
+│   │   │   └── models.py
+│   │   ├── fetchers/
+│   │   │   └── digikala_api.py
+│   │   ├── models/
+│   │   │   ├── api_responses.py
+│   │   │   └── product.py
+│   │   ├── processing/
+│   │   │   └── product_pipeline.py
+│   │   ├── repositories/
+│   │   │   └── product_repository.py
+│   │   ├── sync/
+│   │   │   └── digikala_sync.py
+│   │   └── transformers/
+│   │       └── product_transformer.py
 │   ├── services/             # سرویس‌های مستقل: Embedding، Reranker، Enrichment
+│   │   ├── embedding_service.py
+│   │   ├── product_enrichment_service.py
+│   │   ├── reranker_service.py
+│   │   └── sparse_vectorizer.py
 │   └── utils/                # ابزارهای کمکی و نرمال‌سازی
+│       ├── import_tracker.py
+│       ├── spec_normalizer.py
+│       └── stracture_project.py
+├── test/                     # تست‌های یکپارچه و کیفیت
+│   ├── nlu/
+│   │   ├── test_integrated_pipeline.py
+│   │   ├── test_mvp_refinement.py
+│   │   └── test_nlu_pipeline.py
+│   └── retrival/
+│       ├── test_embedding_quality.py
+│       ├── test_full_retrieval_pipeline.py
+│       └── test_hybrid_search.py
 └── uv.lock                   # قفل نسخهٔ پکیج‌ها
----
 ```
 
+---
 ## ⚙️ تصمیمات طراحی کلیدی (Key Design Decisions)
 
 |                     تصمیم                      |                                                                  دلیل فنی (Rationale)                                                                  |                                                                                                         اثر/مزیت (Impact)                                                                                                          |
@@ -94,40 +170,11 @@ User Input (Farsi)
 |         **استفاده از Rule-Based NLU**          |                 `NLUPipeline` + `domain_knowledge.json` تشخیص نیت را **بدون تأخیر شبکه، بدون هزینه توکن و با دقت قطعی** انجام می‌دهد.                  |                                                                                ✅ کاهش Latency، هزینهٔ صفر توکن برای Intent Detection، پایداری ۱۰۰٪                                                                                 |
 |          **پیاده‌سازی Hybrid Search**          | ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند. |                                                                                  ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative                                                                                   |
 |              **اجبار خروجی JSON**              |     استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.     |                                                                           ✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار                                                                           |
-|        **مدیریت Rate Limit پلن رایگان**        |                            `Retry` با `Exponential Backoff` روی خطای `429` + Fallback خودکار به سرویس دوم (Groq → Gemini).                             |                                                                               ✅ پایداری سرویس با وجود محدودیت‌های API رایگان، کاهش خطای کاربر نهایی                                                                                |
 | **عدم استفاده از LangChain/LlamaIndex در MVP** |                                             کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                              |                                                                                           ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                                                                                           |
 |    **بهینه‌سازی ONNX + INT8 Quantization**     |    تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`)     | تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`). \| ✅ کاهش ~۶۰٪ مصرف RAM/CPU، کاهش زمان پاسخ به `<3s`، حفظ دقت در حد نویز محاسباتی |
 |     **فرانت‌اند Vanilla + FastAPI Static**     |                                   حذف سربار `npm`/`Vite`/`React` برای فاز دمو. سرو مستقیم `index.html` توسط FastAPI                                    |                                                                          ✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تمرکز بر بک‌اند                                                                           |
 |      **تزریق وابستگی و مدیریت چرخه حیات**      |                                 جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`                                 |                                       این تغییر باعث جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر و امکان `Mock` کردن سرویس‌ها در تست‌های واحد شده است.                                        |
-|                                                |                                                                                                                                                        |                                                                                                                                                                                                                                    |
-
----
-
-## 📦 لوله داده (Data Pipeline)
-
-```text
-1️⃣ Acquisition → DigikalaAPIClient
-   ├─ Async + Semaphore=3 + Random Delay
-   ├─ Pagination هوشمند (سقف ۱۰۰ صفحه)
-   └─ مدیریت خطای 400/429 با Retry
-
-2️⃣ Persistence → PostgreSQL
-   ├─ جدول product_raw_cache (JSONB)
-   ├─ ON CONFLICT DO UPDATE برای به‌روزرسانی ایمن
-   └─ ProgressTracker برای Resume خودکار
-
-3️⃣ Enrichment → ProductEnrichmentService
-   ├─ price_range: budget/mid/premium/flagship
-   ├─ battery_quality/camera_quality: excellent/good/average/poor
-   ├─ value_for_money: good/average/poor
-   └─ tags: gaming, photography, lightweight, premium_build, ...
-
-4️⃣ Indexing → QdrantIndexer
-   ├─ تک‌سند به‌ازای هر محصول (بدون Chunking)
-   ├─ Payload Indexes: INTEGER (price), KEYWORD (brand/tags), BOOL (is_available)
-     ├─ تزریق صریح `EmbeddingService` و `BM25Vectorizer` برای تولید بردار واقعی
-   └─ Collection: nira_products_mvp (Cosine distance, configurable dims)
-```
+|       **افزودن `X-API-Key` Middleware**        |                                                   جلوگیری از سوءاستفاده از توکن/سرور در مدل B2B/SaaS                                                   |                                                                                  ✅ کنترل دسترسی، ردیابی مصرف هر فروشگاه، آماده‌سازی برای Billing                                                                                   |
 
 ---
 
@@ -158,7 +205,6 @@ System: "تو دستیار خرید {domain_topic} هستی. معیارهای ک
 | **پرفروش‌ترین/تخفیف‌دار/شمارش معکوس**  |       Tool Calling + Cache لایه‌ای (Redis)        |         Sync لحظه‌ای قیمت از فروشگاه          |              🔵 کم (ابزار استاندارد FastAPI)               |
 |  **Personalization + تاریخچه سلیقه**   |   User Profile Service + Vector Memory per User   | Auth + PostgreSQL + Qdrant Collection جداگانه |   🟡 متوسط (اگر کاربر >100K، نیاز به بهینه‌سازی برداری)    |
 | **بازخورد Like/Dislike + یادگیری سبک** | Event-Driven Pipeline + Lightweight Ranking Model |      Analytics DB + Feedback Aggregator       |             🔵 کم (الگوی استاندارد RLHF-lite)              |
-|          **ورودی صوتی فارسی**          |  STT Service (Whisper API) → متن → NLU Pipeline   |      API خارجی + مدیریت خطای تبدیل گفتار      | 🟡 متوسط (اگر هزینه API بالا رفت، مهاجرت به مدل محلی کوچک) |
 
 ### 🛒 لایهٔ یکپارچه‌سازی فروشگاه
 
@@ -180,10 +226,8 @@ System: "تو دستیار خرید {domain_topic} هستی. معیارهای ک
 
 |                       نقطه                       |               وضعیت فعلی                |                               ریسک آینده                               |                              راه‌حل پیشنهادی                               |
 | :----------------------------------------------: | :-------------------------------------: | :--------------------------------------------------------------------: | :------------------------------------------------------------------------: |
-|                  **ورودی صوتی**                  |              ❌ پیاده‌نشده               |    🟡 اگر حجم درخواست بالا برود، هزینهٔ Whisper API افزایش می‌یابد     |        مهاجرت به مدل محلی کوچک (Whisper-tiny) یا سرویس ابری جایگزین        |
 |           **شخصی‌سازی در مقیاس بزرگ**            |              ❌ پیاده‌نشده               | 🟡 اگر کاربران فعال >100,000 شوند، Vector Memory per User سنگین می‌شود |           جداسازی Collection کاربران در Qdrant + Sharding هوشمند           |
 |    **Knowledge Graph + استدلال چندمرحله‌ای**     | ❌ فعلاً با Rule Engine پوشش داده می‌شود |   🟡 اگر نیاز به استنتاج پیچیده‌تر پیدا شود، قواعد دستی کافی نیستند    |              ارزیابی Neo4j + Graph RAG فقط در صورت نیاز واقعی              |
-| **ابزارهای اورکستراسیون (LangChain/LlamaIndex)** |          ❌ عمداً استفاده نشده           |     🔵 اگر تعداد Toolها >5 شد و نیاز به Dynamic Routing پیدا کردیم     | مهاجرت تدریجی لایهٔ Orchestrator به LangGraph (بدون بازنویسی سایر لایه‌ها) |
 
 ---
 

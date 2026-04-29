@@ -20,14 +20,17 @@
 ## 🎯 محدوده پروژه (Scope)
 
 ✅ **شامل MVP:**
-- فیلترگذاری خودکار از روی متن کاربر (`Rule-Based NLU`)
+- فیلترگذاری خودکار از روی متن کاربر (Token-Based NLU)
 - جستجوی ترکیبی (`Hybrid Search + RRF`) بدون Chunking
 - توضیح شفاف دلیل پیشنهاد (`Explainability` با LLM)
 - قابلیت اصلاح سریع فیلتر («نه، ارزون‌تر/سبک‌تر») بدون ریست چت (`Conversation Memory`)
+- بهینه سازی جهت مصرف کمترین` Token`
 - پیشنهاد محصول هوشمند (موبایل، هدفون/هندزفری)
+- `Smart Fallback` خودکار (حذف تدریجی فیلترهای سخت در صورت صفر نتیجه)
+- پشتیبانی از `Intent: refine` متصل به حافظه مکالمه
 
 ❌ **خارج از محدوده MVP:**
-- ورودی صوتی، Personalization پیشرفته، Multi-Agent
+- Personalization پیشرفته، Multi-Agent
 - پیگیری/لغو سفارش، مرجوعی، پشتیبانی پس از خرید
 - گراف دانش (Knowledge Graph) یا Fine-tuning سنگین
 
@@ -57,23 +60,28 @@
 - **LLM:** `Groq` (Primary) + `Gemini` (Fallback) | `JSON Mode` + `Pydantic`
 - **Data:** `PostgreSQL` (Raw Cache) + `Qdrant` (Search Index)
 - **Package Manager:** `uv`
+- **Inference Optimization**: `ONNX` Runtime + `INT8` Quantization
 
 ## 🚀 Quick Start
 
-```powershell
+```bash
 # 1. تنظیم محیط مجازی و نصب وابستگی‌ها
 uv sync
 
-# 2. اجرای سرور
+# 2. کپی و تنظیم متغیرهای محیطی (ضروری برای اجرای صحیح)
+cp .env.example .env
+# ‫⚠️ فایل .env را باز کنید و GROQ_API_KEY, QDRANT_URL, QDRANT_API_KEY را تنظیم نمایید.
+
+# 3. اجرای سرور
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
-# 3. مستندات تعاملی
+# 4. مستندات تعاملی
 http://localhost:8000/docs
 ```
   
 ## 📊 وضعیت پیاده‌سازی
 
-برای ماتریس دقیق پیشرفت و نقشه راه، به [`ARCHITECTURE.md`](https://chat.qwen.ai/c/ARCHITECTURE.md) مراجعه کنید.
+برای ماتریس دقیق پیشرفت، فازهای تکمیل‌شده و نقشه راه، به [ROADMAP.md]( ROADMAP) مراجعه کنید.
 
 ---
 
