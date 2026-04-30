@@ -1,5 +1,9 @@
 """‫تبدیل اعداد نوشتاری فارسی به فرم عددی لاتین‫"""
+
+#───────────────────── Imports ─────────────────────
 import re
+
+#───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 
 

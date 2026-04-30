@@ -2,13 +2,12 @@
 این ماژول مسئول تبدیل متن نرمال‌شده به MetadataFilters است.
 از الگوی Window-Based Matching، نگاشت‌های کیفی و مدیریت Negation پشتیبانی می‌کند.
 """
+#───────────────────── Imports ─────────────────────
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TypeAlias, cast
 
-from networkx import filters
-
+#───────────────────── Local Imports ─────────────────────
 from src.config.domain_loader import ConfigDict
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.number_converter import PersianNumberConverter
@@ -125,11 +124,10 @@ class TokenParser:
                 is_match = False
                 if has_cue:
                     is_match = True
-                elif found_unit and cfg.get( "type" ) == "price":
+                elif found_unit:
                     is_match = True
-                elif not cues and not found_unit and cfg.get( "type" ) == "price":
-                    # فالبک برای قیمت وقتی عدد به تنهایی بیانگر بودجه است
-                    is_match = True
+                elif slot_name == "price":
+                    is_match = True          # فال‌بک: عدد تنها در متن معمولاً قیمت است
 
                 if is_match:
                     multiplier = units.get( found_unit, 1 ) if found_unit else 1
@@ -142,7 +140,6 @@ class TokenParser:
                         filters[ slot_name ] = cast( NumericFilterValue, final_val )
 
                     consumed.add( i )
-                    # نشانه‌گذاری توکن‌های هم‌جوار مصرف‌شده برای جلوگیری از تداخل
                     for t in window_slice:
                         if t.text in operators or t.text in units or t.text in cues:
                             consumed.add( t.idx )
