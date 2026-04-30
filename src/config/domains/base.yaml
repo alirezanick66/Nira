@@ -70,6 +70,8 @@ intent_keywords:
         - قوی‌تر
         - قویتر
 
+range_separators: ["تا", "الی", "-", "بین"]
+
 qualitative_mappings:
     price_range:
         budget: [ارزان, ارزان‌تر, ارزون, ارزون‌تر, اقتصادی, بودجه]
