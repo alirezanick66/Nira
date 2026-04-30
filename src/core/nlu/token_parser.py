@@ -78,6 +78,9 @@ class TokenParser:
         words = text.split()
         converted: list[ str ] = []
         for w in words:
+            if w in self._negation_kw:
+                converted.append( w )
+                continue
             num = PersianNumberConverter.convert( w )
             converted.append( str( num ) if num is not None else w )
         return " ".join( converted )
@@ -122,6 +125,7 @@ class TokenParser:
                 # بررسی Operator
                 operators: dict[ str, str ] = cast( dict[ str, str ], cfg.get( "operators", {} ) )
                 found_op = next( ( o for o in window_texts if o in operators ), None )
+
                 range_val = self._try_match_range( tokens, i, cfg, consumed )
 
                 if range_val is not None:
@@ -129,31 +133,20 @@ class TokenParser:
                     log_message( LG.NLU, f"📏 مچ رنج | اسلات: {slot_name} | مقدار: {range_val}", LogLevel.DEBUG )
                     break          # جلوگیری از پردازش تک‌عددی روی همین توکن
 
-                # ✅ اصلاح حیاتی: اگر cue تعریف شده باشد، حضور cue الزامی است.
-                # این کار جلوی تداخل اسلات‌هایی با unit مشترک (مثل گیگ) را می‌گیرد.
+                # ‫✅ اصلاح حیاتی: اگر cue تعریف شده باشد، حضور cue الزامی است.
+                # ‫این کار جلوی تداخل اسلات‌هایی با unit مشترک (مثل گیگ) را می‌گیرد.
+
                 if cues:
                     is_match = has_cue
                 else:
                     is_match = bool( found_unit )
-
-                # تصمیم‌گیری برای تخصیص به اسلات
-                is_match = False
-                if has_cue:
-                    is_match = True
-                elif found_unit:
-                    is_match = True
 
                 if is_match:
                     multiplier = units.get( found_unit, 1 ) if found_unit else 1
                     final_val = token.numeric_val * multiplier
                     op = operators[ found_op ] if found_op else ( ">=" if cfg.get( "type" ) == "scalar" else "<=" )
 
-                    if cfg.get( "type" ) == "range":
-                        filters[ slot_name ] = cast( NumericFilterValue, { op: final_val } )
-                    else:
-                        filters[ slot_name ] = cast( NumericFilterValue,
-                                                     { op: final_val } )          # ‫حتی برای scalar هم عملگر حفظ شود
-
+                    filters[ slot_name ] = cast( NumericFilterValue, { op: final_val } )
                     consumed.add( i )
                     for t in window_slice:
                         if t.text in operators or t.text in units or t.text in cues:
@@ -204,10 +197,13 @@ class TokenParser:
             if mapping:
                 for key, val in mapping.items():
                     current = filters.get( key )
+                    if isinstance( current, dict ) and not isinstance( val, dict ):
+                        log_message( LG.NLU, f"⛔ نادیده‌گرفتن نگاشت کیفی روی فیلتر عددی {key}", LogLevel.WARNING )
+                        continue
                     if current is None:
                         filters[ key ] = val
                     elif isinstance( current, dict ):
-                        cast( dict[ str, object ], current )[ key ] = val
+                        cast( dict[ str, object ], current ).update( val if isinstance( val, dict ) else { key: val } )
                 log_message( LG.NLU, f"🎨 مچ کیفی | کلمه: {word} → {mapping}", LogLevel.DEBUG )
         for phrase, mapping in self._qual_mappings.items():
             if ' ' in phrase and phrase in text:
@@ -217,7 +213,7 @@ class TokenParser:
                     if current is None:
                         filters[ key ] = val
                     elif isinstance( current, dict ):
-                        cast( dict[ str, object ], current )[ key ] = val
+                        cast( dict[ str, object ], current ).update( val if isinstance( val, dict ) else { key: val } )
                 log_message( LG.NLU, f"🎨 مچ کیفی (چندکلمه‌ای) | عبارت: {phrase} → {mapping}", LogLevel.DEBUG )
 
         # ‫۲. قواعد استفاده (Use-Case Rules)

@@ -79,7 +79,7 @@ _TEST_DOMAIN_CONFIG = {
                 "ت": 1
             },
             "window": 3,
-            "cues": [ "قیمت", "بودجه" ]
+            "cues": []
         },
         "ram_gb": {
             "type": "scalar",
