@@ -11,7 +11,7 @@ from typing import TypeAlias, cast
 from src.config.domain_loader import ConfigDict
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.number_converter import PersianNumberConverter
-from src.core.nlu.schemas import MetadataFilters, NumericFilterValue
+from src.core.nlu.schemas import MetadataFilters, MetadataFilterValue, NumericFilterValue
 
 # جایگزین Any برای رعایت دقیق قانون ۶
 _ConfigSlice: TypeAlias = dict[ str, object ]
@@ -41,6 +41,7 @@ class TokenParser:
         self._qual_mappings: dict[ str, dict[ str, str ] ] = cast( dict[ str, dict[ str, str ] ],
                                                                    domain_config.get( "qualitative_mappings", {} ) )
         self._use_case_rules: dict[ str, _ConfigSlice ] = cast( dict[ str, _ConfigSlice ], domain_config.get( "use_case_rules", {} ) )
+        self._sep_tokens: frozenset[ str ] = frozenset( cast( list[ str ], domain_config.get( "range_separators", [] ) ) )
 
     def parse( self, text: str ) -> MetadataFilters:
         """تبدیل متن نرمال‌شده به MetadataFilters سازگار با Qdrant
@@ -121,6 +122,19 @@ class TokenParser:
                 # بررسی Operator
                 operators: dict[ str, str ] = cast( dict[ str, str ], cfg.get( "operators", {} ) )
                 found_op = next( ( o for o in window_texts if o in operators ), None )
+                range_val = self._try_match_range( tokens, i, cfg, consumed )
+
+                if range_val is not None:
+                    filters[ slot_name ] = range_val
+                    log_message( LG.NLU, f"📏 مچ رنج | اسلات: {slot_name} | مقدار: {range_val}", LogLevel.DEBUG )
+                    break          # جلوگیری از پردازش تک‌عددی روی همین توکن
+
+                # ✅ اصلاح حیاتی: اگر cue تعریف شده باشد، حضور cue الزامی است.
+                # این کار جلوی تداخل اسلات‌هایی با unit مشترک (مثل گیگ) را می‌گیرد.
+                if cues:
+                    is_match = has_cue
+                else:
+                    is_match = bool( found_unit )
 
                 # تصمیم‌گیری برای تخصیص به اسلات
                 is_match = False
@@ -225,5 +239,35 @@ class TokenParser:
                             else:
                                 filters[ key ] = cast( NumericFilterValue, { qdrant_op: op_val } )
                     else:
-                        filters[ key ] = val
+                        filters[ key ] = cast( MetadataFilterValue, val )
                 log_message( LG.NLU, f"🎯 اعمال Use-Case | Trigger: {trigger}", LogLevel.DEBUG )
+
+    def _try_match_range( self, tokens: list[ _Token ], start_idx: int, cfg: _ConfigSlice,
+                          consumed: set[ int ] ) -> NumericFilterValue | None:
+        """شناسایی الگوی رنج عددی (مثلاً: ۱۰ تا ۲۰ میلیون)"""
+        num1 = tokens[ start_idx ].numeric_val
+        if num1 is None:
+            return None
+
+        units = cast( dict[ str, float ], cfg.get( "units", {} ) )
+        window_limit = min( len( tokens ), start_idx + 5 )
+
+        for j in range( start_idx + 1, window_limit ):
+            if tokens[ j ].text not in self._sep_tokens:
+                continue
+
+            for k in range( j + 1, min( len( tokens ), j + 3 ) ):
+                num2 = tokens[ k ].numeric_val
+                if num2 is None or k in consumed:
+                    continue
+
+                min_v, max_v = sorted( ( num1, num2 ) )
+
+                search_end = min( len( tokens ), k + 4 )
+                combined_texts = { t.text for t in tokens[ start_idx:search_end ] }
+                found_unit = next( ( u for u in combined_texts if u in units ), None )
+                multiplier = units[ found_unit ] if found_unit else 1.0
+
+                consumed.update( [ start_idx, j, k ] )
+                return cast( NumericFilterValue, { ">=": min_v * multiplier, "<=": max_v * multiplier } )
+        return None
