@@ -1,0 +1,109 @@
+base_version: "1.0.0"
+
+negation_keywords:
+    #حرف های منفی کننده
+    - نه
+    - بدون
+    - غیر
+    - به جز
+    - غیر از
+    - بجز
+    - جز
+    - مگر
+
+stop_words_semantic:
+    # ‫نشانگرهای قیمت
+    - زیر
+    - بالای
+    - کمتر
+    - بیشتر
+    - تومان
+    - تومن
+    - ت
+    - حدود
+    - حداقل
+    - حداکثر
+    - تا
+    - الی
+    # ‫واحدها
+    - میلیون
+    - میلیارد
+    - هزار
+    # ‫کلمات اضافه
+    - از
+    - ولی
+    - اما
+    - و
+
+intent_keywords:
+    greeting:
+        #حرفات سلام و احوالپرسی
+        - سلام
+        - درود
+        - صبح بخیر
+        - شب بخیر
+        - خوبی
+        - وقت بخیر
+        - چطوری
+        - خداحافظ
+    compare:
+        #کلمات مقایسه
+        - مقایسه
+        - فرق
+        - تفاوت
+        - کدوم بهتره
+        - کدوم بهتر
+        - بین
+        - در برابر
+        - vs
+    refine:
+        #کلمات اصلاح کننده فیلترها
+        - ارزونتر
+        - ارزون‌تر
+        - گرونتر
+        - گرون‌تر
+        - دیگه
+        - بعدی
+        - یه چیز دیگه
+        - گزینه دیگه
+        - سبک‌تر
+        - سبکتر
+        - قوی‌تر
+        - قویتر
+
+qualitative_mappings:
+    price_range:
+        budget: [ارزان, ارزان‌تر, ارزون, ارزون‌تر, اقتصادی, بودجه]
+        mid: [قیمت مناسب, متوسط, میان‌رده, میان رده]
+        flagship: [گران, گرون]
+        premium: [بالارده]
+    value_for_money:
+        excellent: [ارزش خرید بالا]
+        good: [به‌صرفه]
+
+conflict_groups:
+    - id: price_polarity
+      terms:
+          - [ارزان, ارزون, ارزون‌تر, ارزان‌تر, اقتصادی, بودجه]
+          - [گران, گرون, پرچم‌دار, پرچمدار, لوکس, premium]
+      strategy: drop_both
+
+value_conflicts:
+    price_range:
+        - [budget, flagship]
+        - [budget, premium]
+        - [mid, flagship]
+    battery_quality:
+        - [poor, excellent]
+        - [poor, good]
+    camera_quality:
+        - [poor, excellent]
+        - [poor, good]
+
+slot_definitions:
+    color:
+        type: enum
+        negation_aware: true
+    category:
+        type: enum
+        negation_aware: true

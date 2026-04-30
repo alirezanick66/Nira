@@ -65,7 +65,10 @@ class PersianNumberConverter:
     def convert( cls, text: str ) -> int | None:
         """‫تبدیل عبارت عددی فارسی به مقدار صحیح‫"""
         cleaned = cls._NOISE_PATTERN.sub( " ", text.strip() ).lower()
+
         if not cleaned:
+            return None
+        if cleaned in cls._SCALES:
             return None
 
         tokens = [ t for t in cleaned.split() if t not in cls._CONNECTORS ]
