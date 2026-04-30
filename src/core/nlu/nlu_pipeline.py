@@ -85,10 +85,19 @@ class NLUPipeline:
     def _detect_intent( self, text: str ) -> str:
         """تشخیص نیت بر اساس کلمات کلیدی کانفیگ‌محور با اولویت صریح"""
         priority_order = ( "greeting", "refine", "compare", "search" )
+        tokens = text.split()
+        token_set = set( tokens )
+
         for intent_key in priority_order:
             keywords = self._intent_keywords.get( intent_key, [] )
-            if any( kw in text for kw in keywords ):
-                return intent_key
+            for kw in keywords:
+                if ' ' not in kw:          # تک‌کلمه
+                    if kw in token_set:
+                        return intent_key
+                else:          # چندکلمه‌ای (مثل "کدوم بهتره")
+                    if kw in text:
+                        # (اختیاری: تطبیق توکن‌های متوالی، ولی همین کافیست)
+                        return intent_key
         return "search"
 
     def _build_semantic_query( self, processed: str ) -> str:

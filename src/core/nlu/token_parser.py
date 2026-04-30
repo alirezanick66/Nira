@@ -114,7 +114,9 @@ class TokenParser:
 
                 # بررسی Unit
                 units: dict[ str, int | float ] = cast( dict[ str, int | float ], cfg.get( "units", {} ) )
-                found_unit = next( ( u for u in window_texts if u in units ), None )
+                # جمع‌آوری همهٔ واحدهای حاضر در پنجره و انتخاب بزرگ‌ترین ضریب (مثل میلیون بر تومان)
+                found_units = [ u for u in window_texts if u in units ]
+                found_unit = max( found_units, key=lambda u: units[ u ] ) if found_units else None
 
                 # بررسی Operator
                 operators: dict[ str, str ] = cast( dict[ str, str ], cfg.get( "operators", {} ) )
@@ -126,18 +128,17 @@ class TokenParser:
                     is_match = True
                 elif found_unit:
                     is_match = True
-                elif slot_name == "price":
-                    is_match = True          # فال‌بک: عدد تنها در متن معمولاً قیمت است
 
                 if is_match:
                     multiplier = units.get( found_unit, 1 ) if found_unit else 1
                     final_val = token.numeric_val * multiplier
-                    op = found_op or ( ">=" if cfg.get( "type" ) == "scalar" else "<=" )
+                    op = operators[ found_op ] if found_op else ( ">=" if cfg.get( "type" ) == "scalar" else "<=" )
 
                     if cfg.get( "type" ) == "range":
                         filters[ slot_name ] = cast( NumericFilterValue, { op: final_val } )
                     else:
-                        filters[ slot_name ] = cast( NumericFilterValue, final_val )
+                        filters[ slot_name ] = cast( NumericFilterValue,
+                                                     { op: final_val } )          # ‫حتی برای scalar هم عملگر حفظ شود
 
                     consumed.add( i )
                     for t in window_slice:
@@ -183,7 +184,7 @@ class TokenParser:
         """اعمال نگاشت‌های کیفی و قواعد استفاده بر اساس حضور کلمه"""
         words = set( text.split() )
 
-        # ۱. نگاشت کیفی (Qualitative Mappings)
+        # ‫۱. نگاشت کیفی (Qualitative Mappings)
         for word in words:
             mapping = self._qual_mappings.get( word )
             if mapping:
@@ -194,8 +195,18 @@ class TokenParser:
                     elif isinstance( current, dict ):
                         cast( dict[ str, object ], current )[ key ] = val
                 log_message( LG.NLU, f"🎨 مچ کیفی | کلمه: {word} → {mapping}", LogLevel.DEBUG )
+        for phrase, mapping in self._qual_mappings.items():
+            if ' ' in phrase and phrase in text:
+                for key, val in mapping.items():
+                    # همون منطق اعمال (بدون تکرار در صورت وجود قبلی)
+                    current = filters.get( key )
+                    if current is None:
+                        filters[ key ] = val
+                    elif isinstance( current, dict ):
+                        cast( dict[ str, object ], current )[ key ] = val
+                log_message( LG.NLU, f"🎨 مچ کیفی (چندکلمه‌ای) | عبارت: {phrase} → {mapping}", LogLevel.DEBUG )
 
-        # ۲. قواعد استفاده (Use-Case Rules)
+        # ‫۲. قواعد استفاده (Use-Case Rules)
         for trigger, rule in self._use_case_rules.items():
             if trigger in text:
                 for key, val in rule.items():
@@ -204,7 +215,7 @@ class TokenParser:
                         if isinstance( tags, list ):
                             tags.extend( [ t for t in cast( list[ str ], val ) if t not in tags ] )
                     elif isinstance( val, dict ):
-                        # تبدیل عملگرهای use_case (مثل gte) به فرمت Qdrant
+                        # ‫این بخش برای ram_gb: { gte: 8 }  و امثال آن است
                         translated: dict[ str, object ] = { "gte": ">=", "lte": "<=", "gt": ">", "lt": "<" }
                         for op_alias, op_val in val.items():
                             qdrant_op = cast( str, translated.get( op_alias, op_alias ) )
@@ -213,4 +224,6 @@ class TokenParser:
                                 cast( dict[ str, object ], current )[ qdrant_op ] = op_val
                             else:
                                 filters[ key ] = cast( NumericFilterValue, { qdrant_op: op_val } )
+                    else:
+                        filters[ key ] = val
                 log_message( LG.NLU, f"🎯 اعمال Use-Case | Trigger: {trigger}", LogLevel.DEBUG )

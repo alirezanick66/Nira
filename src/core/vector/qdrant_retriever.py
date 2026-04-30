@@ -105,17 +105,9 @@ class QdrantHybridRetriever:
                 return results
 
         # ‫تلاش نهایی: بدون هیچ فیلتری (فقط جستجوی برداری)
-        log_message(
-            LG.RETRIEVAL,
-            "🆘 آخرین تلاش: جستجو بدون فیلتر",
-            LogLevel.WARNING,
-        )
+        log_message( LG.RETRIEVAL, "🆘 آخرین تلاش: جستجو بدون فیلتر", LogLevel.WARNING )
         results = self._execute_search( dense_vec, sparse_vec, None, top_k )
-        log_message(
-            LG.RETRIEVAL,
-            f"✅ {len(results)} محصول با Fallback نهایی بازیابی شد",
-            LogLevel.DEBUG,
-        )
+        log_message( LG.RETRIEVAL, f"✅ {len(results)} محصول با Fallback نهایی بازیابی شد", LogLevel.DEBUG )
         return results
 
     #───────────────────── private  methods ─────────────────────
@@ -147,11 +139,7 @@ class QdrantHybridRetriever:
                 payload = QdrantProductPayload.model_validate( point.payload )
                 payloads.append( payload )
             except Exception as exc:
-                log_message(
-                    LG.RETRIEVAL,
-                    f"خطای اعتبارسنجی Payload محصول {point.id}: {exc}",
-                    LogLevel.WARNING,
-                )
+                log_message( LG.RETRIEVAL, f"خطای اعتبارسنجی Payload محصول {point.id}: {exc}", LogLevel.WARNING )
 
         return payloads
 

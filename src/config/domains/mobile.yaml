@@ -55,7 +55,7 @@ os_types:
 qualitative_mappings:
     price_range:
         #اصلاحات قیمتی موبایل
-        flagship: [پرچم‌دار, پرچمدار, لوکس]
+        flagship: [پرچم‌دار, پرچمدار, لوکس, گرون]
     battery_quality:
         #کیفیت باتری
         poor: [باتری ضعیف]
@@ -98,6 +98,7 @@ slot_definitions:
             تومن: 1
             ت: 1
         window: 3
+        cues: [تومان, تومن, ت, میلیون, میلیارد, هزار]
         pattern: ["op?", "num", "unit?"]
 
     ram_gb:
