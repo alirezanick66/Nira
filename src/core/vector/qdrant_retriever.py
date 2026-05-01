@@ -12,6 +12,7 @@ from copy import deepcopy
 from qdrant_client import QdrantClient
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 from typing import cast
+
 #───────────────────── Local Imports ─────────────────────
 from src.services.embedding_service import EmbeddingService
 from src.services.sparse_vectorizer import BM25Vectorizer
@@ -27,29 +28,27 @@ class QdrantHybridRetriever:
     # ‫ترتیب حذف فیلترها در Smart Fallback (سخت‌ترین → ساده‌ترین)
     # ‫فیلترهایی که در ابتدای لیست هستند، اول حذف می‌شوند.
     # ‫MVP Refinement #4: weight_g و camera_quality سخت‌گیرترین هستند.
-    _RELAXATION_ORDER: tuple[ str, ...] = (
-        "weight_g",
-        "battery_mah",
-        "camera_quality",
-        "battery_quality",
-        "value_for_money",
-        "ram_gb",
-        "storage_gb",
-        "tags",
-        "price_range",
-        "os",
-        "price",
-        "brand",          # ‫برند آخر حذف می‌شود (مهم‌ترین برای کاربر)
-    )
 
-    _MAX_RELAXATION_STEPS: int = 3          # ‫حداکثر سه فیلتر حذف می‌شود
+    _MAX_RELAXATION_STEPS: int = 5          # ‫حداکثر پنج فیلتر حذف می‌شود
 
-    def __init__( self, client: QdrantClient | None = None, embedding_service: EmbeddingService | None = None ) -> None:
+    def __init__(
+        self,
+        domain_config,
+        client: QdrantClient | None = None,
+        embedding_service: EmbeddingService | None = None,
+    ) -> None:
         self._settings = get_settings()
         self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False )
         self._collection = self._settings.QDRANT_COLLECTION
         self._embedder = embedding_service or EmbeddingService()
-        log_message( LG.RETRIEVAL, "QdrantHybridRetriever Loaded", LogLevel.INFO )
+
+        # ✅ بارگذاری کاملاً از کانفیگ (بدون هاردکد)
+        self._relax_order = tuple( domain_config.get( "relaxation_order", [] ) )
+        self._relax_map = domain_config.get( "relaxation_mappings", {} )
+        self._emphasis_kw = frozenset( domain_config.get( "emphasis_keywords", [] ) )
+        self._filter_cues = domain_config.get( "filter_cues", {} )
+
+        log_message( LG.RETRIEVAL, "QdrantHybridRetriever بارگذاری شد", LogLevel.INFO )
 
     #───────────────────── public  methods ─────────────────────
     def search(
@@ -88,12 +87,14 @@ class QdrantHybridRetriever:
 
         relaxed_filters = deepcopy( filters )
         for step in range( self._MAX_RELAXATION_STEPS ):
-            removed_key = self._relax_one_filter( relaxed_filters )
-            if removed_key is None:
-                # ‫دیگر فیلتری برای حذف نمانده
-                break
-
-            log_message( LG.RETRIEVAL, f"  ↻ گام {step+1}: فیلتر «{removed_key}» حذف شد، تلاش مجدد...", LogLevel.INFO )
+            removed = self._relax_one_filter( relaxed_filters, query )
+            if removed is None: break
+            log_message( LG.RETRIEVAL, f"  ↻ گام {step+1}: فیلتر «{removed}» حذف/شل شد، تلاش مجدد...", LogLevel.INFO )
+            results = self._execute_search( dense_vec, sparse_vec, relaxed_filters, top_k )
+            if results:
+                log_message( LG.RETRIEVAL, f"✅ Fallback موفق در گام {step+1} | فیلترهای فعال: {list(relaxed_filters.keys())}",
+                             LogLevel.INFO )
+                return results
 
             results = self._execute_search( dense_vec, sparse_vec, relaxed_filters, top_k )
             if results:
@@ -143,24 +144,32 @@ class QdrantHybridRetriever:
 
         return payloads
 
-    def _relax_one_filter( self, filters: MetadataFilters ) -> str | None:
-        """‫حذف سخت‌ترین فیلتر باقی‌مانده طبق `_RELAXATION_ORDER`
+    def _build_dynamic_relax_order( self, filters: MetadataFilters, query: str ) -> list[ str ]:
+        tokens = query.split()
+        protected: set[ str ] = set()
+        for i, token in enumerate( tokens ):
+            if token in self._emphasis_kw:
+                window = " ".join( tokens[ max( 0, i - 2 ):min( len( tokens ), i + 3 ) ] )
+                for key, cues in self._filter_cues.items():
+                    if key in filters and any( c in window for c in cues ):
+                        protected.add( key )
 
-        Args:
-            filters: دیکشنری فیلترها (به‌صورت in-place اصلاح می‌شود)
+        active = [ k for k in self._relax_order if k in filters ]
+        return [ k for k in active if k not in protected ] + [ k for k in active if k in protected ]
 
-        Returns:
-            نام فیلتر حذف‌شده، یا None اگر دیگر فیلتری برای حذف نباشد.
-        """
-        for key in self._RELAXATION_ORDER:
-            if key in filters:
-                del filters[ key ]
-                return key
-        # ‫اگر کلیدهای ناشناخته در filters باشند، یکی از آن‌ها را حذف می‌کنیم
-        if filters:
-            unknown_key = next( iter( filters ) )
-            del filters[ unknown_key ]
-            return unknown_key
+    def _relax_one_filter( self, filters: MetadataFilters, query: str ) -> str | None:
+        dynamic_order = self._build_dynamic_relax_order( filters, query )
+        for key in dynamic_order:
+            val = filters.get( key )
+            # ۱. شل‌سازی مقدار
+            if key in self._relax_map and isinstance( val, str ):
+                next_val = self._relax_map[ key ].get( val )
+                if next_val:
+                    filters[ key ] = next_val
+                    return f"{key} ({val} → {next_val})"
+            # ۲. حذف کلید
+            del filters[ key ]
+            return key
         return None
 
     def _build_metadata_filter( self, filters: MetadataFilters | None ) -> Filter | None:

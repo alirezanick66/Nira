@@ -44,7 +44,7 @@ class QdrantIndexer:
         log_message( LG.DATA_PROCESSING, f"کالکشن {self._collection} با پشتیبانی Hybrid ایجاد شد", LogLevel.INFO )
 
         # ‫ایندکس‌های Payload برای فیلتربرداری سریع
-        # ‫MVP Refinement: ایندکس واحدها برای فیلتر دقیق GB/MB/TB
+        # ‫MVP Refinement: ایندکس واحدها برای فیلتر دقیق ‫GB/MB/TB
         payload_indexes: dict[ str, PayloadSchemaType ] = {
             "price": PayloadSchemaType.INTEGER,
             "is_available": PayloadSchemaType.BOOL,
@@ -54,13 +54,15 @@ class QdrantIndexer:
             "brand": PayloadSchemaType.KEYWORD,
             "os": PayloadSchemaType.KEYWORD,
             "tags": PayloadSchemaType.KEYWORD,
-            "ram_gb": PayloadSchemaType.INTEGER,
+            "ram_gb": PayloadSchemaType.FLOAT,
             "ram_unit": PayloadSchemaType.KEYWORD,
-            "storage_gb": PayloadSchemaType.INTEGER,
+            "storage_gb": PayloadSchemaType.FLOAT,
             "storage_unit": PayloadSchemaType.KEYWORD,
-            "battery_mah": PayloadSchemaType.INTEGER,
+            "battery_mah": PayloadSchemaType.FLOAT,
             "battery_unit": PayloadSchemaType.KEYWORD,
             "battery_quality": PayloadSchemaType.KEYWORD,
+            "camera_mp": PayloadSchemaType.FLOAT,
+            "weight_g": PayloadSchemaType.FLOAT,
             "camera_quality": PayloadSchemaType.KEYWORD,
             "value_for_money": PayloadSchemaType.KEYWORD,
         }

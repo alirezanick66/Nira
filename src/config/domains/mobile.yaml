@@ -130,8 +130,8 @@ slot_definitions:
         cues: ["حافظه", "فضا", "هارد", "storage"]
         pattern: ["cue?", "op?", "num", "unit?"]
 
-priority_order:
-    #اولویت بندی فیلدها برای استخراج
+conflict_resolution_order:
+    #تعیین برنده در تضادها
     - price
     - brand
     - ram_gb
@@ -142,3 +142,50 @@ priority_order:
     - battery_quality
     - value_for_money
     - tags
+
+value_conflicts:
+    battery_quality:
+        - [poor, excellent]
+        - [poor, good]
+    camera_quality:
+        - [poor, excellent]
+        - [poor, good]
+
+relaxation_order:
+    # ترتیب ریلکس کردن فیلترها در صورت ۰ نتیجه (از کم‌اهمیت‌ترین به مهم‌ترین)
+    - weight_g
+    - battery_mah
+    - camera_quality
+    - battery_quality
+    - storage_gb
+    - ram_gb
+    - os
+    - tags
+    - price_range
+    - value_for_money
+    - price
+    - brand
+
+relaxation_mappings:
+    # ‫نگاشت شل‌سازی مقادیر (Value Relaxation)
+    camera_quality:
+        excellent: good
+        good: average
+    battery_quality:
+        excellent: good
+        good: average
+    price_range:
+        budget: mid
+        mid: premium
+        premium: flagship
+
+    # کلمات تأکیدی و کلیدهای مرتبط برای حفاظت پویا
+emphasis_keywords: ["حتماً", "فقط", "الزامی", "باید", "اصلی", "مهم"]
+filter_cues:
+    os: ["اندروید", "ios", "سیستم عامل"]
+    camera_quality: ["دوربین", "عکس", "فیلم"]
+    weight_g: ["سبک", "وزن"]
+    price: ["قیمت", "بودجه", "ارزان", "ارزون", "گران", "گرون"]
+    brand: ["برند", "سامسونگ", "اپل", "شیائومی", "هواوی"]
+    ram_gb: ["رم", "ram"]
+    storage_gb: ["حافظه", "فضا"]
