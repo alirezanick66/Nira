@@ -13,7 +13,7 @@ from groq.types.chat import ChatCompletionMessageParam
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.llm.clients import GroqClient, GeminiClient
 from src.core.llm.memory import ConversationMemory
-from src.core.llm.prompts import PromptEngine
+from src.core.llm.prompt_engine import PromptEngine
 from src.core.llm.schemas import LLMResponseSchema
 from src.core.vector.qdrant_payload import QdrantProductPayload
 

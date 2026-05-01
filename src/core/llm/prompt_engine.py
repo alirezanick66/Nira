@@ -1,5 +1,5 @@
-"""موتور قالب‌سازی پرامپت‌های چند-دامنه‌ای (Domain-Agnostic)
-مسئولیت: بارگذاری تمپلیت‌ها از YAML، جایگزینی ایمن متغیرها، و تولید لیست پیام‌های ساختاریافته
+""" ‫موتور قالب‌سازی پرامپت‌های چند-دامنه‌ای (Domain-Agnostic)
+‫مسئولیت: بارگذاری تمپلیت‌ها از YAML، جایگزینی ایمن متغیرها، و تولید لیست پیام‌های ساختاریافته
 """
 from __future__ import annotations
 from string import Template
@@ -34,8 +34,10 @@ class PromptEngine:
                 products: list[ QdrantProductPayload ],
                 refine_query: str = "",
                 **kwargs: str ) -> list[ dict[ str, str ] ]:
-        """ ‫تولید نهایی لیست پیام‌های System/User برای ارسال به LLM"""
+        """‫ ‫تولید نهایی لیست پیام‌های System/User برای ارسال به LLM"""
+
         prod_text = self._format_products( products ) or "محصولی یافت نشد."
+        # ‫✅ حذف فاصله‌های اضافی در کلیدها برای تطابق دقیق با تمپلیت YAML
         context = { "filters": filters, "products": prod_text, "refine_query": refine_query, **kwargs }
 
         template_str = self._templates.get( intent, self._templates.get( "search", "" ) )

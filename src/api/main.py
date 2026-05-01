@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import time
 
 #─────────────────────local imports─────────────────────
 from src.config.domain_loader import DomainConfigLoader
@@ -65,50 +66,47 @@ app.add_middleware(
 
 @app.post( "/api/v1/search", response_model=SearchResponse, status_code=status.HTTP_200_OK )
 async def search_products(
-        request: SearchRequest,
-        nlu: NLUPipeline = Depends( get_nlu_pipeline ),
-        retriever: QdrantHybridRetriever = Depends( get_retriever ),
-        reranker: RerankerService = Depends( get_reranker ),
-        llm: LLMOrchestrator = Depends( get_llm ),
+    request: SearchRequest,
+    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
+    retriever: QdrantHybridRetriever = Depends( get_retriever ),
+    reranker: RerankerService = Depends( get_reranker ),
+    llm: LLMOrchestrator = Depends( get_llm )
 ) -> SearchResponse:
-    """پردازش کوئری کاربر و بازگرداندن محصولات پیشنهادی + توضیح LLM"""
+    t0 = time.perf_counter()
+    req_id = str( uuid.uuid4() )
     session_id = request.session_id or str( uuid.uuid4() )
 
     try:
         nlu_out = nlu.process( request.query )
 
         if nlu_out.is_greeting:
-            return SearchResponse( intent="greeting",
+            return SearchResponse( status="success",
+                                   request_id=req_id,
+                                   session_id=session_id,
+                                   intent="greeting",
                                    semantic_query=request.query,
                                    applied_filters={},
                                    results=[],
-                                   message="سلام! چطور می‌تونم در انتخاب گوشی مناسب کمکتون کنم؟",
-                                   llm_explanation="پاسخ خوشامدگویی سیستم",
-                                   next_suggestion="نیازهای خود را به زبان محاوره‌ای بنویسید." )
+                                   message="سلام! چطور می‌تونم کمکتون کنم؟",
+                                   llm_explanation="",
+                                   next_suggestion="نیازتان را بنویسید." )
 
         candidates = await asyncio.to_thread( retriever.search,
                                               query=nlu_out.semantic_query,
                                               filters=nlu_out.metadata_filters,
-                                              top_k=max( request.top_k * 2, 10 ) )
+                                              top_k=request.top_k * 2 )
 
-        if not candidates:
-            return SearchResponse( intent=nlu_out.intent,
-                                   semantic_query=nlu_out.semantic_query,
-                                   applied_filters=nlu_out.metadata_filters,
-                                   results=[],
-                                   message="متأسفانه محصولی با این مشخصات پیدا نشد. پیشنهاد می‌کنم فیلترها را کمی گسترده‌تر کنید.",
-                                   llm_explanation="هیچ تطابقی در پایگاه داده یافت نشد.",
-                                   next_suggestion="برند یا رنج قیمت را تغییر دهید." )
+        fallback_steps = getattr( retriever, "_last_fallback_steps", 0 )          # نیاز به یک خط لاگ در retriever
+        status = "success" if candidates else "empty"
+        if fallback_steps > 0: status = "partial"
 
         final_products = await asyncio.to_thread( reranker.rerank, query=request.query, payloads=candidates, top_k=request.top_k )
 
-        llm_out = await llm.generate(
-            session_id=session_id,
-            user_query=request.query,
-            intent=nlu_out.intent,
-            filters_str=str( nlu_out.metadata_filters ),
-            products=final_products,
-        )
+        llm_out = await llm.generate( session_id=session_id,
+                                      user_query=request.query,
+                                      intent=nlu_out.intent,
+                                      filters_str=str( nlu_out.metadata_filters ),
+                                      products=final_products )
 
         results = [
             SearchResultItem( product_id=p.product_id,
@@ -118,22 +116,36 @@ async def search_products(
                               camera_quality=p.camera_quality or "نامشخص",
                               tags=p.tags or [],
                               image_url=p.image_url,
-                              relevance_score=0.0 ) for p in final_products
+                              relevance_score=getattr( p, "rerank_score", 0.0 ) ) for p in final_products
         ]
 
-        return SearchResponse( intent=nlu_out.intent,
+        latency_ms = round( ( time.perf_counter() - t0 ) * 1000, 1 )
+        meta = { "latency_ms": latency_ms, "fallback_steps": fallback_steps, "total_candidates": len( candidates ) }
+
+        return SearchResponse( status=status,
+                               request_id=req_id,
+                               session_id=session_id,
+                               intent=nlu_out.intent,
                                semantic_query=nlu_out.semantic_query,
                                applied_filters=nlu_out.metadata_filters,
                                results=results,
-                               message=str( llm_out.get( "explanation", "نتایج بر اساس نیاز شما مرتب شدند." ) ),
+                               message=str( llm_out.get( "explanation", "" ) ),
                                llm_explanation=str( llm_out.get( "explanation", "" ) ),
-                               next_suggestion=str( llm_out.get( "next_suggestion", "می‌توانید فیلترها را دقیق‌تر کنید." ) ) )
+                               next_suggestion=str( llm_out.get( "next_suggestion", "" ) ),
+                               meta=meta )
 
-    except HTTPException:
-        raise
     except Exception as exc:
-        log_message( LG.API, f"خطای پیش‌بینی‌نشده در Endpoint جستجو: {exc}", LogLevel.ERROR )
-        raise HTTPException( status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="خطای داخلی سرور. لطفاً مجدداً تلاش کنید." )
+        return SearchResponse( status="error",
+                               request_id=req_id,
+                               session_id=session_id,
+                               intent="unknown",
+                               semantic_query="",
+                               applied_filters={},
+                               results=[],
+                               message="خطای داخلی سرور.",
+                               llm_explanation="",
+                               next_suggestion="",
+                               meta={ "error": str( exc ) } )
 
 
 @app.post( "/api/log-error" )
