@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 #─────────────────────local imports─────────────────────
+from src.config.domain_loader import DomainConfigLoader
 from src.api.schemas import ErrorLog, SearchRequest, SearchResponse, SearchResultItem
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.nlu.nlu_pipeline import NLUPipeline
@@ -28,10 +29,16 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     """‫مدیریت راه‌اندازی و خاموشی سرویس‌های سنگین (Lifespan Context)"""
 
     log_message( LG.API, "🚀 در حال بارگذاری سرویس‌های پایه...", LogLevel.INFO )
-    app.state.nlu = NLUPipeline()
-    app.state.retriever = QdrantHybridRetriever()
+
+    loader = DomainConfigLoader()
+    domain = "mobile"
+    config = loader.load( domain )
+
+    app.state.nlu = NLUPipeline( domain=domain, config_loader=loader )
+    app.state.retriever = QdrantHybridRetriever( config )
     app.state.reranker = RerankerService()
-    app.state.llm = LLMOrchestrator()
+    app.state.llm = LLMOrchestrator( config )
+
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield
     log_message( LG.API, "🛑 پایان چرخه عمر سرویس‌ها و آزادسازی منابع", LogLevel.INFO )

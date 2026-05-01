@@ -20,11 +20,12 @@ from src.core.vector.qdrant_payload import QdrantProductPayload
 
 class LLMOrchestrator:
 
-    def __init__( self ) -> None:
+    def __init__( self, domain_config: dict ) -> None:
         self._memory = ConversationMemory( max_turns=3 )
         self._groq = GroqClient()
         self._gemini = GeminiClient()
         self._validator = TypeAdapter( LLMResponseSchema )
+        self._prompt_engine = PromptEngine( domain_config )          # ✅ تزریق موتور پویا
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
 
     async def generate(
@@ -40,14 +41,14 @@ class LLMOrchestrator:
         self._memory.add_message( session_id, "user", user_query )
 
         # ۲. ساخت پرامپت پایه
-        messages = PromptEngine.build( intent, filters_str, products )
+        messages = self._prompt_engine.render( intent, filters_str or "بدون فیلتر خاص", products, refine_query=user_query )
 
         # ✅ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
             # درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
             for msg in history[ :-1 ]:
-                messages.insert( -1, cast( ChatCompletionMessageParam, msg ) )
+                messages.insert( -1, msg )
 
             # ✅ جایگزینی placeholder در refine با کوئری واقعی
             if intent == "refine" and messages:
@@ -58,14 +59,15 @@ class LLMOrchestrator:
 
         # ۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
+        groq_messages = cast( list[ ChatCompletionMessageParam ], messages )
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
-            raw_json = await self._groq.chat_json( messages )
+            raw_json = await self._groq.chat_json( groq_messages )
         except Exception as exc:
             log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
             try:
                 log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
-                raw_json = await self._gemini.chat_json( messages )
+                raw_json = await self._gemini.chat_json( groq_messages )
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
