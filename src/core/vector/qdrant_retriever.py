@@ -103,6 +103,7 @@ class QdrantHybridRetriever:
                     f"✅ Fallback موفق در گام {step+1} | {len(results)} محصول | فیلترهای فعال: {list(relaxed_filters.keys())}",
                     LogLevel.INFO,
                 )
+                self._last_fallback_steps = step + 1 if results else 0
                 return results
 
         # ‫تلاش نهایی: بدون هیچ فیلتری (فقط جستجوی برداری)
