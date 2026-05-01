@@ -101,12 +101,12 @@ class ProductSpecification( BaseModel ):
     raw_specifications: list[ dict ] = Field( default_factory=list, description="‫specifications خام API" )
 
     # مشخصات نرمال‌شده (فیلدهای کلیدی)
-    ram_gb: int | None = Field( default=None, ge=0, description="‫رم (گیگابایت)" )
-    storage_gb: int | None = Field( default=None, ge=0, description="‫حافظه داخلی (گیگابایت)" )
-    battery_mah: int | None = Field( default=None, ge=0, description="‫باتری (میلی آمپر ساعت)" )
+    ram_gb: float | None = Field( default=None, ge=0, description="‫رم (گیگابایت)" )
+    storage_gb: float | None = Field( default=None, ge=0, description="‫حافظه داخلی (گیگابایت)" )
+    battery_mah: float | None = Field( default=None, ge=0, description="‫باتری (میلی آمپر ساعت)" )
     screen_size_inch: float | None = Field( default=None, ge=0, description="‫اندازه صفحه (اینچ)" )
-    camera_mp: int | None = Field( default=None, ge=0, description="‫دوربین اصلی (مگاپیکسل)" )
-    weight_g: int | None = Field( default=None, ge=0, description="‫وزن (گرم)" )
+    camera_mp: float | None = Field( default=None, ge=0, description="‫دوربین اصلی (مگاپیکسل)" )
+    weight_g: float | None = Field( default=None, ge=0, description="‫وزن (گرم)" )
 
     # سایر فیلدهای مهم
     os: str | None = Field( default=None, description="‫سیستم عامل (iOS/Android/...)" )

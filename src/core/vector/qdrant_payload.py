@@ -35,15 +35,17 @@ class QdrantProductPayload( BaseModel ):
     # ==================== مشخصات فنی نرمال شده ====================
     # ‫نکته MVP Refinement: واحدها صریحاً در Payload ذخیره می‌شوند
     # ‫تا 32GB RAM با 32MB Storage در جستجو اشتباه گرفته نشود.
-    ram_gb: int | None = Field( default=None, ge=0, description="‫رم (GB)" )
+    ram_gb: float | None = Field( default=None, ge=0, description="‫رم (GB)" )
     ram_unit: str = Field( default="GB", description="‫واحد رم - همیشه GB در گوشی‌های مدرن" )
-    storage_gb: int | None = Field( default=None, ge=0, description="‫حافظه (GB)" )
+
+    storage_gb: float | None = Field( default=None, ge=0, description="‫حافظه (GB)" )
     storage_unit: str = Field( default="GB", description="‫واحد حافظه (GB یا TB)" )
-    battery_mah: int | None = Field( default=None, ge=0, description="‫باتری (mAh)" )
+
+    battery_mah: float | None = Field( default=None, ge=0, description="‫باتری (mAh)" )
     battery_unit: str = Field( default="mAh", description="‫واحد باتری" )
     screen_size_inch: float | None = Field( default=None, ge=0, description="‫صفحه (inch)" )
-    camera_mp: int | None = Field( default=None, ge=0, description="‫دوربین (MP)" )
-    weight_g: int | None = Field( default=None, ge=0, description="‫وزن (g)" )
+    camera_mp: float | None = Field( default=None, ge=0, description="‫دوربین (MP)" )
+    weight_g: float | None = Field( default=None, ge=0, description="‫وزن (g)" )
 
     # ==================== دسته‌بندی ====================
     os: str | None = Field( default=None, description="‫سیستم عامل (iOS/Android)" )

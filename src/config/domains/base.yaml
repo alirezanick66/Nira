@@ -90,16 +90,11 @@ conflict_groups:
       strategy: drop_both
 
 value_conflicts:
+    #متضاد هارو چک میکنه مثل ارزون ولی پرچم دار
     price_range:
         - [budget, flagship]
         - [budget, premium]
         - [mid, flagship]
-    battery_quality:
-        - [poor, excellent]
-        - [poor, good]
-    camera_quality:
-        - [poor, excellent]
-        - [poor, good]
 
 slot_definitions:
     color:

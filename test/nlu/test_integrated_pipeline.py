@@ -1,26 +1,32 @@
 """اسکریپت تست یکپارچه کل پایپلاین: NLU → Hybrid Retrieval → Reranker"""
+
+#───────────────────── Imports ─────────────────────
 import asyncio
+
+#───────────────────── Local Imports ─────────────────────
 from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.config.logging_config import log_message, LogLevel, LG
 from src.config.settings import get_settings
+from src.config.domain_loader import DomainConfigLoader
 
 
 async def main() -> None:
     settings = get_settings()
     log_message( LG.RETRIEVAL, f"🧪 شروع تست یکپارچه پایپلاین | ONNX: {settings.USE_ONNX}", LogLevel.INFO )
 
+    domain_config = DomainConfigLoader()
     nlu = NLUPipeline()
-    retriever = QdrantHybridRetriever()
+    retriever = QdrantHybridRetriever( domain_config=domain_config.load( "mobile" ) )
     reranker = RerankerService()
 
     test_queries = [
-        "یه گوشی  ارزون برای عکاسی میخوام",
-        "گوشی گیمینگ با رم بالا زیر 30 میلیون تومان",
-          #"بین آیفون و سامسونگ کدوم بهتره؟",
-          #"یه چیز گرونتر ولی با باتری قویتر نشون بده",
-          #"گوشی با دوربین خوب که ارزش خرید بالایی داشته باشه",
+        'یه گوشی   آیفون میخوام که   برای عکاسی عالی باشه',
+          # "گوشی گیمینگ با رم بالا زیر 30 میلیون تومان",
+          # "بین آیفون و سامسونگ کدوم بهتره؟",
+          # "یه چیز گرونتر ولی با باتری قویتر نشون بده",
+          # "گوشی با دوربین خوب که ارزش خرید بالایی داشته باشه",
           # "یه موبایل گیمینگ خوب به جز برند شیائومی",
     ]
 

@@ -28,7 +28,7 @@ class ConflictResolver:
     """حل‌کننده تضاد فیلترها با استراتژی‌های کانفیگ‌محور"""
 
     def __init__( self, domain_config: dict[ str, Any ] ) -> None:
-        self._priority = tuple( domain_config.get( "priority_order", [] ) )
+        self._priority = tuple( domain_config.get( "conflict_resolution_order", [] ) )
         self._conflict_groups = domain_config.get( "conflict_groups", [] )
 
     def resolve( self, filters: dict[ str, Any ], original_text: str = "" ) -> tuple[ dict[ str, Any ], ConflictReport ]:

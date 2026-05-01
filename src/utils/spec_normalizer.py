@@ -25,6 +25,19 @@ class SpecNormalizer:
         "هرتز": "Hz",
         "گیگاهرتز": "GHz",
     }
+    _UNIT_SCALE: dict[ str, float ] = {
+        "مگابایت": 1 / 1024,
+        "مگ": 1 / 1024,
+        "mb": 1 / 1024,
+        "گیگابایت": 1.0,
+        "گیگ": 1.0,
+        "gb": 1.0,
+        "ترابایت": 1024.0,
+        "tb": 1024.0,
+        "میلی آمپر": 1.0,
+        "میلی‌آمپر": 1.0,
+        "mah": 1.0,
+    }
     #─────────────────────public methods─────────────────────
     @classmethod
     def extract_specifications( cls, raw_specs: list[ dict ] ) -> dict[ str, Any ]:
@@ -75,15 +88,15 @@ class SpecNormalizer:
 
                 # ‫RAM
                 if "ram" in title or "رم" in title:
-                    specs[ "ram_gb" ] = cls._extract_number( value_text )
+                    specs[ "ram_gb" ] = cls._parse_to_base_unit( value_text )
 
                 # ‫Storage
                 elif "حافظه داخلی" in title or "storage" in title:
-                    specs[ "storage_gb" ] = cls._extract_number( value_text )
+                    specs[ "storage_gb" ] = cls._parse_to_base_unit( value_text )
 
                 # ‫Battery
                 elif "باتری" in title or "battery" in title:
-                    specs[ "battery_mah" ] = cls._extract_number( value_text )
+                    specs[ "battery_mah" ] = cls._parse_to_base_unit( value_text, default_unit="mah" )
 
                 # ‫Screen Size
                 elif "اندازه" in title or "سایز" in title or "صفحه" in title:
@@ -122,13 +135,13 @@ class SpecNormalizer:
 
     #─────────────────────private methods─────────────────────
     @staticmethod
-    def _extract_number( text: str ) -> int | None:
+    def _extract_number( text: str ) -> float | None:
         """‫استخراج اولین عدد از متن
 
         Examples:
             "256 گیگابایت" → 256
             "4832 میلی آمپر ساعت" → 4832
-            "6.9 اینچ" → 6 (int)
+            "6.9 اینچ" → 6.9 (float)
 
         Args:
             text: متن ورودی
@@ -143,10 +156,10 @@ class SpecNormalizer:
         text = text.replace( ",", "" ).replace( "٬", "" )
 
         # ‫پیدا کردن اولین عدد
-        match = re.search( r"\d+", text )
+        match = re.search( r"\d+(?:\.\d+)?", text )
         if match:
             try:
-                return int( match.group() )
+                return float( match.group() )
             except ValueError:
                 return None
 
@@ -236,3 +249,21 @@ class SpecNormalizer:
                 return year
 
         return None
+
+    @classmethod
+    def _parse_to_base_unit( cls, text: str, default_unit: str = "gb" ) -> float | None:
+        """استخراج عدد و تبدیل خودکار به واحد پایه (GB/mAh)"""
+        if not text: return None
+        clean = text.lower().replace( "٬", "" ).replace( ",", " " )
+        # پیدا کردن عدد (صحیح یا اعشاری)
+        num_match = re.search( r"(\d+(?:[.,]\d+)?)", clean )
+        if not num_match: return None
+        raw_val = float( num_match.group( 1 ).replace( ",", "." ) )
+
+        # تشخیص ضریب واحد
+        multiplier = 1.0
+        for unit, scale in cls._UNIT_SCALE.items():
+            if unit in clean:
+                multiplier = scale
+                break
+        return round( raw_val * multiplier, 4 )
