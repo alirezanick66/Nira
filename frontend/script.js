@@ -9,13 +9,12 @@ window.onerror = function (message, source, lineno, colno, error) {
 
 const chatEl = document.getElementById("chat")
 const inputEl = document.getElementById("query-input")
-const sendBtn = document.getElementById("send-btn")
 
-// ─── مدیریت Session ───────────────────────────────────────────────────────────
+// ─── مدیریت Session ──────────────────────────────────────────────
 let sessionId = localStorage.getItem("nira_session") || crypto.randomUUID()
 localStorage.setItem("nira_session", sessionId)
 
-// ─── نگاشت مراحل pipeline به پیام‌های فارسی ──────────────────────────────────
+// ─── نگاشت مراحل pipeline به پیام‌های فارسی ─────────────────────
 const STEP_MESSAGES = {
 	nlu: "در حال پردازش پیام شما...",
 	searching: "در حال جستجو در محصولات...",
@@ -23,14 +22,26 @@ const STEP_MESSAGES = {
 	generating: "در حال آماده‌سازی پاسخ...",
 }
 
-// ─── وضعیت زنده (Status Bar) ──────────────────────────────────────────────────
+// ─── تغییر حالت welcome → chat ───────────────────────────────────
 
-/** @type {HTMLElement|null} المان status جاری در DOM */
+/**
+ * اولین باری که کاربر سوال می‌فرستد، layout به حالت chat تبدیل می‌شود.
+ */
+function switchToChatMode() {
+	const body = document.body
+	if (body.classList.contains("chat-mode")) return
+	body.classList.remove("welcome-mode")
+	body.classList.add("chat-mode")
+}
+
+// ─── وضعیت زنده ──────────────────────────────────────────────────
+
+/** @type {HTMLElement|null} */
 let activeStatusEl = null
 
 /**
- * یک المان status جدید داخل چت می‌سازد یا متن المان موجود را به‌روز می‌کند.
- * @param {string} text - متن نمایشی وضعیت
+ * یک المان status جدید می‌سازد یا متن موجود را به‌روز می‌کند.
+ * @param {string} text
  */
 function showStatus(text) {
 	if (!activeStatusEl) {
@@ -42,7 +53,7 @@ function showStatus(text) {
 	chatEl.scrollTop = chatEl.scrollHeight
 }
 
-/** المان status فعال را از DOM حذف می‌کند */
+/** المان status را حذف می‌کند. */
 function removeStatus() {
 	if (activeStatusEl) {
 		activeStatusEl.remove()
@@ -50,13 +61,13 @@ function removeStatus() {
 	}
 }
 
-// ─── Typewriter ────────────────────────────────────────────────────────────────
+// ─── Typewriter ───────────────────────────────────────────────────
 
 /**
  * متن را کاراکتر به کاراکتر داخل المان تایپ می‌کند.
- * @param {HTMLElement} element - المان هدف
- * @param {string} text - متن ورودی
- * @param {number} speed - تأخیر بین کاراکترها (میلی‌ثانیه)
+ * @param {HTMLElement} element
+ * @param {string}      text
+ * @param {number}      speed
  * @returns {Promise<void>}
  */
 async function typeWriter(element, text, speed = 18) {
@@ -80,11 +91,11 @@ async function typeWriter(element, text, speed = 18) {
 	})
 }
 
-// ─── رندر کارت‌های محصول ──────────────────────────────────────────────────────
+// ─── رندر کارت‌های محصول ─────────────────────────────────────────
 
 /**
- * حداکثر ۲ کارت محصول را به چت اضافه می‌کند.
- * @param {Array<Object>} products - آرایه محصولات از SearchResponse
+ * حداکثر ۲ کارت محصول را رندر می‌کند.
+ * @param {Array<Object>} products
  */
 function renderProducts(products) {
 	if (!products?.length) return
@@ -93,13 +104,15 @@ function renderProducts(products) {
 	products.slice(0, 2).forEach((p) => {
 		wrapper.innerHTML += `
       <div class="product-card">
-        <img src="${p.image_url || "https://placehold.co/300x300?text=No+Image"}" alt="${p.title}" class="product-img">
+        <img
+          src="${p.image_url || "https://placehold.co/300x300?text=No+Image"}"
+          alt="${p.title}"
+          class="product-img"
+        />
         <div class="product-info">
           <div class="product-title">${p.title}</div>
           <div class="product-price">${Number(p.price).toLocaleString("fa-IR")} تومان</div>
-          <div style="font-size:0.8rem; color:var(--color-text-muted); margin-bottom:0.5rem">
-            ${p.price_range} | دوربین: ${p.camera_quality}
-          </div>
+          <div class="product-meta">${p.price_range} | دوربین: ${p.camera_quality}</div>
           <div class="tags">${p.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
         </div>
       </div>`
@@ -108,11 +121,9 @@ function renderProducts(products) {
 	chatEl.scrollTop = chatEl.scrollHeight
 }
 
-// ─── دکمه‌های اکشن سریع ───────────────────────────────────────────────────────
+// ─── دکمه‌های اکشن سریع ──────────────────────────────────────────
 
-/**
- * دکمه‌های پیشنهادی بعد از هر پاسخ را رندر می‌کند.
- */
+/** دکمه‌های پیشنهادی بعد از هر پاسخ را رندر می‌کند. */
 function renderQuickActions() {
 	const wrapper = document.createElement("div")
 	wrapper.className = "quick-actions"
@@ -135,13 +146,13 @@ function renderQuickActions() {
 	chatEl.scrollTop = chatEl.scrollHeight
 }
 
-// ─── افزودن پیام به چت ────────────────────────────────────────────────────────
+// ─── افزودن پیام ─────────────────────────────────────────────────
 
 /**
- * یک حباب پیام جدید به چت اضافه کرده و span متنی درون آن را برمی‌گرداند.
+ * یک حباب پیام به چت اضافه می‌کند.
  * @param {"user"|"ai"} role
- * @param {string} content
- * @returns {HTMLElement} المان span متنی (هدف typeWriter)
+ * @param {string}      content
+ * @returns {HTMLElement} span متنی درون حباب
  */
 function addMessage(role, content = "") {
 	const msg = document.createElement("div")
@@ -158,18 +169,22 @@ function addMessage(role, content = "") {
 	return textSpan
 }
 
-// ─── هسته اصلی: ارتباط SSE با بک‌اند ────────────────────────────────────────
+// ─── هسته اصلی ───────────────────────────────────────────────────
 
 /**
  * کوئری کاربر را از طریق SSE به بک‌اند ارسال کرده،
- * در هر مرحله وضعیت زنده نمایش می‌دهد و پاسخ نهایی را رندر می‌کند.
+ * وضعیت زنده نمایش می‌دهد و پاسخ نهایی را رندر می‌کند.
  */
 async function handleSend() {
 	const query = inputEl.value.trim()
 	if (!query) return
 
+	// اولین ارسال: تغییر layout
+	switchToChatMode()
+
 	inputEl.value = ""
-	sendBtn.disabled = true
+	inputEl.style.height = "auto"
+	inputEl.disabled = true
 	addMessage("user", query)
 
 	const params = new URLSearchParams({
@@ -177,22 +192,18 @@ async function handleSend() {
 		top_k: "2",
 		session_id: sessionId,
 	})
-	const url = `/api/v1/search/stream?${params.toString()}`
-	const es = new EventSource(url)
+	const es = new EventSource(`/api/v1/search/stream?${params.toString()}`)
 
-	// ── رویداد وضعیت مرحله ──────────────────────────────────────────────────
 	es.addEventListener("status", (e) => {
 		const { step, message } = JSON.parse(e.data)
 		showStatus(STEP_MESSAGES[step] ?? message)
 	})
 
-	// ── رویداد نتیجه نهایی ──────────────────────────────────────────────────
 	es.addEventListener("result", async (e) => {
 		es.close()
 		removeStatus()
 
 		const data = JSON.parse(e.data)
-
 		const aiTextEl = addMessage("ai")
 		const text = data.llm_explanation || data.message || ""
 		await typeWriter(aiTextEl, text)
@@ -200,22 +211,19 @@ async function handleSend() {
 		if (data.results?.length) renderProducts(data.results)
 		renderQuickActions()
 
-		// به‌روزرسانی session_id با مقدار دریافتی از سرور
 		if (data.session_id) {
 			sessionId = data.session_id
 			localStorage.setItem("nira_session", sessionId)
 		}
 
-		sendBtn.disabled = false
+		inputEl.disabled = false
 		inputEl.focus()
 	})
 
-	// ── رویداد خطا ──────────────────────────────────────────────────────────
 	es.addEventListener("error", (e) => {
 		es.close()
 		removeStatus()
 
-		// تفکیک خطای اپلیکیشن از خطای اتصال EventSource
 		if (e.data) {
 			const { message } = JSON.parse(e.data)
 			addMessage("ai", `❌ ${message}`)
@@ -226,13 +234,21 @@ async function handleSend() {
 			)
 		}
 
-		sendBtn.disabled = false
+		inputEl.disabled = false
 		inputEl.focus()
 	})
 }
 
-// ─── رویدادهای UI ──────────────────────────────────────────────────────────────
-sendBtn.addEventListener("click", () => handleSend())
-inputEl.addEventListener("keypress", (e) => {
-	if (e.key === "Enter" && !e.shiftKey) handleSend()
+// ─── رویداد Enter ────────────────────────────────────────────────
+inputEl.addEventListener("keydown", (e) => {
+	if (e.key === "Enter" && !e.shiftKey) {
+		e.preventDefault()
+		handleSend()
+	}
+})
+
+// ─── auto-resize textarea ─────────────────────────────────────────
+inputEl.addEventListener("input", () => {
+	inputEl.style.height = "auto"
+	inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + "px"
 })

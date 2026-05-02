@@ -1,46 +1,48 @@
 /* ═══════════════════════════════════════════════════════════════════
-توکن‌های طراحی — تمام مقادیر از اینجا مدیریت می‌شوند
+توکن‌های طراحی — Light Theme
 ═══════════════════════════════════════════════════════════════════ */
 :root {
 	--font-main: "Vazirmatn", system-ui, sans-serif;
-	/* رنگ اصلی — قابل تغییر از پنل تنظیمات */
-	--color-primary: #6366f1;
-	--color-primary-hover: #4f46e5;
-	--color-primary-glow: rgba(99, 102, 241, 0.25);
+
+	/* رنگ اصلی */
+	--color-primary: #f5a623;
+	--color-primary-hover: #e0951a;
+	--color-primary-glow: rgba(245, 166, 35, 0.2);
 
 	/* پس‌زمینه و سطوح */
-	--color-bg: #080c18;
-	--color-surface: rgba(255, 255, 255, 0.045);
-	--color-surface-mid: rgba(255, 255, 255, 0.07);
-	--color-border: rgba(255, 255, 255, 0.08);
-	--color-border-strong: rgba(255, 255, 255, 0.14);
+	--color-bg: #ffffff;
+	--color-surface: #f7f7f8;
+	--color-surface-mid: #f0f0f1;
+	--color-border: rgba(0, 0, 0, 0.08);
+	--color-border-strong: rgba(0, 0, 0, 0.13);
 
 	/* متن */
-	--color-text: #eef0f8;
-	--color-text-muted: #7880a0;
-	--color-text-dim: #3e4460;
+	--color-text: #0d0d0d;
+	--color-text-muted: #6e6e80;
+	--color-text-dim: #aeaeb8;
 
 	/* حباب‌های چت */
-	--color-user-bubble: rgba(99, 102, 241, 0.15);
-	--color-ai-bubble: rgba(255, 255, 255, 0.04);
-
-	/* ورب‌های محیطی */
-	--orb-1: rgba(99, 102, 241, 0.18);
-	--orb-2: rgba(139, 92, 246, 0.12);
+	--color-user-bubble: #fff3e0;
+	--color-user-bubble-border: rgba(245, 166, 35, 0.3);
+	--color-ai-bubble: #f7f7f8;
+	--color-ai-bubble-border: rgba(0, 0, 0, 0.07);
 
 	/* شکل و سایه */
 	--radius-xl: 20px;
 	--radius-lg: 16px;
 	--radius-md: 12px;
 	--radius-sm: 8px;
-	--shadow-card:
-		0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-	--shadow-input: 0 0 0 2px var(--color-primary-glow);
-	--shadow-button: 0 4px 20px rgba(99, 102, 241, 0.4);
 
-	--transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-	--blur-glass: blur(16px);
+	--shadow-input: 0 0 0 3px var(--color-primary-glow);
+	--shadow-card:
+		0 4px 24px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+	--shadow-chatbox:
+		0 2px 16px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--color-border);
+
+	--transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	--blur-glass: blur(12px);
 }
+
 /* ═══════════════════════════════════════════════════════════════════
 ریست و پایه
 ═══════════════════════════════════════════════════════════════════ */
@@ -51,6 +53,7 @@
 	margin: 0;
 	padding: 0;
 }
+
 body {
 	font-family: var(--font-main);
 	background: var(--color-bg);
@@ -58,11 +61,10 @@ body {
 	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
-	transition:
-		background 0.3s ease,
-		color 0.3s ease;
 	overflow-x: hidden;
+	transition: background 0.3s ease;
 }
+
 /* ═══════════════════════════════════════════════════════════════════
 کرسر تایپ‌رایتر
 ═══════════════════════════════════════════════════════════════════ */
@@ -76,6 +78,7 @@ body {
 	animation: blink 0.9s ease-in-out infinite;
 	vertical-align: middle;
 }
+
 @keyframes blink {
 	0%,
 	100% {

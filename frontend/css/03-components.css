@@ -3,79 +3,80 @@
 ═══════════════════════════════════════════════════════════════════ */
 .message {
 	display: flex;
-	margin-bottom: 1.25rem;
-	animation: msgIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	flex-direction: row-reverse;
+	margin-bottom: 1.5rem;
+	justify-content: flex-end; /* هر دو نوع راست‌چین */
+	animation: msgIn 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
+
 @keyframes msgIn {
 	from {
 		opacity: 0;
-		transform: translateY(12px) scale(0.97);
+		transform: translateY(10px) scale(0.98);
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0) scale(1);
 	}
 }
-.message.user {
-	justify-content: flex-start;
-}
-.message.ai {
-	justify-content: flex-end;
-}
+
 .bubble {
 	max-width: 82%;
-	padding: 0.9rem 1.15rem;
-	border-radius: var(--radius-lg);
-	line-height: 1.7;
-	font-size: 0.935rem;
-	border: 1px solid var(--color-border);
-	backdrop-filter: var(--blur-glass);
-	-webkit-backdrop-filter: var(--blur-glass);
+	line-height: 1.8;
+	font-size: 0.92rem;
 }
+
+/* پیام کاربر — حباب نارنجی */
 .message.user .bubble {
+	padding: 0.75rem 1rem;
 	background: var(--color-user-bubble);
-	border-color: rgba(99, 102, 241, 0.2);
-	border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+	border: 1px solid var(--color-user-bubble-border);
+	border-radius: var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);
+	color: #7a4a00;
 }
+
+/* پاسخ AI — بدون bubble، مستقیم روی پس‌زمینه */
 .message.ai .bubble {
-	background: var(--color-ai-bubble);
-	border-color: var(--color-border);
-	border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+	padding: 0.25rem 0;
+	background: transparent;
+	border: none;
+	color: var(--color-text);
 }
+
 /* ═══════════════════════════════════════════════════════════════════
-نوار وضعیت زنده (داخل چت)
+نوار وضعیت زنده
 ═══════════════════════════════════════════════════════════════════ */
 .status {
 	display: flex;
 	align-items: center;
-	gap: 0.6rem;
-	font-size: 0.8rem;
+	gap: 0.5rem;
+	font-size: 0.78rem;
 	color: var(--color-text-muted);
 	margin-bottom: 1rem;
-	padding: 0.55rem 0.9rem;
+	padding: 0.45rem 0.8rem;
 	background: var(--color-surface);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-md);
 	width: fit-content;
-	/* پیش‌فرض: پنهان */
 	opacity: 0;
-	transform: translateY(6px);
+	transform: translateY(4px);
 	pointer-events: none;
 	transition:
-		opacity 0.25s ease,
-		transform 0.25s ease;
+		opacity 0.22s ease,
+		transform 0.22s ease;
 }
+
 .status.active {
 	opacity: 1;
 	transform: translateY(0);
-	pointer-events: auto;
 }
-/* انیمیشن سه‌نقطه لودر */
+
+/* سه نقطه لودر */
 .status::before {
 	content: "";
 	display: inline-flex;
 	width: 16px;
-	height: 8px;
+	height: 6px;
 	background:
 		radial-gradient(circle, var(--color-primary) 2px, transparent 2px) 0
 			center,
@@ -87,6 +88,7 @@
 	animation: dotBounce 1.1s ease-in-out infinite;
 	flex-shrink: 0;
 }
+
 @keyframes dotBounce {
 	0%,
 	80%,
@@ -100,170 +102,154 @@
 				12px center;
 		background-repeat: no-repeat;
 	}
-	20% {
+	30% {
 		background:
-			radial-gradient(circle, var(--color-primary) 2px, transparent 2px) 0
-				2px,
+			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
+				0 -2px,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
 				6px center,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
 				12px center;
 		background-repeat: no-repeat;
 	}
-	40% {
+	50% {
 		background:
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px) 0
 				center,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
-				6px 2px,
+				6px -2px,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
 				12px center;
 		background-repeat: no-repeat;
 	}
-	60% {
+	65% {
 		background:
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px) 0
 				center,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
 				6px center,
 			radial-gradient(circle, var(--color-primary) 2px, transparent 2px)
-				12px 2px;
+				12px -2px;
 		background-repeat: no-repeat;
 	}
 }
+
 /* ═══════════════════════════════════════════════════════════════════
 کارت‌های محصول
 ═══════════════════════════════════════════════════════════════════ */
 .products {
 	display: flex;
-	gap: 1rem;
+	gap: 0.85rem;
 	flex-wrap: wrap;
-	margin-top: 1rem;
+	margin-top: 0.85rem;
 }
+
 .product-card {
 	flex: 1;
-	min-width: 240px;
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
+	min-width: 220px;
+	background: #fff;
+	border: 1px solid var(--color-border-strong);
 	border-radius: var(--radius-xl);
 	overflow: hidden;
 	box-shadow: var(--shadow-card);
-	backdrop-filter: var(--blur-glass);
-	-webkit-backdrop-filter: var(--blur-glass);
 	transition: var(--transition);
-	animation: msgIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: msgIn 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
+
 .product-card:hover {
-	transform: translateY(-5px);
-	border-color: var(--color-border-strong);
-	box-shadow:
-		var(--shadow-card),
-		0 0 0 1px var(--color-primary-glow);
+	transform: translateY(-3px);
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
 }
+
 .product-img {
 	width: 100%;
-	height: 180px;
+	height: 160px;
 	object-fit: contain;
-	background: rgba(255, 255, 255, 0.96);
-	padding: 1.2rem;
-	transition: transform 0.4s ease;
+	background: #f7f7f8;
+	padding: 1rem;
+	transition: transform 0.35s ease;
 }
+
 .product-card:hover .product-img {
 	transform: scale(1.04);
 }
+
 .product-info {
-	padding: 1rem 1.1rem 1.2rem;
+	padding: 0.9rem 1rem 1rem;
 }
+
 .product-title {
 	font-weight: 600;
-	font-size: 0.88rem;
+	font-size: 0.85rem;
 	line-height: 1.55;
-	margin-bottom: 0.5rem;
+	margin-bottom: 0.45rem;
 	color: var(--color-text);
-	/* محدود کردن به دو خط */
 	display: -webkit-box;
 	line-clamp: 2;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
 }
+
 .product-price {
-	font-size: 1rem;
+	font-size: 0.98rem;
 	font-weight: 700;
-	color: var(--color-primary);
-	margin-bottom: 0.4rem;
-	letter-spacing: -0.01em;
+	color: var(--color-primary-hover);
+	margin-bottom: 0.35rem;
 }
+
 .product-meta {
-	font-size: 0.75rem;
+	font-size: 0.73rem;
 	color: var(--color-text-muted);
-	margin-bottom: 0.7rem;
+	margin-bottom: 0.6rem;
 }
+
 .tags {
 	display: flex;
-	gap: 0.35rem;
+	gap: 0.3rem;
 	flex-wrap: wrap;
 }
+
 .tag {
-	font-size: 0.68rem;
+	font-size: 0.66rem;
 	background: var(--color-surface-mid);
 	border: 1px solid var(--color-border);
-	padding: 0.2rem 0.55rem;
+	padding: 0.18rem 0.5rem;
 	border-radius: 99px;
 	color: var(--color-text-muted);
-	letter-spacing: 0.01em;
 }
+
 /* ═══════════════════════════════════════════════════════════════════
 دکمه‌های اکشن سریع
 ═══════════════════════════════════════════════════════════════════ */
 .quick-actions {
 	display: flex;
-	gap: 0.5rem;
-	margin-top: 0.85rem;
+	justify-content: flex-end;
+	gap: 0.45rem;
+	margin-top: 0.75rem;
 	flex-wrap: wrap;
 }
+
 .action-btn {
-	background: var(--color-surface-mid);
-	color: var(--color-text);
+	background: #fff;
+	color: var(--color-text-muted);
 	border: 1px solid var(--color-border-strong);
-	padding: 0.45rem 1rem;
+	padding: 0.4rem 0.9rem;
 	border-radius: 99px;
 	cursor: pointer;
 	font-family: inherit;
-	font-size: 0.8rem;
+	font-size: 0.78rem;
 	transition: var(--transition);
-	backdrop-filter: var(--blur-glass);
-	-webkit-backdrop-filter: var(--blur-glass);
 }
+
 .action-btn:hover {
 	background: var(--color-primary);
 	border-color: var(--color-primary);
 	color: #fff;
 	transform: translateY(-1px);
-	box-shadow: var(--shadow-button);
+	box-shadow: 0 3px 12px var(--color-primary-glow);
 }
+
 .action-btn:active {
 	transform: translateY(0);
-}
-/* ═══════════════════════════════════════════════════════════════════
-کرسر تایپ‌رایتر
-═══════════════════════════════════════════════════════════════════ */
-.cursor {
-	display: inline-block;
-	width: 2px;
-	height: 1em;
-	background: var(--color-primary);
-	margin-inline-start: 2px;
-	border-radius: 1px;
-	animation: blink 0.9s ease-in-out infinite;
-	vertical-align: middle;
-}
-@keyframes blink {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0;
-	}
 }
