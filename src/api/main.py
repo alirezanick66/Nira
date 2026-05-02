@@ -21,6 +21,7 @@ from src.services.reranker_service import RerankerService
 from src.core.llm.orchestrator import LLMOrchestrator
 from src.config.settings import get_settings
 from src.api.routes.search import router as search_router
+from src.api.middleware.api_key_middleware import ApiKeyMiddleware
 
 
 @asynccontextmanager
@@ -59,6 +60,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=[ "*" ],
     allow_headers=[ "*" ],
+)
+app.add_middleware(
+    ApiKeyMiddleware,
+    api_key_store_map=get_settings().API_KEY_STORE_MAP,
 )
 
 app.include_router( search_router )

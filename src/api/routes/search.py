@@ -5,8 +5,9 @@ import time
 import json
 import asyncio
 from typing import AsyncGenerator
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 #───────────────────── Local Imports ─────────────────────
 from src.api.schemas import SearchRequest, SearchResponse, SearchResultItem
@@ -16,6 +17,7 @@ from src.services.reranker_service import RerankerService
 from src.core.llm.orchestrator import LLMOrchestrator
 from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm
 from src.config.logging_config import log_message, LogLevel, LG
+from src.services.query_log_service import log_query
 
 router = APIRouter( prefix="/api/v1", tags=[ "Search" ] )
 
@@ -41,8 +43,11 @@ def _sse_event( event: str, data: dict ) -> str:
 )
 async def search_products_stream(
         query: str,
+        request: Request,
         top_k: int = 2,
         session_id: str | None = None,
+        user_id: str | None = None,
+        client_session_id: str | None = None,
         nlu: NLUPipeline = Depends( get_nlu_pipeline ),
         retriever: QdrantHybridRetriever = Depends( get_retriever ),
         reranker: RerankerService = Depends( get_reranker ),
@@ -57,10 +62,14 @@ async def search_products_stream(
     - ``error``   → در صورت بروز خطای غیرمنتظره
     """
     active_session_id = session_id or str( uuid.uuid4() )
+    store_id = request.state.store_id
 
     async def _event_generator() -> AsyncGenerator[ str, None ]:
         t0 = time.perf_counter()
         req_id = str( uuid.uuid4() )
+        response_status = "error"
+        result_count = 0
+        nlu_out = None
 
         try:
             # ── مرحله ۱: پردازش NLU ──────────────────────────────────────────
@@ -70,6 +79,7 @@ async def search_products_stream(
 
             # ── حالت خاص: احوال‌پرسی ──────────────────────────────────────────
             if nlu_out.is_greeting:
+                response_status = "success"
                 payload = SearchResponse(
                     status="success",
                     request_id=req_id,
@@ -98,6 +108,7 @@ async def search_products_stream(
 
             if not candidates:
                 latency = round( ( time.perf_counter() - t0 ) * 1000, 1 )
+                response_status = "empty"
                 payload = SearchResponse(
                     status="empty",
                     request_id=req_id,
@@ -156,6 +167,7 @@ async def search_products_stream(
 
             latency_ms = round( ( time.perf_counter() - t0 ) * 1000, 1 )
             response_status = "partial" if fallback_steps > 0 else "success"
+            result_count = len( results )
 
             payload = SearchResponse(
                 status=response_status,
@@ -180,6 +192,22 @@ async def search_products_stream(
             log_message( LG.API, f"خطای غیرمنتظره در SSE stream: {exc}", LogLevel.ERROR )
             yield _sse_event( "error", { "message": "خطای داخلی سرور. لطفاً دوباره تلاش کنید." } )
 
+        finally:
+            log_query(
+                request_id=uuid.UUID( req_id ),
+                store_id=store_id,
+                user_id=user_id,
+                session_id=active_session_id,
+                client_session_id=client_session_id,
+                query=query,
+                intent=nlu_out.intent if nlu_out else "unknown",
+                domain="mobile",
+                applied_filters=nlu_out.metadata_filters if nlu_out else None,
+                result_count=result_count,
+                response_status=response_status,
+                latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+            )
+
     return StreamingResponse(
         _event_generator(),
         media_type="text/event-stream",
@@ -197,7 +225,8 @@ async def search_products_stream(
 
 @router.post( "/search", response_model=SearchResponse, status_code=status.HTTP_200_OK )
 async def search_products(
-        request: SearchRequest,
+        request_body: SearchRequest,
+        request: Request,
         nlu: NLUPipeline = Depends( get_nlu_pipeline ),
         retriever: QdrantHybridRetriever = Depends( get_retriever ),
         reranker: RerankerService = Depends( get_reranker ),
@@ -206,18 +235,23 @@ async def search_products(
     """پردازش کوئری کاربر و بازگرداندن پاسخ استاندارد ساختاریافته (بدون streaming)"""
     t0 = time.perf_counter()
     req_id = str( uuid.uuid4() )
-    session_id = request.session_id or str( uuid.uuid4() )
+    session_id = request.client_session_id or str( uuid.uuid4() )          #type: ignore
+    store_id = request.state.store_id
+    response_status = "error"
+    result_count = 0
+    nlu_out = None
 
     try:
-        nlu_out = nlu.process( request.query )
+        nlu_out = nlu.process( request_body.query )
 
         if nlu_out.is_greeting:
+            response_status = "success"
             return SearchResponse(
                 status="success",
                 request_id=req_id,
                 session_id=session_id,
                 intent="greeting",
-                semantic_query=request.query,
+                semantic_query=request_body.query,
                 applied_filters={},
                 results=[],
                 message="سلام! چطور می‌تونم کمکتون کنم؟",
@@ -230,11 +264,12 @@ async def search_products(
             retriever.search,
             query=nlu_out.semantic_query,
             filters=nlu_out.metadata_filters,
-            top_k=max( request.top_k * 2, 10 ),
+            top_k=max( request_body.top_k * 2, 10 ),
         )
 
         if not candidates:
             latency = round( ( time.perf_counter() - t0 ) * 1000, 1 )
+            response_status = "empty"
             return SearchResponse(
                 status="empty",
                 request_id=req_id,
@@ -258,14 +293,14 @@ async def search_products(
 
         final_products = await asyncio.to_thread(
             reranker.rerank,
-            query=request.query,
+            query=request_body.query,
             payloads=candidates,
-            top_k=request.top_k,
+            top_k=request_body.top_k,
         )
 
         llm_out = await llm.generate(
             session_id=session_id,
-            user_query=request.query,
+            user_query=request_body.query,
             intent=nlu_out.intent,
             filters_str=str( nlu_out.metadata_filters ),
             products=final_products,
@@ -285,11 +320,7 @@ async def search_products(
         ]
 
         latency_ms = round( ( time.perf_counter() - t0 ) * 1000, 1 )
-        meta = {
-            "latency_ms": latency_ms,
-            "fallback_steps": fallback_steps,
-            "total_candidates": len( candidates ),
-        }
+        result_count = len( results )
 
         return SearchResponse(
             status=response_status,
@@ -302,7 +333,11 @@ async def search_products(
             message=str( llm_out.get( "explanation", "" ) ),
             llm_explanation=str( llm_out.get( "explanation", "" ) ),
             next_suggestion=str( llm_out.get( "next_suggestion", "" ) ),
-            meta=meta,
+            meta={
+                "latency_ms": latency_ms,
+                "fallback_steps": fallback_steps,
+                "total_candidates": len( candidates ),
+            },
         )
 
     except HTTPException:
@@ -312,4 +347,20 @@ async def search_products(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="خطای داخلی سرور.",
+        )
+
+    finally:
+        log_query(
+            request_id=uuid.UUID( req_id ),
+            store_id=store_id,
+            user_id=getattr( request_body, "user_id", None ),
+            session_id=session_id,
+            client_session_id=getattr( request_body, "client_session_id", None ),
+            query=request_body.query,
+            intent=nlu_out.intent if nlu_out else "unknown",
+            domain=getattr( request_body, "domain", "mobile" ),
+            applied_filters=nlu_out.metadata_filters if nlu_out else None,
+            result_count=result_count,
+            response_status=response_status,
+            latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
         )
