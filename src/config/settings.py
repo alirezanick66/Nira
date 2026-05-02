@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from pydantic import Field
 from pydantic.fields import computed_field
+from pydantic.functional_validators import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,6 +66,13 @@ class Settings( BaseSettings ):
     USE_ONNX: bool = Field( default=True, description="فعال‌سازی ONNX Runtime برای کاهش مصرف CPU/RAM" )
     ONNX_EMBEDDING_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Embedding کوانتایز شده (INT8)" )
     ONNX_RERANKER_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Reranker کوانتایز شده (INT8)" )
+
+    #───────────────────── API Key Store ─────────────────────
+    API_KEY_STORE_MAP: dict[ str, str ] = {}
+
+    @field_validator( "API_KEY_STORE_MAP", mode="before" )
+    def parse_api_key_map( cls, v: str ) -> dict[ str, str ]:
+        return dict( pair.split( ":" ) for pair in v.split( "," ) if ":" in pair )
 
     # ───────────────────── Computed Fields ─────────────────────
     @computed_field
