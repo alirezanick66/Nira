@@ -61,36 +61,6 @@ function removeStatus() {
 	}
 }
 
-// ─── Typewriter ───────────────────────────────────────────────────
-
-/**
- * متن را کاراکتر به کاراکتر داخل المان تایپ می‌کند.
- * @param {HTMLElement} element
- * @param {string}      text
- * @param {number}      speed
- * @returns {Promise<void>}
- */
-async function typeWriter(element, text, speed = 18) {
-	return new Promise((resolve) => {
-		let i = 0
-		const cursor = document.createElement("span")
-		cursor.className = "cursor"
-		element.parentNode.insertBefore(cursor, element.nextSibling)
-
-		const interval = setInterval(() => {
-			if (i < text.length) {
-				element.textContent += text.charAt(i)
-				i++
-				chatEl.scrollTop = chatEl.scrollHeight
-			} else {
-				clearInterval(interval)
-				cursor.remove()
-				resolve()
-			}
-		}, speed)
-	})
-}
-
 // ─── رندر کارت‌های محصول ─────────────────────────────────────────
 
 /**
@@ -102,18 +72,26 @@ function renderProducts(products) {
 	const wrapper = document.createElement("div")
 	wrapper.className = "products"
 	products.slice(0, 2).forEach((p) => {
+		// اضافه کردن مقدار پیش‌فرض برای فیلدهای ممکن است undefined باشند
+		const title = p.title || "بدون عنوان"
+		const imageUrl =
+			p.image_url || "https://placehold.co/300x300?text=No+Image"
+		const price = Number(p.price).toLocaleString("fa-IR") || "۰"
+		const priceRange = p.price_range || "متغیر"
+		const camera = p.camera_quality || "نامشخص"
+		const tags = p.tags?.length ? p.tags : ["موبایل"]
 		wrapper.innerHTML += `
       <div class="product-card">
         <img
-          src="${p.image_url || "https://placehold.co/300x300?text=No+Image"}"
-          alt="${p.title}"
+          src="${imageUrl}"
+          alt="${title}"
           class="product-img"
         />
         <div class="product-info">
-          <div class="product-title">${p.title}</div>
-          <div class="product-price">${Number(p.price).toLocaleString("fa-IR")} تومان</div>
-          <div class="product-meta">${p.price_range} | دوربین: ${p.camera_quality}</div>
-          <div class="tags">${p.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
+          <div class="product-title">${title}</div>
+          <div class="product-price">${price} تومان</div>
+          <div class="product-meta">${priceRange} | دوربین: ${camera}</div>
+          <div class="tags">${tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
         </div>
       </div>`
 	})
@@ -123,8 +101,11 @@ function renderProducts(products) {
 
 // ─── دکمه‌های اکشن سریع ──────────────────────────────────────────
 
-/** دکمه‌های پیشنهادی بعد از هر پاسخ را رندر می‌کند. */
+/** دکمه‌های پیشنهادی بعد از هر پاسخ را رندر می‌کند. (قبلی‌ها حذف می‌شوند) */
 function renderQuickActions() {
+	// حذف دکمه‌های قبلی
+	document.querySelectorAll(".quick-actions").forEach((el) => el.remove())
+
 	const wrapper = document.createElement("div")
 	wrapper.className = "quick-actions"
 	const actions = [
@@ -171,20 +152,43 @@ function addMessage(role, content = "") {
 
 // ─── هسته اصلی ───────────────────────────────────────────────────
 
+let isSending = false // قفل همزمانی درخواست‌ها
+let currentEventSource = null // برای بستن اتصال قبلی
+let sendTimeout = null // تایمر قطع اتصال در صورت عدم دریافت نتیجه
+
 /**
  * کوئری کاربر را از طریق SSE به بک‌اند ارسال کرده،
  * وضعیت زنده نمایش می‌دهد و پاسخ نهایی را رندر می‌کند.
  */
 async function handleSend() {
+	// جلوگیری از درخواست همزمان
+	if (isSending) return
+
 	const query = inputEl.value.trim()
 	if (!query) return
 
-	// اولین ارسال: تغییر layout
+	// بستن اتصال قبلی اگر وجود داشته باشد
+	if (currentEventSource) {
+		currentEventSource.close()
+		currentEventSource = null
+	}
+	if (sendTimeout) {
+		clearTimeout(sendTimeout)
+		sendTimeout = null
+	}
+
+	isSending = true
 	switchToChatMode()
 
 	inputEl.value = ""
 	inputEl.style.height = "auto"
 	inputEl.disabled = true
+
+	// غیرفعال کردن دکمه‌های اکشن موجود در حین ارسال
+	document
+		.querySelectorAll(".action-btn")
+		.forEach((btn) => (btn.disabled = true))
+
 	addMessage("user", query)
 
 	const params = new URLSearchParams({
@@ -193,49 +197,104 @@ async function handleSend() {
 		session_id: sessionId,
 	})
 	const es = new EventSource(`/api/v1/search/stream?${params.toString()}`)
+	currentEventSource = es
+
+	// تایم‌اوت ۳۰ ثانیه: اگر در این مدت هیچ رویدادی نیامد، اتصال بسته شود
+	sendTimeout = setTimeout(() => {
+		if (currentEventSource) {
+			currentEventSource.close()
+			currentEventSource = null
+			removeStatus()
+			if (isSending) {
+				addMessage(
+					"ai",
+					"❌ زمان درخواست به پایان رسید. لطفاً دوباره تلاش کنید.",
+				)
+				isSending = false
+				inputEl.disabled = false
+				inputEl.focus()
+				document
+					.querySelectorAll(".action-btn")
+					.forEach((btn) => (btn.disabled = false))
+			}
+		}
+	}, 30000)
 
 	es.addEventListener("status", (e) => {
-		const { step, message } = JSON.parse(e.data)
-		showStatus(STEP_MESSAGES[step] ?? message)
+		try {
+			const { step, message } = JSON.parse(e.data)
+			showStatus(STEP_MESSAGES[step] ?? message)
+		} catch (err) {
+			console.warn("Invalid status event data", e.data)
+		}
 	})
 
-	es.addEventListener("result", async (e) => {
+	es.addEventListener("result", (e) => {
+		// بستن اتصال و پاک کردن تایمر
 		es.close()
+		if (currentEventSource === es) currentEventSource = null
+		if (sendTimeout) clearTimeout(sendTimeout)
 		removeStatus()
 
-		const data = JSON.parse(e.data)
+		let data
+		try {
+			data = JSON.parse(e.data)
+		} catch (err) {
+			addMessage("ai", "❌ پاسخ دریافتی نامعتبر است.")
+			isSending = false
+			inputEl.disabled = false
+			inputEl.focus()
+			document
+				.querySelectorAll(".action-btn")
+				.forEach((btn) => (btn.disabled = false))
+			return
+		}
+
 		const aiTextEl = addMessage("ai")
-		const text = data.llm_explanation || data.message || ""
-		await typeWriter(aiTextEl, text)
+		const aiMessage =
+			data.llm_explanation || data.message || "پاسخی دریافت نشد."
+		aiTextEl.textContent = aiMessage
+		chatEl.scrollTop = chatEl.scrollHeight
 
 		if (data.results?.length) renderProducts(data.results)
-		renderQuickActions()
+		renderQuickActions() // این تابع دکمه‌های قبلی را حذف می‌کند و دکمه‌های جدید می‌سازد
 
 		if (data.session_id) {
 			sessionId = data.session_id
 			localStorage.setItem("nira_session", sessionId)
 		}
 
+		isSending = false
 		inputEl.disabled = false
 		inputEl.focus()
+		document
+			.querySelectorAll(".action-btn")
+			.forEach((btn) => (btn.disabled = false))
 	})
 
 	es.addEventListener("error", (e) => {
 		es.close()
+		if (currentEventSource === es) currentEventSource = null
+		if (sendTimeout) clearTimeout(sendTimeout)
 		removeStatus()
 
+		let errorMsg = "❌ خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید."
 		if (e.data) {
-			const { message } = JSON.parse(e.data)
-			addMessage("ai", `❌ ${message}`)
-		} else {
-			addMessage(
-				"ai",
-				"❌ خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.",
-			)
+			try {
+				const { message } = JSON.parse(e.data)
+				if (message) errorMsg = `❌ ${message}`
+			} catch (_) {
+				/* ignore */
+			}
 		}
+		addMessage("ai", errorMsg)
 
+		isSending = false
 		inputEl.disabled = false
 		inputEl.focus()
+		document
+			.querySelectorAll(".action-btn")
+			.forEach((btn) => (btn.disabled = false))
 	})
 }
 

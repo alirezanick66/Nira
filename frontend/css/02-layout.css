@@ -42,7 +42,7 @@ body.welcome-mode .input-area {
 	color: var(--color-text);
 }
 
-@keyframes fadeUp {
+/* @keyframes fadeUp {
 	from {
 		opacity: 0;
 		transform: translateY(10px);
@@ -51,7 +51,7 @@ body.welcome-mode .input-area {
 		opacity: 1;
 		transform: translateY(0);
 	}
-}
+} */
 
 /* ═══════════════════════════════════════════════════════════════════
 حالت Chat — هدر + چت + input پایین
