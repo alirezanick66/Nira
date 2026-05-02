@@ -3,84 +3,59 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>دستیار نیرا</title>
+		<title>نیرا | دستیار هوشمند خرید</title>
+		<link rel="stylesheet" href="css/style.css" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
-			href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+			href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap"
 			rel="stylesheet" />
-		<link rel="stylesheet" href="style.css" />
 	</head>
 	<body>
-		<!-- لایه پس‌زمینه محیطی — فقط بصری، بدون تأثیر روی layout -->
-		<div class="bg-orb bg-orb--1" aria-hidden="true"></div>
-		<div class="bg-orb bg-orb--2" aria-hidden="true"></div>
+		<!-- المان‌های تزئینی پس‌زمینه -->
+		<div class="bg-orb bg-orb--1"></div>
+		<div class="bg-orb bg-orb--2"></div>
 
+		<!-- هدر -->
 		<header class="site-header">
 			<div class="header-inner">
 				<div class="header-brand">
 					<svg
 						class="brand-icon"
-						viewBox="0 0 32 32"
+						viewBox="0 0 24 24"
 						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						aria-hidden="true">
-						<circle
-							cx="16"
-							cy="16"
-							r="14"
-							stroke="currentColor"
-							stroke-width="1.5"
-							opacity="0.3" />
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round">
 						<path
-							d="M10 16C10 12.686 12.686 10 16 10C19.314 10 22 12.686 22 16"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round" />
-						<circle cx="16" cy="16" r="3" fill="currentColor" />
-						<path
-							d="M16 22V25M12 22.5L10 25M20 22.5L22 25"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round" />
+							d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 					</svg>
 					<div class="brand-text">
 						<span class="brand-name">نیرا</span>
 						<span class="brand-tagline">دستیار هوشمند خرید</span>
 					</div>
 				</div>
-				<div class="header-live-dot" title="سرویس فعال"></div>
+				<div class="header-live-dot"></div>
 			</div>
 		</header>
 
-		<!-- id="chat" حفظ شده — script.js به این id وابسته است -->
-		<div class="chat-container" id="chat"></div>
+		<!-- کانتینر اصلی چت -->
+		<main class="chat-container" id="chat">
+			<!-- پیام‌ها و کارت‌ها توسط JS اینجا رندر می‌شوند -->
+		</main>
 
-		<div class="input-area">
+		<!-- ناحیه ورودی -->
+		<footer class="input-area">
 			<div class="input-wrapper">
-				<!-- id های اصلی حفظ شده‌اند -->
 				<input
-					id="query-input"
 					type="text"
-					autocomplete="off"
-					placeholder="مثلاً: یه گوشی سبک با دوربین خوب میخوام..." />
-				<button id="send-btn" aria-label="ارسال پیام">
-					<svg
-						viewBox="0 0 20 20"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						aria-hidden="true"
-						width="18"
-						height="18">
-						<path
-							d="M4 10H16M16 10L11 5M16 10L11 15"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round" />
-					</svg>
-					<span>ارسال</span>
-				</button>
+					id="query-input"
+					placeholder="نیازتان را بنویسید... (مثلاً: گوشی گیمینگ زیر ۳۰ میلیون)"
+					autocomplete="off" />
+				<button id="send-btn">ارسال</button>
 			</div>
-		</div>
+		</footer>
 
 		<script src="script.js"></script>
 	</body>

@@ -1,0 +1,17 @@
+/* ═══════════════════════════════════════════════════════════════════
+Fallback: مرورگرهایی که backdrop-filter ندارند
+═══════════════════════════════════════════════════════════════════ */
+@supports not (backdrop-filter: blur(1px)) {
+	.site-header {
+		background: var(--color-bg);
+	}
+	.input-area {
+		background: var(--color-bg);
+	}
+	.bubble {
+		background: var(--color-surface-mid);
+	}
+	.product-card {
+		background: var(--color-surface-mid);
+	}
+}
