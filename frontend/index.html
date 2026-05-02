@@ -11,51 +11,35 @@
 			href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap"
 			rel="stylesheet" />
 	</head>
-	<body>
-		<!-- المان‌های تزئینی پس‌زمینه -->
-		<div class="bg-orb bg-orb--1"></div>
-		<div class="bg-orb bg-orb--2"></div>
-
-		<!-- هدر -->
+	<body class="welcome-mode">
+		<!-- هدر (فقط در chat-mode نمایش داده می‌شود) -->
 		<header class="site-header">
 			<div class="header-inner">
 				<div class="header-brand">
-					<svg
-						class="brand-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round">
-						<path
-							d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-					</svg>
 					<div class="brand-text">
 						<span class="brand-name">نیرا</span>
 						<span class="brand-tagline">دستیار هوشمند خرید</span>
 					</div>
 				</div>
-				<div class="header-live-dot"></div>
 			</div>
 		</header>
 
-		<!-- کانتینر اصلی چت -->
-		<main class="chat-container" id="chat">
-			<!-- پیام‌ها و کارت‌ها توسط JS اینجا رندر می‌شوند -->
-		</main>
+		<!-- ناحیه چت -->
+		<main class="chat-container" id="chat"></main>
 
 		<!-- ناحیه ورودی -->
-		<footer class="input-area">
-			<div class="input-wrapper">
-				<input
-					type="text"
-					id="query-input"
-					placeholder="نیازتان را بنویسید... (مثلاً: گوشی گیمینگ زیر ۳۰ میلیون)"
-					autocomplete="off" />
-				<button id="send-btn">ارسال</button>
+		<div class="input-area">
+			<!-- عنوان خوش‌آمدگویی (فقط در welcome-mode) -->
+			<div class="welcome-heading">
+				<h1><span>سلام علیرضا</span> آماده‌اید شروع کنیم؟</h1>
 			</div>
-		</footer>
+
+			<textarea
+				id="query-input"
+				placeholder="نیازتان را بنویسید... (مثلاً: گوشی گیمینگ زیر ۳۰ میلیون)"
+				autocomplete="off"
+				rows="1"></textarea>
+		</div>
 
 		<script src="script.js"></script>
 	</body>
