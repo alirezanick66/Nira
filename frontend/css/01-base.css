@@ -24,8 +24,6 @@
 	/* حباب‌های چت */
 	--color-user-bubble: #fff3e0;
 	--color-user-bubble-border: rgba(245, 166, 35, 0.3);
-	--color-ai-bubble: #f7f7f8;
-	--color-ai-bubble-border: rgba(0, 0, 0, 0.07);
 
 	/* شکل و سایه */
 	--radius-xl: 20px;
