@@ -28,17 +28,20 @@ class ApiKeyMiddleware( BaseHTTPMiddleware ):
         self._api_key = api_key
 
     async def dispatch( self, request: Request, call_next ) -> Response:
-        # مسیرهای عمومی بدون بررسی رد می‌شوند
+        # ۱. مسیرهای عمومی بدون بررسی رد می‌شوند
         if request.url.path in _PUBLIC_PATHS:
             return await call_next( request )
 
-            # ‏✅ 2. چک کردن پسوند فایل‌های استاتیک
+        # ۲. فایل‌های استاتیک (CSS, JS, Images, Fonts, etc.)
         if any( request.url.path.lower().endswith( ext ) for ext in _STATIC_EXTENSIONS ):
             return await call_next( request )
 
+        # ۳. استخراج کلید API (اولویت با هدر X-API-Key، فال‌بک روی کوئری پارامتر برای EventSource)
         client_key = request.headers.get( "X-API-Key", "" ).strip()
+        if not client_key:
+            client_key = request.query_params.get( "api_key", "" ).strip()
 
-        # بررسی مستقیم برابر بودن کلیدها
+        # ۴. اعتبارسنجی کلید
         if not client_key or client_key != self._api_key:
             logger.warning( "❌ درخواست با کلید نامعتبر — path=%s", request.url.path )
             return JSONResponse(
@@ -46,6 +49,6 @@ class ApiKeyMiddleware( BaseHTTPMiddleware ):
                 content={ "detail": "Unauthorized: Invalid or missing API Key" },
             )
 
-        # در صورت معتبر بودن، شناسه پیش‌فرض تزریق می‌شود
+        # ۵. در صورت معتبر بودن، شناسه پیش‌فرض تزریق می‌شود
         request.state.store_id = "default_store"
         return await call_next( request )
