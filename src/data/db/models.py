@@ -58,7 +58,7 @@ class QueryLog( Base ):
     query: Mapped[ str ] = mapped_column( Text(), nullable=False )
     intent: Mapped[ str ] = mapped_column( String( 20 ), nullable=False )
     domain: Mapped[ str ] = mapped_column( String( 30 ), nullable=False, default="mobile" )
-    applied_filters: Mapped[ dict | None ] = mapped_column( JSON(), nullable=True )
+    applied_filters: Mapped[ dict | None ] = mapped_column( JSONB(), nullable=True )
     result_count: Mapped[ int ] = mapped_column( Integer(), nullable=False, default=0 )
     response_status: Mapped[ str ] = mapped_column( String( 10 ), nullable=False )
     latency_ms: Mapped[ int ] = mapped_column( Integer(), nullable=False )

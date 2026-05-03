@@ -8,10 +8,10 @@
 let _currentEs = null
 
 /** @type {ReturnType<typeof setTimeout>|null} تایمر timeout درخواست */
-let _timeoutId  = null
+let _timeoutId = null
 
 /** @type {boolean} قفل همزمانی — جلوگیری از درخواست موازی */
-let _isSending  = false
+let _isSending = false
 
 /** مدت زمان timeout درخواست (میلی‌ثانیه) */
 const REQUEST_TIMEOUT_MS = 30_000
@@ -20,9 +20,9 @@ const REQUEST_TIMEOUT_MS = 30_000
 
 /** @type {Record<string, string>} */
 const STEP_MESSAGES = {
-	nlu:        "در حال پردازش پیام شما...",
-	searching:  "در حال جستجو در محصولات...",
-	reranking:  "در حال ارزیابی و رتبه‌بندی نتایج...",
+	nlu: "در حال پردازش پیام شما...",
+	searching: "در حال جستجو در محصولات...",
+	reranking: "در حال ارزیابی و رتبه‌بندی نتایج...",
 	generating: "در حال آماده‌سازی پاسخ...",
 }
 
@@ -50,11 +50,11 @@ function _cleanup() {
  * @property {function(string): void} onStatus  - پیام وضعیت مرحله جاری
  * @property {function(Object): void} onResult  - داده کامل پاسخ موفق
  * @property {function(string): void} onError   - پیام خطا
- * @property {function(): void}       onTimeout - فراخوانده شدن در صورت timeout
+ * @property {function(): void}       onTimeout -‫ فراخوانده شدن در صورت timeout
  */
 
 /**
- * کوئری کاربر را از طریق SSE به بک‌اند ارسال می‌کند.
+ * ‫کوئری کاربر را از طریق SSE به بک‌اند ارسال می‌کند.
  * @param {string}          query
  * @param {string}          sessionId
  * @param {SearchCallbacks} callbacks
@@ -69,9 +69,15 @@ export function startSearch(query, sessionId, callbacks) {
 
 	const { onStatus, onResult, onError, onTimeout } = callbacks
 
-	const params = new URLSearchParams({ query, top_k: "2", session_id: sessionId })
-	const es     = new EventSource(`/api/v1/search/stream?${params.toString()}`)
-	_currentEs   = es
+	//ارسال درخواست با پارامترهای لازم
+	const params = new URLSearchParams({
+		query,
+		top_k: "2",
+		session_id: sessionId,
+		api_key: "abc12332424sdf5224", //‫ کلید API ثابت برای نسخه دمو (در نسخه واقعی باید مدیریت شود)
+	})
+	const es = new EventSource(`/api/v1/search/stream?${params.toString()}`)
+	_currentEs = es
 
 	// ── timeout ─────────────────────────────────────────────────
 	_timeoutId = setTimeout(() => {
@@ -113,7 +119,9 @@ export function startSearch(query, sessionId, callbacks) {
 			try {
 				const parsed = JSON.parse(e.data)
 				if (parsed.message) msg = parsed.message
-			} catch { /* داده‌ای برای parse وجود ندارد */ }
+			} catch {
+				/* داده‌ای برای parse وجود ندارد */
+			}
 		}
 		onError(msg)
 	})
