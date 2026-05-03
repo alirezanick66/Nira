@@ -68,11 +68,7 @@ class Settings( BaseSettings ):
     ONNX_RERANKER_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Reranker کوانتایز شده (INT8)" )
 
     #───────────────────── API Key Store ─────────────────────
-    API_KEY_STORE_MAP: dict[ str, str ] = {}
-
-    @field_validator( "API_KEY_STORE_MAP", mode="before" )
-    def parse_api_key_map( cls, v: str ) -> dict[ str, str ]:
-        return dict( pair.split( ":" ) for pair in v.split( "," ) if ":" in pair )
+    API_KEY_STORE_MAP: str = Field( default="" )
 
     # ───────────────────── Computed Fields ─────────────────────
     @computed_field

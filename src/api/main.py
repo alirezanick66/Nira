@@ -61,9 +61,10 @@ app.add_middleware(
     allow_methods=[ "*" ],
     allow_headers=[ "*" ],
 )
+
 app.add_middleware(
     ApiKeyMiddleware,
-    api_key_store_map=get_settings().API_KEY_STORE_MAP,
+    api_key=get_settings().API_KEY_STORE_MAP,
 )
 
 app.include_router( search_router )
