@@ -47,8 +47,6 @@ body.welcome-mode .input-area {
 ═══════════════════════════════════════════════════════════════════ */
 body.chat-mode {
 	flex-direction: column;
-	height: 100vh; /* ← اضافه */
-	overflow: hidden; /* ← اضافه */
 }
 
 body.chat-mode .welcome-heading {
@@ -89,7 +87,7 @@ body.chat-mode .welcome-heading {
 /* ─── ناحیه چت ─── */
 .chat-container {
 	flex: 1;
-	overflow-y: auto;
+	overflow-y: visible;
 	padding: 2rem 1rem 1.5rem;
 	max-width: 740px;
 	width: 100%;

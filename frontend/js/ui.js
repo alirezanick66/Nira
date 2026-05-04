@@ -13,7 +13,13 @@ const chatEl = document.getElementById("chat")
  */
 function _scrollToBottom() {
 	requestAnimationFrame(() => {
-		chatEl.scrollTop = chatEl.scrollHeight
+		requestAnimationFrame(() => {
+			// چون overflow-y: visible هست، روی window اسکرول کن
+			window.scrollTo({
+				top: document.documentElement.scrollHeight,
+				behavior: "smooth",
+			})
+		})
 	})
 }
 
