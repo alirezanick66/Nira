@@ -22,6 +22,7 @@ from src.core.llm.orchestrator import LLMOrchestrator
 from src.config.settings import get_settings
 from src.api.routes.search import router as search_router
 from src.api.middleware.api_key_middleware import ApiKeyMiddleware
+from src.services.embedding_service import EmbeddingService
 
 
 @asynccontextmanager
@@ -34,8 +35,10 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     domain = "mobile"
     config = loader.load( domain )
 
-    app.state.nlu = NLUPipeline( domain=domain, config_loader=loader )
-    app.state.retriever = QdrantHybridRetriever( config )
+    embedder = EmbeddingService()
+
+    app.state.nlu = NLUPipeline( domain=domain, config_loader=loader, embedding_service=embedder )
+    app.state.retriever = QdrantHybridRetriever( config, embedding_service=embedder )
     app.state.reranker = RerankerService()
     app.state.llm = LLMOrchestrator( config )
 
