@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi.responses import JSONResponse
 
 #─────────────────────local imports─────────────────────
+from src.data.repositories.product_repository import ProductRepository
 from src.config.domain_loader import DomainConfigLoader
 from src.api.schemas import ErrorLog
 from src.config.logging_config import log_message, LogLevel, LG
@@ -23,6 +24,7 @@ from src.config.settings import get_settings
 from src.api.routes.search import router as search_router
 from src.api.middleware.api_key_middleware import ApiKeyMiddleware
 from src.services.embedding_service import EmbeddingService
+from src.data.db.engine import DatabaseEngine
 
 
 @asynccontextmanager
@@ -36,7 +38,10 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     config = loader.load( domain )
 
     embedder = EmbeddingService()
+    db_engine = DatabaseEngine()
 
+    app.state.db_engine = db_engine
+    app.state.product_repo = ProductRepository( db_engine=db_engine )
     app.state.nlu = NLUPipeline( domain=domain, config_loader=loader, embedding_service=embedder )
     app.state.retriever = QdrantHybridRetriever( config, embedding_service=embedder )
     app.state.reranker = RerankerService()

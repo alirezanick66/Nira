@@ -1,6 +1,6 @@
 """ریپازیتوری مدیریت ذخیره و بازیابی داده‌های خام محصول
-مسئولیت: تنها نقطهٔ تعامل با جدول product_raw_cache،
-پیاده‌سازی الگوی Repository برای جداسازی لایهٔ داده از منطق تجاری.
+‫مسئولیت: تنها نقطهٔ تعامل با جدول product_raw_cache،
+‫پیاده‌سازی الگوی Repository برای جداسازی لایهٔ داده از منطق تجاری.
 """
 #───────────────────── Imports ─────────────────────
 
@@ -77,3 +77,24 @@ class ProductRepository:
         async with self._db.session_maker() as session:
             result = await session.execute( stmt )
             return [ row[ 0 ] for row in result.all() ]
+
+    async def batch_get_image_urls( self, product_ids: list[ int ] ) -> dict[ int, str | None ]:
+        """واکشی غیرمسدودکنندهٔ لینک اولین تصویر اصلی برای لیست محصولات"""
+        if not product_ids:
+            return {}
+
+        prc = ProductRawCache
+
+        # ‫استخراج مستقیم اولین آیتم آرایه از JSONB داخل PostgreSQL
+        first_url = ( prc.raw_payload[ "data" ][ "product" ][ "images" ][ "webp_url" ].astext )
+
+        stmt = ( select(
+            prc.product_id,
+            first_url,
+        ).where( prc.product_id.in_( product_ids ) ) )
+
+        async with self._db.session_maker() as session:
+            result = await session.execute( stmt )
+
+            # مستقیم dict بساز، بدون loop اضافه
+            return { product_id: url if url else None for product_id, url in result }
