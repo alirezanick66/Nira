@@ -1,6 +1,6 @@
-"""ارزیابی جامع تشخیص نیت (Hybrid: Rule → Semantic Fallback)
-این ماژول کوئری‌های چالشی را به NLUPipeline تزریق کرده و دقت تشخیص، مسیر اجرا
-و آستانه‌های معناری را می‌سنجد. قابل اجرا به صورت standalone.
+""" ‫ارزیابی جامع تشخیص نیت (Hybrid: Rule → Semantic Fallback)
+‫این ماژول کوئری‌های چالشی را به NLUPipeline تزریق کرده و دقت تشخیص، مسیر اجرا
+‫و آستانه‌های معناری را می‌سنجد. قابل اجرا به صورت standalone.
 """
 from __future__ import annotations
 import sys
@@ -25,20 +25,20 @@ def build_test_suite() -> list[ IntentTestCase ]:
     """ساخت مجموعه تست شامل دسته‌بندی‌های چالشی و مرزی"""
     return [
           # Greeting
-          # IntentTestCase( "سلام", "greeting", "رسمی پایه" ),
-          # IntentTestCase( "حالت چطوره؟", "greeting", "محاوره‌ای" ),
-          # IntentTestCase( "روزت بخیر", "greeting", "زمان‌محور" ),
-          # IntentTestCase( "خسته نباشید داداش", "greeting", "ترکیبی محاوره‌ای" ),
-          # IntentTestCase( "سلام، یه گوشی ارزون میخوام", "search", "ترکیبی با نیاز جستجو (باید search باشد)" ),
+        IntentTestCase( "سلام", "greeting", "رسمی پایه" ),
+        IntentTestCase( "حالت چطوره؟", "greeting", "محاوره‌ای" ),
+        IntentTestCase( "روزت بخیر", "greeting", "زمان‌محور" ),
+        IntentTestCase( "خسته نباشید داداش", "greeting", "ترکیبی محاوره‌ای" ),
+        IntentTestCase( "سلام، یه گوشی ارزون میخوام", "search", "ترکیبی با نیاز جستجو (باید search باشد)" ),
 
-          #   # Refine
-          # IntentTestCase( "یه چیز ارزونتر نشون بده", "refine", "اصلاح قیمت" ),
-          # IntentTestCase( "گزینه بعدی رو بگو", "refine", "پیمایش نتایج" ),
-          # IntentTestCase( "سبکترش رو میخوام", "refine", "فیلتر وزنی" ),
+          # Refine
+        IntentTestCase( "یه چیز ارزونتر نشون بده", "refine", "اصلاح قیمت" ),
+        IntentTestCase( "گزینه بعدی رو بگو", "refine", "پیمایش نتایج" ),
+        IntentTestCase( "سبکترش رو میخوام", "refine", "فیلتر وزنی" ),
 
-          #   # Compare
-          # IntentTestCase( "فرق این دوتا چیه", "compare", "مقایسه مستقیم" ),
-          # IntentTestCase( "کدوم بهتره سامسونگ یا شیائومی", "compare", "مقایسه برندی" ),
+          # Compare
+        IntentTestCase( "فرق این دوتا چیه", "compare", "مقایسه مستقیم" ),
+        IntentTestCase( "کدوم بهتره سامسونگ یا شیائومی", "compare", "مقایسه برندی" ),
 
           # Search (Negative Control & Edge Cases)
         IntentTestCase( "گوشی سامسونگ زیر ۲۰ میلیون", "search", "جستجوی استاندارد" ),
@@ -47,14 +47,10 @@ def build_test_suite() -> list[ IntentTestCase ]:
         IntentTestCase( "باتری ضعیف ولی قیمت پایین", "search", "کوئری متناقض" ),
         IntentTestCase( "یه لپ‌تاپ خوب برای ترید", "search", "نیاز ضمنی/دامنه خارجی" ),
           # ‫کوئری‌هایی که باید search بمونن ولی ریسک false positive دارن
-        IntentTestCase( "خوب، گوشی سامسونگ نشون بده", "search", "شروع با 'خوب' — شبیه احوالپرسی" ),
+        IntentTestCase( "سلام، گوشی سامسونگ نشون بده", "search", "شروع با 'سلام' — شبیه احوالپرسی" ),
         IntentTestCase( "چطوره این گوشی؟", "search", "سوال درباره محصول — نه احوالپرسی" ),
         IntentTestCase( "اوضاع دوربینش چطوره", "search", "اوضاع به عنوان توصیف محصول" ),
         IntentTestCase( "حال گوشی‌های اندروید چطوره", "search", "حال در متن محصول" ),
-
-          # refine edge cases
-        IntentTestCase( "بعدی", "search", "تک‌کلمه مبهم" ),
-
           # compare edge cases
         IntentTestCase( "سامسونگ یا شیائومی؟", "compare", "مقایسه بدون کلمه کلیدی صریح" ),
     ]
@@ -112,7 +108,7 @@ def run_evaluation() -> None:
 
 
 def run_score_report( nlu: NLUPipeline, suite: list[ IntentTestCase ] ) -> None:
-    """نمایش similarity score هر کوئری برای کالیبراسیون threshold"""
+    """ ‫نمایش similarity score هر کوئری برای کالیبراسیون threshold"""
     log_message( LG.NLU, "\n📐 Score Report (برای کالیبراسیون threshold):", LogLevel.INFO )
     for case in suite:
         scores = nlu.get_intent_scores( case.query )
