@@ -3,7 +3,7 @@
  * این ماژول هیچ وابستگی به api.js یا session.js ندارد.
  */
 
-const chatEl  = document.getElementById("chat")
+const chatEl = document.getElementById("chat")
 
 // ─── وضعیت زنده ──────────────────────────────────────────────────
 
@@ -53,12 +53,12 @@ export function switchToChatMode() {
  * @returns {HTMLElement} span متنی درون حباب
  */
 export function addMessage(role, content = "") {
-	const msg        = document.createElement("div")
-	msg.className    = `message ${role}`
-	const bubble     = document.createElement("div")
+	const msg = document.createElement("div")
+	msg.className = `message ${role}`
+	const bubble = document.createElement("div")
 	bubble.className = "bubble"
-	const textSpan   = document.createElement("span")
-	textSpan.className   = "text"
+	const textSpan = document.createElement("span")
+	textSpan.className = "text"
 	textSpan.textContent = content
 	bubble.appendChild(textSpan)
 	msg.appendChild(bubble)
@@ -75,16 +75,17 @@ export function addMessage(role, content = "") {
  */
 export function renderProducts(products) {
 	if (!products?.length) return
-	const wrapper     = document.createElement("div")
+	const wrapper = document.createElement("div")
 	wrapper.className = "products"
 
 	products.slice(0, 2).forEach((p) => {
-		const title      = p.title        || "بدون عنوان"
-		const imageUrl   = p.image_url    || "https://placehold.co/300x300?text=No+Image"
-		const price      = Number(p.price).toLocaleString("fa-IR") || "۰"
-		const priceRange = p.price_range  || "متغیر"
-		const camera     = p.camera_quality || "نامشخص"
-		const tags       = p.tags?.length ? p.tags : ["موبایل"]
+		const title = p.title || "بدون عنوان"
+		const imageUrl =
+			p.image_url || "https://placehold.co/300x300?text=No+Image"
+		const price = Number(p.price).toLocaleString("fa-IR") || "۰"
+		const priceRange = p.price_range || "متغیر"
+		const camera = p.camera_quality || "نامشخص"
+		const tags = p.tags?.length ? p.tags : ["موبایل"]
 
 		wrapper.innerHTML += `
       <div class="product-card">
@@ -112,20 +113,20 @@ export function renderProducts(products) {
 export function renderQuickActions(onAction) {
 	document.querySelectorAll(".quick-actions").forEach((el) => el.remove())
 
-	const wrapper     = document.createElement("div")
+	const wrapper = document.createElement("div")
 	wrapper.className = "quick-actions"
 
 	const actions = [
-		{ q: "یه چیز ارزون‌تر نشون بده",      label: "💸 ارزان‌تر"    },
-		{ q: "یه چیز گرون‌تر و بهتر نشون بده", label: "💎 گران‌تر"     },
-		{ q: "گزینهٔ بعدی رو ببین",            label: "🔀 گزینهٔ بعدی" },
+		{ q: "یه چیز ارزون‌تر نشون بده", label: "💸 ارزان‌تر" },
+		{ q: "یه چیز گرون‌تر و بهتر نشون بده", label: "💎 گران‌تر" },
+		{ q: "گزینهٔ بعدی رو ببین", label: "🔀 گزینهٔ بعدی" },
 	]
 
 	actions.forEach((a) => {
-		const btn       = document.createElement("button")
-		btn.className   = "action-btn"
+		const btn = document.createElement("button")
+		btn.className = "action-btn"
 		btn.textContent = a.label
-		btn.onclick     = () => onAction(a.q)
+		btn.onclick = () => onAction(a.q)
 		wrapper.appendChild(btn)
 	})
 
@@ -140,6 +141,7 @@ export function renderQuickActions(onAction) {
  * @param {boolean} disabled
  */
 export function setActionButtonsDisabled(disabled) {
-	document.querySelectorAll(".action-btn")
+	document
+		.querySelectorAll(".action-btn")
 		.forEach((btn) => (btn.disabled = disabled))
 }
