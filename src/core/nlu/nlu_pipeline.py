@@ -134,15 +134,14 @@ class NLUPipeline:
             best_intent = "search"
 
             for intent_name, cached_vecs in self._semantic_cache.items():
-                if intent_name == "search": continue
-                # ‫چون بردارها L2-Normalize شده‌اند، Dot Product == Cosine Similarity
                 sims = cached_vecs @ query_vec
                 current_max = float( np.max( sims ) )
                 if current_max > max_sim:
                     max_sim = current_max
                     best_intent = intent_name
 
-            threshold = self._semantic_thresholds.get( best_intent, 0.72 )
+            threshold = self._semantic_thresholds.get( best_intent, 0.70 )
+            # فقط اگر امتیاز از آستانه گذشت، Intent تغییر می‌کند. در غیر این صورت search می‌ماند.
             if max_sim >= threshold:
                 log_message( LG.NLU, f"🧠 تشخیص نیت معناری | Intent: {best_intent} | Similarity: {max_sim:.3f}", LogLevel.DEBUG )
                 return best_intent
