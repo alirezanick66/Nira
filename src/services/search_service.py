@@ -3,15 +3,17 @@
 ‫مسئول: اجرای کامل زنجیره NLU → Retrieval → Rerank → LLM و بازگشت پاسخ نهایی.
 ‫این ماژول هیچ وابستگی به پروتکل HTTP، SSE یا JSON ندارد و کاملاً Domain-Pure است.
 """
+#─────────────────────imports─────────────────────
 from __future__ import annotations
-
 import asyncio
 import time
 import uuid
 import logging
 from dataclasses import dataclass
 from typing import AsyncIterator
+import random
 
+#─────────────────────local imports─────────────────────
 from src.api.schemas import SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
 from src.core.nlu.nlu_pipeline import NLUPipeline
@@ -150,7 +152,7 @@ class SearchService:
 
         # ── حالت خاص: احوال‌پرسی ─────────────────────────────────────────────
         if nlu_out.is_greeting:
-            yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
+            yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0, config=self._nlu._config )
             return
 
         # ── مرحله ۲: جستجو ───────────────────────────────────────────────────
@@ -235,8 +237,13 @@ class SearchService:
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _build_greeting( *, req_id: str, session_id: str, query: str, t0: float ) -> SearchResponse:
+    def _build_greeting( *, req_id: str, session_id: str, query: str, t0: float, config: dict | None = None ) -> SearchResponse:
         """‫ساخت پاسخ احوال‌پرسی"""
+
+        greeting_cfg = config.get( "intent_keywords", {} ).get( "greeting", {} ) if config else {}
+        responses = greeting_cfg.get( "greeting_responses", "" )
+        selected = random.choice( responses )
+
         return SearchResponse(
             status="success",
             request_id=req_id,
@@ -245,7 +252,7 @@ class SearchService:
             semantic_query=query,
             applied_filters={},
             results=[],
-            message="سلام! چطور می‌تونم کمکتون کنم؟",
+            message=selected,
             llm_explanation="",
             next_suggestion="نیازتان را بنویسید.",
             meta={ "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ) },
