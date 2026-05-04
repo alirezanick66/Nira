@@ -2,21 +2,22 @@
 import asyncio
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.config.logging_config import log_message, LogLevel, LG
+from src.config.domain_loader import DomainConfigLoader
 
 
 async def main() -> None:
     log_message( LG.RETRIEVAL, "🧪 شروع تست Hybrid Search + RRF...", LogLevel.INFO )
-
-    retriever = QdrantHybridRetriever()
+    domain_config = DomainConfigLoader()
+    retriever = QdrantHybridRetriever( domain_config=domain_config.load( "mobile" ) )
 
     # ‫تست ۱: کوئری ساده بدون فیلتر
     results = retriever.search(
-        query="21678309",
+        query=" Redmi Note 14 Pro 5G",
         top_k=5,
     )
     log_message( LG.RETRIEVAL, f"📋 نتایج کوئری ساده: {len(results)} محصول", LogLevel.INFO )
     for i, p in enumerate( results, 1 ):
-        log_message( LG.RETRIEVAL, f" title :  {p.title}gb: {p.ram_gb} unit : {p.ram_unit}", LogLevel.DEBUG )
+        log_message( LG.RETRIEVAL, f" title :  {p.title}id: {p.product_id}", LogLevel.DEBUG )
 
     # # ‫تست ۲: کوئری با فیلتر قیمت و برند
     # results_filtered = retriever.search(

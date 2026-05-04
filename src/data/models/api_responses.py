@@ -4,7 +4,7 @@
 ‫فقط فیلدهای مورد نیاز رو extract می‌کنیم، بقیه ignore می‌شن
 """
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 # ==================== Product ID List API ====================
 
@@ -67,23 +67,26 @@ class DigikalaColor( BaseModel ):
 
 
 class DigikalaImages( BaseModel ):
-    """‫تصاویر محصول"""
+    """تصاویر محصول — فقط تصویر اصلی"""
 
-    webp_url: list[ str ] = Field( default_factory=list )
+    model_config = ConfigDict( extra="ignore" )          # ‫← نادیده گرفتن فیلدهای اضافی مثل "list"
+    webp_url: str | None = Field( default=None, description="لینک تصویر اصلی (WebP)" )
 
-    @field_validator( "webp_url", mode="before" )
+    @model_validator( mode="before" )
     @classmethod
-    def _extract_webp_url( cls, value: object ) -> list[ str ]:
-        """‫استخراج لیست URL از ساختار تودرتوی API"""
-        if isinstance( value, dict ):
-            # ‫حالت ۱: {"main": {"webp_url": [...]}}
-            if "main" in value and isinstance( value[ "main" ], dict ):
-                return value[ "main" ].get( "webp_url", [] )
-            # ‫حالت ۲: {"webp_url": [...]} (مستقیم)
-            if "webp_url" in value and isinstance( value[ "webp_url" ], list ):
-                return value[ "webp_url" ]
-        # ‫حالت ۳: لیست مستقیم یا مقدار نامعتبر
-        return value if isinstance( value, list ) else []
+    def _extract_main_webp_url( cls, data: object ) -> dict:
+        """استخراج اولین URL از main.webp_url قبل از ساخت مدل"""
+        if not isinstance( data, dict ):
+            return { "webp_url": None }
+
+        # اولویت: main.webp_url (تصویر اصلی)
+        main = data.get( "main" )
+        if isinstance( main, dict ):
+            urls = main.get( "webp_url" )
+            if isinstance( urls, list ) and urls:
+                return { "webp_url": urls[ 0 ] }          # ← فقط اولین
+
+        return { "webp_url": None }
 
 
 class DigikalaPrice( BaseModel ):

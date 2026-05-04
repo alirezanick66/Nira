@@ -5,6 +5,18 @@
 
 const chatEl = document.getElementById("chat")
 
+// ─── اسکرول به انتها ─────────────────────────────────────────────
+
+/**
+ * بعد از paint مرورگر به انتهای چت اسکرول می‌کند.
+ * استفاده از rAF تضمین می‌کند ارتفاع نهایی DOM محاسبه شده باشد.
+ */
+function _scrollToBottom() {
+	requestAnimationFrame(() => {
+		chatEl.scrollTop = chatEl.scrollHeight
+	})
+}
+
 // ─── وضعیت زنده ──────────────────────────────────────────────────
 
 /** @type {HTMLElement|null} المان status فعال در DOM */
@@ -21,7 +33,7 @@ export function showStatus(text) {
 		chatEl.appendChild(_activeStatusEl)
 	}
 	_activeStatusEl.textContent = text
-	chatEl.scrollTop = chatEl.scrollHeight
+	_scrollToBottom()
 }
 
 /** المان status فعال را از DOM حذف می‌کند. */
@@ -63,7 +75,7 @@ export function addMessage(role, content = "") {
 	bubble.appendChild(textSpan)
 	msg.appendChild(bubble)
 	chatEl.appendChild(msg)
-	chatEl.scrollTop = chatEl.scrollHeight
+	_scrollToBottom()
 	return textSpan
 }
 
@@ -100,7 +112,12 @@ export function renderProducts(products) {
 	})
 
 	chatEl.appendChild(wrapper)
-	chatEl.scrollTop = chatEl.scrollHeight
+	// دو rAF تو در تو: اول layout، بعد scroll — برای کارت‌هایی که با animation-delay رندر می‌شن
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			chatEl.scrollTop = chatEl.scrollHeight
+		})
+	})
 }
 
 // ─── دکمه‌های اکشن سریع ──────────────────────────────────────────
@@ -131,7 +148,11 @@ export function renderQuickActions(onAction) {
 	})
 
 	chatEl.appendChild(wrapper)
-	chatEl.scrollTop = chatEl.scrollHeight
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			chatEl.scrollTop = chatEl.scrollHeight
+		})
+	})
 }
 
 // ─── فعال/غیرفعال کردن دکمه‌های اکشن ───────────────────────────

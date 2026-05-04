@@ -32,7 +32,7 @@ async def main() -> None:
     try:
         sync_service = DigikalaSyncService()
         success_count = await sync_service.run(
-            max_products=None,
+            max_products=None,          # ‫تعداد محصول برای تست (قابل تنظیم)
             stop_event=stop_event,
         )
         log_message( LG.DATA_PROCESSING, f"✅ پایان همگام‌سازی | محصولات موفق: {success_count}", LogLevel.INFO )
