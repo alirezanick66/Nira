@@ -20,6 +20,7 @@ from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.core.nlu.schemas import NLUFilterQuery
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
+from src.data.repositories.product_repository import ProductRepository
 
 logger = logging.getLogger( __name__ )
 
@@ -62,11 +63,13 @@ class SearchService:
         retriever: QdrantHybridRetriever,
         reranker: RerankerService,
         llm: LLMOrchestrator,
+        image_repo: ProductRepository | None = None,
     ) -> None:
         self._nlu = nlu
         self._retriever = retriever
         self._reranker = reranker
         self._llm = llm
+        self._image_repo = image_repo
 
     # ─────────────────────────────────────────────────────────────────────────
     # رابط عمومی — اجرای کامل و بازگشت نتیجه (برای POST endpoint)
@@ -185,6 +188,13 @@ class SearchService:
             payloads=candidates,
             top_k=top_k,
         )
+        # ‫ Post-Retrieval Enrichment: واکشی image_url از PG
+        if self._image_repo and final_products:
+            ids = [ p.product_id for p in final_products ]
+            url_map = await self._image_repo.batch_get_image_urls( ids )
+            for p in final_products:
+                if hasattr( p, "image_url" ):
+                    p.image_url = url_map.get( p.product_id )
 
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step="generating", message=self._STEP_MESSAGES[ "generating" ] )

@@ -6,8 +6,9 @@
 ‫۳. لاگ‌گیری هر درخواست (cross-cutting concern)
 ‫است و هیچ منطق تجاری مستقیمی ندارد.
 """
-from __future__ import annotations
 
+#─────────────────────imports─────────────────────
+from __future__ import annotations
 import json
 import logging
 import time
@@ -16,9 +17,11 @@ from typing import TYPE_CHECKING, AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
+#─────────────────────local imports─────────────────────
+from src.data.repositories.product_repository import ProductRepository
 from src.api.schemas import SearchRequest, SearchResponse
 from src.services.search_service import PipelineStatus, SearchService
-from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm
+from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm, get_product_repo
 from src.services.query_log_service import log_query
 
 if TYPE_CHECKING:
@@ -41,9 +44,10 @@ def _build_service(
     retriever: QdrantHybridRetriever,
     reranker: RerankerService,
     llm: LLMOrchestrator,
+    product_repo: ProductRepository,
 ) -> SearchService:
     """‫ساخت نمونه SearchService از وابستگی‌های FastAPI"""
-    return SearchService( nlu=nlu, retriever=retriever, reranker=reranker, llm=llm )
+    return SearchService( nlu=nlu, retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,12 +73,13 @@ def _sse_event( event: str, data: dict ) -> str:
     response_description="پاسخ کامل JSON پس از اجرای کامل پایپلاین",
 )
 async def search_products(
-        request_body: SearchRequest,
-        request: Request,
-        nlu: NLUPipeline = Depends( get_nlu_pipeline ),
-        retriever: QdrantHybridRetriever = Depends( get_retriever ),
-        reranker: RerankerService = Depends( get_reranker ),
-        llm: LLMOrchestrator = Depends( get_llm ),
+    request_body: SearchRequest,
+    request: Request,
+    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
+    retriever: QdrantHybridRetriever = Depends( get_retriever ),
+    reranker: RerankerService = Depends( get_reranker ),
+    llm: LLMOrchestrator = Depends( get_llm ),
+    product_repo: ProductRepository = Depends( get_product_repo )
 ) -> SearchResponse:
     """‫دریافت کوئری از فروشگاه، اجرای کامل پایپلاین و بازگشت JSON ساختاریافته.
 
@@ -89,7 +94,7 @@ async def search_products(
 
     response: SearchResponse | None = None
     try:
-        service = _build_service( nlu, retriever, reranker, llm )
+        service = _build_service( nlu, retriever, reranker, llm, product_repo )
         response, _ = await service.run(
             query=request_body.query,
             session_id=session_id,
@@ -135,15 +140,16 @@ async def search_products(
     response_description="جریان رویدادهای text/event-stream",
 )
 async def search_products_stream(
-        query: str,
-        request: Request,
-        top_k: int = 2,
-        session_id: str | None = None,
-        client_session_id: str | None = None,
-        nlu: NLUPipeline = Depends( get_nlu_pipeline ),
-        retriever: QdrantHybridRetriever = Depends( get_retriever ),
-        reranker: RerankerService = Depends( get_reranker ),
-        llm: LLMOrchestrator = Depends( get_llm ),
+    query: str,
+    request: Request,
+    top_k: int = 2,
+    session_id: str | None = None,
+    client_session_id: str | None = None,
+    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
+    retriever: QdrantHybridRetriever = Depends( get_retriever ),
+    reranker: RerankerService = Depends( get_reranker ),
+    llm: LLMOrchestrator = Depends( get_llm ),
+    product_repo: ProductRepository = Depends( get_product_repo )
 ) -> StreamingResponse:
     """‫پردازش کوئری با ارسال زنده وضعیت هر مرحله از پایپلاین.
 
@@ -166,7 +172,7 @@ async def search_products_stream(
         applied_filters: dict | None = None
 
         try:
-            service = _build_service( nlu, retriever, reranker, llm )
+            service = _build_service( nlu, retriever, reranker, llm, product_repo )
 
             async for event in service.run_streaming(
                     query=query,

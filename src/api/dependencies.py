@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from src.core.vector.qdrant_retriever import QdrantHybridRetriever
     from src.services.reranker_service import RerankerService
     from src.core.llm.orchestrator import LLMOrchestrator
+    from src.data.repositories.product_repository import ProductRepository
 
 
 def get_nlu_pipeline( request: Request ) -> NLUPipeline:
@@ -37,3 +38,13 @@ def get_llm( request: Request ) -> LLMOrchestrator:
     if not hasattr( request.app.state, "llm" ):
         raise HTTPException( status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="سرویس LLM در حال راه‌اندازی است" )
     return request.app.state.llm
+
+
+def get_product_repo( request: Request ) -> ProductRepository:
+    """ ‫تزریق ریپازیتوری محصول از app.state"""
+    if not hasattr( request.app.state, "product_repo" ):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="سرویس دیتابیس محصول در حال راه‌اندازی است",
+        )
+    return request.app.state.product_repo
