@@ -58,7 +58,7 @@ class ProductTransformer:
         colors = [ color.title for color in api_product.colors ]
 
         # ‫استخراج تصویر اصلی
-        image_url = api_product.images.webp_url[ 0 ] if api_product.images.webp_url else None
+        image_url = api_product.images.webp_url
 
         # استخراج قیمت با چک کردن وجود واریانت
         price = 0
@@ -90,7 +90,7 @@ class ProductTransformer:
             rating_count=api_product.rating.count,
           # ‫تصاویر و رنگ‌ها
             image_url=image_url,
-            images=api_product.images.webp_url,
+          # images=api_product.images.webp_url,
             colors=colors,
           # ‫مشخصات
             specifications=specifications,
