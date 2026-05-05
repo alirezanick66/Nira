@@ -134,13 +134,10 @@ class TokenParser:
                     log_message( LG.NLU, f"📏 مچ رنج | اسلات: {slot_name} | مقدار: {range_val}", LogLevel.DEBUG )
                     break          # جلوگیری از پردازش تک‌عددی روی همین توکن
 
-                # ‫✅ اصلاح حیاتی: اگر cue تعریف شده باشد، حضور cue الزامی است.
-                # ‫این کار جلوی تداخل اسلات‌هایی با unit مشترک (مثل گیگ) را می‌گیرد.
+                    # ‫✅ اصلاح حیاتی: اگر cue تعریف شده باشد، حضور cue الزامی است.
+                    # ‫این کار جلوی تداخل اسلات‌هایی با unit مشترک (مثل گیگ) را می‌گیرد.
 
-                if cues:
-                    is_match = has_cue
-                else:
-                    is_match = bool( found_unit )
+                is_match = has_cue or bool( found_unit )          # ← حضور واحد معتبر هم کافی است
 
                 if is_match:
                     multiplier = units.get( found_unit, 1 ) if found_unit else 1
