@@ -24,6 +24,8 @@ class NLUFilterQuery( BaseModel ):
     metadata_filters: MetadataFilters = Field( default_factory=dict, description="فیلترهای متادیتا سازگار با Qdrant" )
     is_greeting: bool = Field( default=False )
     warnings: list[ str ] = Field( default_factory=list, description="هشدارهای ConflictResolver یا اعتبارسنجی فیلتر" )
+    sort_directive: dict[ str, str ] | None = Field(
+        default=None, description="دایرکتیو مرتب‌سازی پس از Reranker: {'key': 'price', 'order': 'asc'|'desc'}" )
 
 
 class FilterResolutionResult( BaseModel ):

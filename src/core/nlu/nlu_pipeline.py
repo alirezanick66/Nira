@@ -86,17 +86,31 @@ class NLUPipeline:
 
         # ‫۳. حل تضاد فیلترها بر اساس قواعد دامنه
         filters, conflict_report = self._conflict_resolver.resolve( cast( dict[ str, object ], filters ), processed )
+        sort_directive = None
+        lower_text = processed.lower()
+        sort_keywords_cfg = cast( dict[ str, dict[ str, list[ str ] ] ], self._config.get( "sort_keywords", {} ) )
+        for key, orders in sort_keywords_cfg.items():
+            for order, kws in orders.items():
+                if any( kw in lower_text for kw in kws ):
+                    sort_directive = { "key": key, "order": order }
+                    break
+            if sort_directive: break
 
-        # ‫۴. ساخت semantic_query تمیز برای بردارسازی
+        if sort_directive and sort_directive.get( "key" ) == "price" and "price_range" in filters:
+            del filters[ "price_range" ]
+            log_message( LG.NLU, "🧹 حذف price_range به دلیل فعال‌بودن دایرکتیو مرتب‌سازی قیمت", LogLevel.DEBUG )
+
+        # 5. ساخت semantic_query تمیز برای بردارسازی
         semantic_query = self._build_semantic_query( processed )
 
-        log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters}", LogLevel.DEBUG )
+        log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters} | Sort: {sort_directive}", LogLevel.DEBUG )
 
         return NLUFilterQuery( intent=intent,
                                semantic_query=semantic_query,
                                metadata_filters=cast( MetadataFilters, filters ),
                                is_greeting=False,
-                               warnings=conflict_report.warnings )
+                               warnings=conflict_report.warnings,
+                               sort_directive=sort_directive )
 
     # ──────────────────────────────────────────────────────────────
     # 🔧 Private Methods
