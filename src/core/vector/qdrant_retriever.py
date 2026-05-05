@@ -88,22 +88,17 @@ class QdrantHybridRetriever:
         relaxed_filters = deepcopy( filters )
         for step in range( self._MAX_RELAXATION_STEPS ):
             removed = self._relax_one_filter( relaxed_filters, query )
-            if removed is None: break
-            log_message( LG.RETRIEVAL, f"  ↻ گام {step+1}: فیلتر «{removed}» حذف/شل شد، تلاش مجدد...", LogLevel.INFO )
-            results = self._execute_search( dense_vec, sparse_vec, relaxed_filters, top_k )
-            if results:
-                log_message( LG.RETRIEVAL, f"✅ Fallback موفق در گام {step+1} | فیلترهای فعال: {list(relaxed_filters.keys())}",
-                             LogLevel.INFO )
-                return results
 
+            if removed is None: break
+            log_message( LG.RETRIEVAL, f"↻ گام {step+1}: فیلتر «{removed}» حذف/شل شد، تلاش مجدد...", LogLevel.INFO )
             results = self._execute_search( dense_vec, sparse_vec, relaxed_filters, top_k )
+
             if results:
                 log_message(
                     LG.RETRIEVAL,
                     f"✅ Fallback موفق در گام {step+1} | {len(results)} محصول | فیلترهای فعال: {list(relaxed_filters.keys())}",
-                    LogLevel.INFO,
-                )
-                self._last_fallback_steps = step + 1 if results else 0
+                    LogLevel.INFO )
+                self._last_fallback_steps = step + 1
                 return results
 
         # ‫تلاش نهایی: بدون هیچ فیلتری (فقط جستجوی برداری)

@@ -47,13 +47,13 @@ class LLMOrchestrator:
             applied_filters: فیلترهای متادیتای اعمال‌شده (برای ذخیره در حافظه)
         """
         # ‫۱. ثبت پیام کاربر در حافظه
-        self._memory.add_message( session_id, "user", user_query )
+        await self._memory.add_message( session_id, "user", user_query )
 
         # ‫۲. ساخت پرامپت پایه
         messages = self._prompt_engine.render( intent, filters_str or "بدون فیلتر خاص", products, refine_query=user_query )
 
         # ‫ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
-        history = self._memory.get_history( session_id )
+        history = await self._memory.get_history( session_id )
         if len( history ) > 1:
             # ‫درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
             for msg in history[ :-1 ]:
@@ -97,7 +97,7 @@ class LLMOrchestrator:
                          LogLevel.DEBUG )
 
             validated = self._validator.validate_python( json.loads( json_str ) )
-            self._memory.add_message( session_id, "assistant", validated.explanation, applied_filters=applied_filters or {} )
+            await self._memory.add_message( session_id, "assistant", validated.explanation, applied_filters=applied_filters or {} )
             return validated.model_dump()
         except Exception as exc:
             log_message( LG.LLM, f"❌ خطای اعتبارسنجی JSON: {exc}", LogLevel.ERROR )

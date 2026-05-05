@@ -160,7 +160,7 @@ class SearchService:
             return
 
         # ── ادغام فیلترهای refine با session قبلی ────────────────────────────
-        effective_filters = self._merge_refine_filters(
+        effective_filters = await self._merge_refine_filters(
             intent=nlu_out.intent,
             new_filters=dict( nlu_out.metadata_filters ),
             session_id=session_id,
@@ -311,7 +311,7 @@ class SearchService:
             },
         )
 
-    def _merge_refine_filters(
+    async def _merge_refine_filters(
         self,
         intent: str,
         new_filters: dict,
@@ -337,7 +337,7 @@ class SearchService:
         if intent != "refine":
             return new_filters
 
-        last_filters = self._llm._memory.get_last_filters( session_id )
+        last_filters = await self._llm._memory.get_last_filters( session_id )
 
         if not last_filters:
             log_message( LG.LLM, "⚠️ refine: فیلتر قبلی در حافظه یافت نشد، فیلترهای جدید استفاده می‌شوند", LogLevel.WARNING )
