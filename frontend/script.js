@@ -62,7 +62,7 @@ function handleSend(overrideQuery) {
 
 			// ‫callback برای دکمه‌های اکشن — query رو مستقیم به handleSend میده
 			if (data.intent !== "greeting") {
-				renderQuickActions((q) => handleSend(q))
+				renderQuickActions((q) => handleSend(q), data.results ?? [])
 			}
 
 			if (data.session_id) setSessionId(data.session_id)
