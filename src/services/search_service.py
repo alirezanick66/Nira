@@ -159,13 +159,22 @@ class SearchService:
             yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0, config=self._nlu._config )
             return
 
+        # ── ادغام فیلترهای refine با session قبلی ────────────────────────────
+        effective_filters = self._merge_refine_filters(
+            intent=nlu_out.intent,
+            new_filters=dict( nlu_out.metadata_filters ),
+            session_id=session_id,
+        )
+
+        log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {nlu_out.intent} | Filters: {effective_filters}", LogLevel.DEBUG )
+
         # ── مرحله ۲: جستجو ───────────────────────────────────────────────────
         yield PipelineStatus( step="searching", message=self._STEP_MESSAGES[ "searching" ] )
 
         candidates = await asyncio.to_thread(
             self._retriever.search,
             query=nlu_out.semantic_query,
-            filters=nlu_out.metadata_filters,
+            filters=effective_filters,
             top_k=max( top_k * 2, 10 ),
         )
 
@@ -211,6 +220,7 @@ class SearchService:
             intent=nlu_out.intent,
             filters_str=str( nlu_out.metadata_filters ),
             products=final_products,
+            applied_filters=effective_filters,          # ✅ ذخیره در حافظه
         )
 
         # ── ساخت پاسخ نهایی ──────────────────────────────────────────────────
@@ -236,7 +246,7 @@ class SearchService:
             session_id=session_id,
             intent=nlu_out.intent,
             semantic_query=nlu_out.semantic_query,
-            applied_filters=nlu_out.metadata_filters if nlu_out else {},
+            applied_filters=effective_filters,
             results=results,
             message=str( llm_out.get( "explanation", "" ) ),
             llm_explanation=str( llm_out.get( "explanation", "" ) ),
@@ -300,3 +310,44 @@ class SearchService:
                 "total_candidates": 0,
             },
         )
+
+    def _merge_refine_filters(
+        self,
+        intent: str,
+        new_filters: dict,
+        session_id: str,
+    ) -> dict:
+        """فیلترهای جدید را با فیلترهای session قبلی ادغام می‌کند.
+ 
+        منطق ادغام:
+        - ‫اگر intent برابر refine نبود → فیلترهای جدید بدون تغییر برگشت می‌دهد
+        - ‫اگر intent برابر refine بود:
+           ‫ ۱. فیلترهای session قبلی به‌عنوان پایه استفاده می‌شوند
+           ‫ ۲. فیلترهای جدید (مثل قیمت جدید) روی فیلترهای قبلی override می‌کنند
+            ‫۳. فیلترهایی مثل brand که در کوئری جدید نیستند، حفظ می‌شوند
+ 
+        Args:
+            intent: نیت تشخیص‌داده‌شده توسط NLU
+            new_filters: فیلترهای استخراج‌شده از کوئری جدید
+            session_id: شناسه نشست برای دسترسی به حافظه
+ 
+        Returns:
+            دیکشنری فیلترهای ادغام‌شده
+        """
+        if intent != "refine":
+            return new_filters
+
+        last_filters = self._llm._memory.get_last_filters( session_id )
+
+        if not last_filters:
+            log_message( LG.LLM, "⚠️ refine: فیلتر قبلی در حافظه یافت نشد، فیلترهای جدید استفاده می‌شوند", LogLevel.WARNING )
+            return new_filters
+
+        # پایه: فیلترهای session قبلی
+        merged = dict( last_filters )
+
+        # ‫override: فیلترهای جدید (مثل قیمت جدیدتر) جایگزین می‌شوند
+        merged.update( new_filters )
+
+        log_message( LG.LLM, f"🔀 refine merge | قبلی: {last_filters} | جدید: {new_filters} | نهایی: {merged}", LogLevel.DEBUG )
+        return merged

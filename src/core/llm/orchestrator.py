@@ -34,29 +34,39 @@ class LLMOrchestrator:
         intent: str,
         filters_str: str | None,
         products: list[ QdrantProductPayload ],
+        applied_filters: dict | None = None,
     ) -> dict[ str, object ]:
-        """اجرای کامل پایپلاین تولید پاسخ"""
-        # ۱. ثبت پیام کاربر در حافظه
+        """اجرای کامل پایپلاین تولید پاسخ
+ 
+        Args:
+            session_id: شناسه نشست فعال
+            user_query: متن کوئری کاربر
+            intent: نیت تشخیص‌داده‌شده
+            filters_str: نمایش رشته‌ای فیلترهای اعمال‌شده برای تزریق به پرامپت
+            products: لیست محصولات بازیابی‌شده
+            applied_filters: فیلترهای متادیتای اعمال‌شده (برای ذخیره در حافظه)
+        """
+        # ‫۱. ثبت پیام کاربر در حافظه
         self._memory.add_message( session_id, "user", user_query )
 
-        # ۲. ساخت پرامپت پایه
+        # ‫۲. ساخت پرامپت پایه
         messages = self._prompt_engine.render( intent, filters_str or "بدون فیلتر خاص", products, refine_query=user_query )
 
-        # ✅ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
+        # ‫ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
         history = self._memory.get_history( session_id )
         if len( history ) > 1:
-            # درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
+            # ‫درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
             for msg in history[ :-1 ]:
                 messages.insert( -1, msg )
 
-            # ✅ جایگزینی placeholder در refine با کوئری واقعی
+            # ‫ جایگزینی placeholder در refine با کوئری واقعی
             if intent == "refine" and messages:
                 last_msg = messages[ -1 ]
                 content = last_msg.get( "content" )
-                if isinstance( content, str ):          # ✅ گارد تایپ: فقط اگر content رشته باشه اجرا می‌شه
+                if isinstance( content, str ):          # ‫ گارد تایپ: فقط اگر content رشته باشه اجرا می‌شه
                     last_msg[ "content" ] = content.replace( "{refine_query_placeholder}", user_query )
 
-        # ۳. ارسال به LLM (Groq → Gemini Fallback)
+        # ‫۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
         groq_messages = cast( list[ ChatCompletionMessageParam ], messages )
         try:
@@ -71,9 +81,9 @@ class LLMOrchestrator:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
 
-        # ۴. اعتبارسنجی JSON و ثبت پاسخ در حافظه
+        # ‫۴. اعتبارسنجی JSON و ثبت پاسخ در حافظه
         try:
-            # ✅ پاکسازی احتمالی مارک‌داون و استخراج ایمن بلاک JSON
+            # ‫ پاکسازی احتمالی مارک‌داون و استخراج ایمن بلاک JSON
             cleaned = raw_json.replace( "```json", "" ).replace( "```", "" ).strip()
             start_idx = cleaned.find( "{" )
             end_idx = cleaned.rfind( "}" )
@@ -87,7 +97,7 @@ class LLMOrchestrator:
                          LogLevel.DEBUG )
 
             validated = self._validator.validate_python( json.loads( json_str ) )
-            self._memory.add_message( session_id, "assistant", validated.explanation )
+            self._memory.add_message( session_id, "assistant", validated.explanation, applied_filters=applied_filters or {} )
             return validated.model_dump()
         except Exception as exc:
             log_message( LG.LLM, f"❌ خطای اعتبارسنجی JSON: {exc}", LogLevel.ERROR )
@@ -95,7 +105,7 @@ class LLMOrchestrator:
 
     @staticmethod
     def _fallback_response( query: str, products: list[ QdrantProductPayload ] ) -> dict[ str, object ]:
-        """پاسخ قطعی در صورت شکست کامل LLM"""
+        """ ‫پاسخ قطعی در صورت شکست کامل LLM"""
         titles = "، ".join( [ p.title[ :30 ] for p in products[ :2 ] ] )
         return {
             "product_ids": [ p.product_id for p in products[ :2 ] ],

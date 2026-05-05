@@ -129,20 +129,74 @@ export function renderProducts(products) {
 // ─── دکمه‌های اکشن سریع ──────────────────────────────────────────
 
 /**
+ * ساخت کوئری هوشمند برای دکمه ارزان‌تر بر اساس کمترین قیمت محصولات نمایش‌داده‌شده.
+ * مقدار ۸۰٪ کمترین قیمت را به‌عنوان سقف جدید در نظر می‌گیرد.
+ *
+ * @param {Array<Object>} products - محصولاتی که در آخرین نتیجه نمایش داده شده‌اند
+ * @returns {string} کوئری آماده ارسال
+ */
+function _buildCheaperQuery(products) {
+	if (!products?.length) return "یه چیز ارزون‌تر نشون بده"
+
+	const minPrice = Math.min(...products.map((p) => Number(p.price) || 0))
+	if (!minPrice) return "یه چیز ارزون‌تر نشون بده"
+
+	// ۸۰٪ کمترین قیمت → سقف جدید (گرد شده به میلیون)
+	const newCeiling = Math.floor((minPrice * 0.8) / 1_000_000) * 1_000_000
+	const ceilingInMillions = Math.round(newCeiling / 1_000_000)
+
+	if (ceilingInMillions <= 0) return "یه چیز ارزون‌تر نشون بده"
+
+	return `زیر ${ceilingInMillions} میلیون نشون بده`
+}
+
+/**
+ * ساخت کوئری هوشمند برای دکمه گران‌تر بر اساس بیشترین قیمت محصولات نمایش‌داده‌شده.
+ * مقدار ۱۳۰٪ بیشترین قیمت را به‌عنوان کف جدید در نظر می‌گیرد.
+ *
+ * @param {Array<Object>} products
+ * @returns {string}
+ */
+function _buildExpensiveQuery(products) {
+	if (!products?.length) return "یه چیز گرون‌تر و بهتر نشون بده"
+
+	const maxPrice = Math.max(...products.map((p) => Number(p.price) || 0))
+	if (!maxPrice) return "یه چیز گرون‌تر و بهتر نشون بده"
+
+	const newFloor = Math.ceil((maxPrice * 1.3) / 1_000_000) * 1_000_000
+	const floorInMillions = Math.round(newFloor / 1_000_000)
+
+	if (floorInMillions <= 0) return "یه چیز گرون‌تر و بهتر نشون بده"
+
+	return `بالای ${floorInMillions} میلیون نشون بده`
+}
+
+/**
  * دکمه‌های پیشنهادی را رندر می‌کند.
  * نمونه‌های قبلی پیش از رندر حذف می‌شوند.
+ *
  * @param {function(string): void} onAction - callback با متن کوئری انتخاب‌شده
+ * @param {Array<Object>} [lastProducts=[]] - محصولات آخرین نتیجه برای ساخت کوئری context-aware
  */
-export function renderQuickActions(onAction) {
+export function renderQuickActions(onAction, lastProducts = []) {
 	document.querySelectorAll(".quick-actions").forEach((el) => el.remove())
 
 	const wrapper = document.createElement("div")
 	wrapper.className = "quick-actions"
 
 	const actions = [
-		{ q: "یه چیز ارزون‌تر نشون بده", label: "💸 ارزان‌تر" },
-		{ q: "یه چیز گرون‌تر و بهتر نشون بده", label: "💎 گران‌تر" },
-		{ q: "گزینهٔ بعدی رو ببین", label: "🔀 گزینهٔ بعدی" },
+		{
+			q: _buildCheaperQuery(lastProducts),
+			label: "💸 ارزان‌تر",
+		},
+		{
+			q: _buildExpensiveQuery(lastProducts),
+			label: "💎 گران‌تر",
+		},
+		{
+			q: "گزینهٔ بعدی رو ببین",
+			label: "🔀 گزینهٔ بعدی",
+		},
 	]
 
 	actions.forEach((a) => {
