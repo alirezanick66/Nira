@@ -1,6 +1,6 @@
-"""پارسر مبتنی بر توکن و پنجرهٔ لغزان (جایگزین Regex)
-این ماژول مسئول تبدیل متن نرمال‌شده به MetadataFilters است.
-از الگوی Window-Based Matching، نگاشت‌های کیفی و مدیریت Negation پشتیبانی می‌کند.
+""" ‫پارسر مبتنی بر توکن (جایگزین Regex)
+‫این ماژول مسئول تبدیل متن نرمال‌شده به MetadataFilters است.
+‫از الگوی Window-Based Matching، نگاشت‌های کیفی و مدیریت Negation پشتیبانی می‌کند.
 """
 #───────────────────── Imports ─────────────────────
 from __future__ import annotations
@@ -42,6 +42,7 @@ class TokenParser:
                                                                    domain_config.get( "qualitative_mappings", {} ) )
         self._use_case_rules: dict[ str, _ConfigSlice ] = cast( dict[ str, _ConfigSlice ], domain_config.get( "use_case_rules", {} ) )
         self._sep_tokens: frozenset[ str ] = frozenset( cast( list[ str ], domain_config.get( "range_separators", [] ) ) )
+        self._brand_norm = cast( dict[ str, str ], domain_config.get( "brand_normalization", {} ) )
 
     def parse( self, text: str ) -> MetadataFilters:
         """تبدیل متن نرمال‌شده به MetadataFilters سازگار با Qdrant
@@ -172,16 +173,17 @@ class TokenParser:
             for slot_key, ( vocab, target_key ) in enum_defs.items():
                 if val_lower in vocab:
                     dest_key = f"{target_key}_not" if is_neg else target_key
+                    #  نرمال‌سازی نام برند به فرمت کاننیکال دیتابیس
+                    canonical_val = self._brand_norm.get( t.text, t.text ) if slot_key == "brand" else t.text
                     current = filters.get( dest_key )
 
                     if current is None:
-                        filters[ dest_key ] = t.text
+                        filters[ dest_key ] = canonical_val
                     elif isinstance( current, list ):
-                        if t.text not in current:
-                            current.append( t.text )
+                        if canonical_val not in current:
+                            current.append( canonical_val )
                     else:
-                        # مقدار قبلی تک‌عضوی بوده؛ تبدیل ایمن به لیست
-                        filters[ dest_key ] = [ str( current ), t.text ]
+                        filters[ dest_key ] = [ str( current ), canonical_val ]
 
                     consumed.add( t.idx )
                     log_message( LG.NLU, f"🏷️ مچ Enum | کلید: {dest_key} | مقدار: {t.text}", LogLevel.DEBUG )

@@ -3,7 +3,6 @@
 """
 #─────────────────────  Imports ─────────────────────
 from __future__ import annotations
-import re
 import json
 from pydantic import TypeAdapter
 from typing import cast
@@ -82,9 +81,10 @@ class LLMOrchestrator:
             if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                 json_str = cleaned[ start_idx:end_idx + 1 ]
             else:
-                json_str = cleaned          # اگر ساختار پیدا نشد، متن خام پاس داده می‌شه تا json.loads خطا بده و لاگ بشه
+                json_str = cleaned          # ‫اگر ساختار پیدا نشد، متن خام پاس داده می‌شه تا json.loads خطا بده و لاگ بشه
 
-            log_message( LG.LLM, f"🔍 پاسخ خام LLM (۲۰۰ کاراکتر اول): {json_str[:200]}", LogLevel.DEBUG )
+            log_message( LG.LLM, f"📥 کوئری: '{user_query[:80]}...' | Intent: {intent} | 🔍 پاسخ خام (۲۰۰ کاراکتر اول): {json_str}",
+                         LogLevel.DEBUG )
 
             validated = self._validator.validate_python( json.loads( json_str ) )
             self._memory.add_message( session_id, "assistant", validated.explanation )
