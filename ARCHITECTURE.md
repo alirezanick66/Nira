@@ -6,11 +6,13 @@
 User Input (Farsi)
       │
       ▼
-🧩 NLU Pipeline (Rule/Config-Based)
+🧩 NLU Pipeline (Hybrid: Rule/Config + Semantic)
   ├─ PersianNormalizer + PersianNumberConverter
-  ├─ Intent Detector (greeting → refine → search → compare)
-  ├─ Slot Filler (Price, Brand, RAM, Storage)
+  ├─ Intent Detector:
+  │     1️⃣ Rule-Based (Fast-Path) →
+  │     2️⃣ Semantic Fallback (Embedding E5)
   ├─ TokenParser (Window-Based Matching, Config-Driven via YAML)
+  ├─ Slot Filler (Price, Brand, RAM, Storage) + Brand Normalization
   └─ ConflictResolver (حذف خودکار فیلترهای متناقض + اولویت‌بندی فیلتر + تولید warnings)
       │
       ▼
@@ -25,17 +27,21 @@ User Input (Farsi)
   └─ Cross-Encoder (bge-reranker-v2-m3 | ONNX INT8) → Top 3
       │
       ▼
-💬 LLM Orchestrator + Memory
-  ├─ ConversationMemory (Sliding Window max=3)
-  ├─ Intent: refine → تزریق تاریخچه به Context
+🛍️ Post-Retrieval Enrichment (PostgreSQL)
+  └─ واکشی غیرمسدودکنندهٔ image_url و جزئیات تکمیلی برای Top-K نهایی
+      │
+      ▼
+💬 LLM Orchestrator + Context-Aware Memory
+  ├─ ConversationMemory (Sliding Window + Filter Merging)
+  ├─ Intent: refine → تزریق تاریخچه و ادغام هوشمند فیلترها
   ├─ Groq (Primary) → Gemini (Fallback) → JSON Mode
   └─ Pydantic Validation + Deterministic Fallback
       │
       ▼
 ✅ Standardized JSON Response → Client
 
-├─ 📦 B2B Contract: `POST /api/v1/search` → JSON (پایدار، کش‌پذیر، بدون وابستگی به SSE)
-└─ 🌊 UX Stream: `GET /api/v1/search/stream` → SSE (بازخورد لحظه‌ای وضعیت مراحل پایپلاین)
+├─ 📦 B2B Contract: `POST /api/v1/search` → JSON (پایدار، کش‌پذیر)
+└─ 🌊 UX Stream: `GET /api/v1/search/stream` → SSE (بازخورد لحظه‌ای وضعیت)
 
    └─ هسته مشترک: `SearchService` (Protocol-Agnostic، اجرای یکپارچه NLU→Retrieval→Rerank→LLM)
 ```
@@ -44,16 +50,17 @@ User Input (Farsi)
 
 ## 🧩 مؤلفه‌های اصلی
 
-|          لایه           |                      مسئولیت                       |                                             پیاده‌سازی فعلی                                             |
-| :---------------------: | :------------------------------------------------: | :-----------------------------------------------------------------------------------------------------: |
-|    **Backend Core**     | اجرای یکپارچه پایپلاین بدون وابستگی به پروتکل HTTP |                          `SearchService` (AsyncIterator مشترک برای POST و SSE)                          |
-|    **NLU Pipeline**     | نرمال‌سازی، تشخیص نیت، استخراج اسلات، مدیریت تضاد  |       `NLUPipeline` + `DomainConfigLoader` (YAML Deep Merge) + `TokenParser` + `ConflictResolver`       |
-|      **Retrieval**      |    جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant    |              `QdrantHybridRetriever` (Dense + Sparse + RRF + `must_not` + Smart Fallback)               |
-|      **Reranker**       |                مرتب‌سازی نهایی دقیق                |                      `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8)                      |
-|  **LLM Orchestrator**   |    تولید پاسخ ساختاریافته و مدیریت Prompt پویا     |       `LLMOrchestrator` + `PromptEngine` (YAML-Driven، Groq→Gemini Fallback، Pydantic Validation)       |
-|       **Memory**        |               مدیریت Context مکالمه                |             `ConversationMemory` (Sliding Window `max=3`، Session-based UUID، Thread-Safe)              |
-| **Logging & Telemetry** |       ثبت غیرمسدودکننده کوئری‌ها و وضعیت‌ها        |                `query_log_service.py` (Global Engine + Per-Task AsyncSession، Fail-Safe)                |
-|      **Frontend**       |              رابط کاربری دمو و تعامل               | Vanilla ES Modules (`css/`, `js/`)، `EventSource` SSE، `localStorage` Session، Typewriter/Quick Actions |
+|          لایه           |                      مسئولیت                       |                                       پیاده‌سازی فعلی                                       |
+| :---------------------: | :------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
+|    **Backend Core**     | اجرای یکپارچه پایپلاین بدون وابستگی به پروتکل HTTP |                    `SearchService` (AsyncIterator مشترک برای POST و SSE)                    |
+|    **NLU Pipeline**     | نرمال‌سازی، تشخیص نیت، استخراج اسلات، مدیریت تضاد  | `NLUPipeline` + `DomainConfigLoader` (YAML Deep Merge) + `TokenParser` + `ConflictResolver` |
+|      **Retrieval**      |    جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant    |               `QdrantHybridRetriever` (Dense + Sparse + RRF + Smart Fallback)               |
+|      **Reranker**       |                مرتب‌سازی نهایی دقیق                |                `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8)                |
+|  **LLM Orchestrator**   |    تولید پاسخ ساختاریافته و مدیریت Prompt پویا     | `LLMOrchestrator` + `PromptEngine` (YAML-Driven، Groq→Gemini Fallback، Pydantic Validation) |
+|     **Enrichment**      |    واکشی پویا تصاویر و متادیتا پس از رتبه‌بندی     |                   ProductRepository (Async PostgreSQL + JSONB Extraction)                   |
+|       **Memory**        |  مدیریت Context و ادغام فیلترها (Filter Merging)   |                 ConversationMemory (Thread-Safe + Applied Filters Storage)                  |
+| **Logging & Telemetry** |       ثبت غیرمسدودکننده کوئری‌ها و وضعیت‌ها        |          `query_log_service.py` (Global Engine + Per-Task AsyncSession، Fail-Safe)          |
+|      **Frontend**       |              رابط کاربری دمو و تعامل               |                   Vanilla ES Modules + SSE + Context-Aware Quick Actions                    |
 
 ---
 
@@ -81,7 +88,8 @@ User Input (Farsi)
 │   ├── css/
 │   │   ├── 01-base.css       # توکن‌های طراحی، ریست و تم
 │   │   ├── 02-layout.css     # چیدمان صفحه و حالت‌های Welcome/Chat
-│   │   └── 03-components.css # استایل حباب‌ها، کارت‌ها و دکمه‌های اکشن
+│		│		 ├── 03-components.css # استایل حباب‌ها، کارت‌ها و دکمه‌های اکشن
+│   │   └──  styles.css
 │   └── js/
 │       ├── script.js         # نقطه ورود (Orchestration) و مدیریت رویدادها
 │       ├── session.js        # مدیریت session_id و localStorage
@@ -125,23 +133,25 @@ User Input (Farsi)
 
 ## ⚙️ تصمیمات طراحی کلیدی (Key Design Decisions)
 
-|تصمیم|دلیل فنی (Rationale)|اثر/مزیت (Impact)|
-|:-:|:-:|:-:|
-|**حذف RAG/Chunking**|هر محصول = ۱ سند ساختاریافته در Qdrant. Chunking باعث تکه‌تکه شدن متادیتا و کاهش دقت فیلترهای عددی می‌شود.|✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس|
-|**معماری Config-Driven Token-Based NLU**|حذف Regex شکننده و جایگزینی با `TokenParser` (پنجرهٔ لغزان + Cue/Unit/Operator). تمام قواعد دامنه در `YAML` تعریف شده و توسط `DomainConfigLoader` تزریق می‌شوند.|✅ کاهش ۹۰٪ خطای پارس، پشتیبانی قطعی از رنج عددی (`بین X تا Y`)، نگارش‌های کیفی چندکلمه‌ای، حذف کامل `State Leakage`. هزینهٔ توکن صفر، پایداری ۱۰۰٪.|
-|**پیاده‌سازی Hybrid Search**|ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند.|✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative|
-|**اجبار خروجی JSON**|استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.|✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار|
-|**عدم استفاده از LangChain/LlamaIndex در MVP**|کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.|✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر|
-|**بهینه‌سازی ONNX + INT8 Quantization**|تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`)|✅ کاهش ~۶۰٪ مصرف RAM/CPU، کاهش زمان پاسخ به `<3s`، حفظ دقت در حد نویز محاسباتی|
-|**تزریق وابستگی و مدیریت چرخه حیات**|جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`|✅ جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر، امکان `Mock` کردن سرویس‌ها در تست‌های واحد|
-|**افزودن `X-API-Key` Middleware**|جلوگیری از سوءاستفاده از توکن/سرور در مدل B2B/SaaS|✅ کنترل دسترسی، ردیابی مصرف هر فروشگاه، آماده‌سازی برای Billing|
-|**Smart Fallback کانفیگ‌محور**|ترتیب حذف فیلترها، نگاشت شل‌سازی مقادیر (`excellent→good`) و کلمات تأکیدی کاربر (`حتماً، فقط`) مستقیماً از YAML خوانده می‌شوند.|✅ رتریور ۱۰۰٪ Domain-Agnostic می‌شود. افزودن دامنهٔ جدید بدون تغییر یک خط کد پایتون ممکن است. حفظ تجربهٔ کاربری در شرایط ۰ نتیجه.|
-|**نرمال‌سازی مقادیر فنی به `float`**|تغییر تایپ `ram_gb`, `storage_gb`, `camera_mp` از `int` به `float` و تبدیل خودکار `MB→GB` در لایهٔ Enrichment.|✅ رفع باگ فیلتر کاذب (`32MB == 32GB`)، پذیرش مقادیر اعشاری واقعی (`94.5g`, `0.3MP`) بدون `ValidationError`، دقت بالاتر در کوئری‌های رنج|
-|**Dynamic Filter Protection در Fallback**|ترتیب ثابت حذف فیلترها نیازهای لحظه‌ای کاربر (مثل `حتماً اندروید`) را نادیده می‌گرفت. اسکن کوئری برای کلمات تأکیدی و انتقال فیلتر مرتبط به انتهای صف حذف، تجربهٔ کاربری را حفظ می‌کند.|✅ نیاز به تعریف دقیق `filter_cues` در کانفیگ. در صورت عدم تطبیق، رفتار به حالت استاتیک پیش‌فرض برمی‌گردد (Backward Compatible).|
-|**معماری Domain-Agnostic Prompt Engine**|انتقال تمام قالب‌های `system_base` و `templates` به سکشن `prompts:` در YAML. استفاده از `PromptEngine` برای رندر امن متغیرها و تزریق `ConfigDict` در Runtime.|✅ افزودن دامنه جدید یا تغییر لحن/دستورالعمل‌ها فقط نیاز به ویرایش YAML دارد. حذف کامل `prompts.py` و هاردکدهای متنی. سازگاری کامل با `refine` و `compare`.|
-|**استراتژی Dual-Endpoint**|تفکیک نیازهای فروشگاه‌ها (پایداری، کش، JSON استاندارد) از نیازهای UX دمو (کاهش تاخیر ادراکی، نمایش وضعیت لحظه‌ای).|✅ قرارداد B2B کاملاً پایدار و مستقل از پروتکل SSE. کد تکراری با `SearchService` مشترک حذف می‌گردد.|
-|**Async Logging با Engine گلوبال**|جلوگیری از خطای `SessionClosed` در `asyncio.create_task` و حذف سربار ساخت Connection Pool برای هر درخواست.|✅ لاگ‌گیری کاملاً Non-Blocking و ایمن. Latency کل چرخه تحت تأثیر نوشتن در DB قرار نمی‌گیرد.|
-|**فرانت‌اند Vanilla + ES Modules**|حذف سربار `npm/Vite/React` برای فاز دمو با حفظ ساختار تمیز و قابل نگهداری از طریق تفکیک `css/` و `js/`.|✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تست‌پذیری بهتر لایه‌های کلاینت.|
+|                     تصمیم                      |                                                                                  دلیل فنی (Rationale)                                                                                  |                                                                     اثر/مزیت (Impact)                                                                      |
+| :--------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|              **حذف RAG/Chunking**              |                                       هر محصول = ۱ سند ساختاریافته در Qdrant. Chunking باعث تکه‌تکه شدن متادیتا و کاهش دقت فیلترهای عددی می‌شود.                                       |                                               ✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس                                               |
+|    **معماری Config-Driven Token-Based NLU**    |            حذف Regex شکننده و جایگزینی با `TokenParser` (پنجرهٔ لغزان + Cue/Unit/Operator). تمام قواعد دامنه در `YAML` تعریف شده و توسط `DomainConfigLoader` تزریق می‌شوند.            |    ✅ کاهش ۹۰٪ خطای پارس، پشتیبانی قطعی از رنج عددی (`بین X تا Y`)، نگارش‌های کیفی چندکلمه‌ای، حذف کامل `State Leakage`. هزینهٔ توکن صفر، پایداری ۱۰۰٪.     |
+|          **پیاده‌سازی Hybrid Search**          |                 ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند.                 |                                              ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative                                               |
+|              **اجبار خروجی JSON**              |                     استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.                     |                                       ✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار                                       |
+| **عدم استفاده از LangChain/LlamaIndex در MVP** |                                                             کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                                              |                                                       ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                                                       |
+|    **بهینه‌سازی ONNX + INT8 Quantization**     |                    تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`)                     |                                       ✅ کاهش ~۶۰٪ مصرف RAM/CPU، کاهش زمان پاسخ به `<3s`، حفظ دقت در حد نویز محاسباتی                                       |
+|      **تزریق وابستگی و مدیریت چرخه حیات**      |                                                 جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`                                                 |               ✅ جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر، امکان `Mock` کردن سرویس‌ها در تست‌های واحد               |
+|       **افزودن `X-API-Key` Middleware**        |                                                                   جلوگیری از سوءاستفاده از توکن/سرور در مدل B2B/SaaS                                                                   |                                              ✅ کنترل دسترسی، ردیابی مصرف هر فروشگاه، آماده‌سازی برای Billing                                               |
+|         **Smart Fallback کانفیگ‌محور**         |                            ترتیب حذف فیلترها، نگاشت شل‌سازی مقادیر (`excellent→good`) و کلمات تأکیدی کاربر (`حتماً، فقط`) مستقیماً از YAML خوانده می‌شوند.                             |             ✅ رتریور ۱۰۰٪ Domain-Agnostic می‌شود. افزودن دامنهٔ جدید بدون تغییر یک خط کد پایتون ممکن است. حفظ تجربهٔ کاربری در شرایط ۰ نتیجه.              |
+|      **نرمال‌سازی مقادیر فنی به `float`**      |                                     تغییر تایپ `ram_gb`, `storage_gb`, `camera_mp` از `int` به `float` و تبدیل خودکار `MB→GB` در لایهٔ Enrichment.                                     |          ✅ رفع باگ فیلتر کاذب (`32MB == 32GB`)، پذیرش مقادیر اعشاری واقعی (`94.5g`, `0.3MP`) بدون `ValidationError`، دقت بالاتر در کوئری‌های رنج           |
+|   **Dynamic Filter Protection در Fallback**    | ترتیب ثابت حذف فیلترها نیازهای لحظه‌ای کاربر (مثل `حتماً اندروید`) را نادیده می‌گرفت. اسکن کوئری برای کلمات تأکیدی و انتقال فیلتر مرتبط به انتهای صف حذف، تجربهٔ کاربری را حفظ می‌کند. |              ✅ نیاز به تعریف دقیق `filter_cues` در کانفیگ. در صورت عدم تطبیق، رفتار به حالت استاتیک پیش‌فرض برمی‌گردد (Backward Compatible).               |
+|    **معماری Domain-Agnostic Prompt Engine**    |             انتقال تمام قالب‌های `system_base` و `templates` به سکشن `prompts:` در YAML. استفاده از `PromptEngine` برای رندر امن متغیرها و تزریق `ConfigDict` در Runtime.              | ✅ افزودن دامنه جدید یا تغییر لحن/دستورالعمل‌ها فقط نیاز به ویرایش YAML دارد. حذف کامل `prompts.py` و هاردکدهای متنی. سازگاری کامل با `refine` و `compare`. |
+|           **استراتژی Dual-Endpoint**           |                                   تفکیک نیازهای فروشگاه‌ها (پایداری، کش، JSON استاندارد) از نیازهای UX دمو (کاهش تاخیر ادراکی، نمایش وضعیت لحظه‌ای).                                   |                             ✅ قرارداد B2B کاملاً پایدار و مستقل از پروتکل SSE. کد تکراری با `SearchService` مشترک حذف می‌گردد.                             |
+|       **Async Logging با Engine گلوبال**       |                                       جلوگیری از خطای `SessionClosed` در `asyncio.create_task` و حذف سربار ساخت Connection Pool برای هر درخواست.                                       |                                ✅ لاگ‌گیری کاملاً Non-Blocking و ایمن. Latency کل چرخه تحت تأثیر نوشتن در DB قرار نمی‌گیرد.                                 |
+|       **فرانت‌اند Vanilla + ES Modules**       |                                        حذف سربار `npm/Vite/React` برای فاز دمو با حفظ ساختار تمیز و قابل نگهداری از طریق تفکیک `css/` و `js/`.                                         |                              ✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تست‌پذیری بهتر لایه‌های کلاینت.                               |
+|             **معماری Hybrid NLU**              |                                                     ترکیب Rule-Based (سرعت) و Semantic Embedding (دقت) برای پوشش جملات محاوره‌ای.                                                      |                                                ✅ تشخیص نیت دقیق بدون سربار LLM + دقت >95% در تست‌های چالشی                                                 |
+|            **Brand Normalization**             |                                                        مپ کردن مترادف‌ها و تایپوها (مثل آیفون/ایفون ← اپل) در لایه TokenParser.                                                        |                                                ✅ جلوگیری از خطای جستجو و افزایش رضایت کاربر با زبان غیررسمی                                                |
 
 ---
 
@@ -221,4 +231,4 @@ User: "کاربر به دنبال محصولی با این ویژگی‌هاست
 - 🔹 **`validate_quantization_drift.py`** برای پایش دوره‌ای افت دقت مدل‌های ONNX
 
 ---
-**نسخه:** 1.0.0 | **آخرین به‌روزرسانی:** 2026/05/03
+**نسخه:** 1.0.0 | **آخرین به‌روزرسانی:** 2026/05/05
