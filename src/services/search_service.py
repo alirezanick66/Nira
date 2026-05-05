@@ -178,6 +178,33 @@ class SearchService:
             top_k=max( top_k * 2, 10 ),
         )
 
+        fallback_steps: int = getattr( self._retriever, "_last_fallback_steps", 0 )
+
+        # ── مدیریت هوشمند Fallback برای فیلترهای عددی (Closest Available) ──
+        if fallback_steps > 0 and candidates:
+            # بررسی فیلترهای عددی که احتمالاً در Fallback حذف شده‌اند
+            for field, constraint in effective_filters.items():
+                if isinstance( constraint, dict ):
+                    op, target = next( iter( constraint.items() ) )
+                    # آیا هیچ نتیجه‌ای شرط عددی را برآورده می‌کند？
+                    has_match = False
+                    for c in candidates:
+                        val = getattr( c, field, None )
+                        if val is not None:
+                            if (op == ">=" and val >= target) or (op == "<=" and val <= target) or \
+                            (op == ">" and val > target) or (op == "<" and val < target):
+                                has_match = True
+                                break
+
+                    if not has_match:
+                        # مرتب‌سازی بر اساس جهت فیلتر برای یافتن نزدیک‌ترین گزینه موجود
+                        reverse = op in ( ">=", ">" )
+                        candidates.sort( key=lambda p: getattr( p, field, 0 ) or 0, reverse=reverse )
+                        log_message(
+                            LG.RETRIEVAL,
+                            f"🎯 نزدیک‌ترین گزینه موجود انتخاب شد | {field} {op} {target} → بهترین: {getattr(candidates[0], field, 'N/A')}",
+                            LogLevel.INFO )
+                        break          # فقط یک فیلتر عددیِ غالب را مدیریت می‌کنیم
         if not candidates:
             yield self._build_empty(
                 req_id=req_id,
