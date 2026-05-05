@@ -21,6 +21,7 @@ from src.core.nlu.schemas import NLUFilterQuery
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.data.repositories.product_repository import ProductRepository
+from src.config.logging_config import log_message, LogLevel, LG
 
 logger = logging.getLogger( __name__ )
 
@@ -195,6 +196,11 @@ class SearchService:
             for p in final_products:
                 if hasattr( p, "image_url" ):
                     p.image_url = url_map.get( p.product_id )
+
+            #  لاگ محصولات نهایی (نام و قیمت)
+        if final_products:
+            summary = [ f"{p.title[:40].replace('\n', ' ')}... | {p.price:,.0f} تومان" for p in final_products[ :2 ] ]
+            log_message( LG.LLM, f"{summary}", LogLevel.DEBUG )
 
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step="generating", message=self._STEP_MESSAGES[ "generating" ] )
