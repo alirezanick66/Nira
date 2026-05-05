@@ -59,12 +59,8 @@ class ConversationMemory:
             applied_filters: فیلترهای متادیتای اعمال‌شده در این نوبت (اختیاری)
         """
         async with self._lock:
-            if session_id in self._sessions:
-                self._sessions[ session_id ].append( _Turn(
-                    role=role,
-                    content=content,
-                    applied_filters=applied_filters or {},
-                ) )
+            self._sessions.setdefault( session_id, deque( maxlen=self._max_turns ) )
+            self._sessions[ session_id ].append( _Turn( role=role, content=content, applied_filters=applied_filters or {} ) )
 
     async def get_history( self, session_id: str ) -> list[ dict[ str, str ] ]:
         """‫دریافت تاریخچه مکالمه نشست فعال (فقط role/content برای LLM)"""
