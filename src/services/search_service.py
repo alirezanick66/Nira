@@ -165,15 +165,22 @@ class SearchService:
             new_filters=dict( nlu_out.metadata_filters ),
             session_id=session_id,
         )
-
+        if nlu_out.sort_directive and nlu_out.sort_directive.get( "key" ) == "price" and "price" in effective_filters:
+            del effective_filters[ "price" ]
+            log_message( LG.LLM, "🧹 حذف فیلتر عددی price به دلیل فعال‌بودن sort_directive مقایسه‌ای", LogLevel.DEBUG )
         log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {nlu_out.intent} | Filters: {effective_filters}", LogLevel.DEBUG )
 
         # ── مرحله ۲: جستجو ───────────────────────────────────────────────────
         yield PipelineStatus( step="searching", message=self._STEP_MESSAGES[ "searching" ] )
+        # ‫ اصلاح کوئری معنایی برای Refine‌های مقایسه‌ای
+        retrieve_query = nlu_out.semantic_query
+        if nlu_out.intent == "refine" and len( retrieve_query.replace( " ", "" ) ) < 4:
+            retrieve_query = "گوشی موبایل جدید"
+            log_message( LG.LLM, "🌱 کوئری refine کوتاه بود → تزریق Seed دامنه برای بازیابی صحیح کاندیداها", LogLevel.DEBUG )
 
         candidates = await asyncio.to_thread(
             self._retriever.search,
-            query=nlu_out.semantic_query,
+            query=retrieve_query,          # ← استفاده از کوئری اصلاح‌شده
             filters=effective_filters,
             top_k=max( top_k * 2, 10 ),
         )

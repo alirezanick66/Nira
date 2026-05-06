@@ -49,6 +49,10 @@ class NLUPipeline:
         if self._embedder:
             self._preload_semantic_vectors()
 
+        self._directive_cache: dict[ str, np.ndarray ] = {}
+        self._directive_threshold: float = 0.78
+        if self._embedder:
+            self._preload_directive_vectors()
         log_message( LG.NLU, f"✅ NLUPipeline برای دامنه '{domain}' آماده است", LogLevel.INFO )
 
     def _preload_semantic_vectors( self ) -> None:
@@ -63,44 +67,32 @@ class NLUPipeline:
             self._semantic_thresholds[ intent_name ] = cfg.get( "threshold", 0.72 )
 
     def process( self, user_input: str ) -> NLUFilterQuery:
-        """پردازش کامل کوئری و تولید ساختار فیلتر نهایی
-
-        Args:
-            user_input: متن خام ورودی کاربر
-
-        Returns:
-            مدل NLUFilterQuery آماده تزریق به لایهٔ بازیابی
-        """
+        """پردازش کامل کوئری و تولید ساختار فیلتر نهایی"""
         processed = self._preprocess_query( user_input )
         intent = self._detect_intent( processed )
 
         if intent == "greeting":
             return NLUFilterQuery( intent=intent, semantic_query=processed, is_greeting=True, metadata_filters={}, warnings=[] )
 
-        # ‫۱. ماسک کردن شماره مدل‌ها برای جلوگیری از تداخل عددی
+        # ۱. ماسک کردن شماره مدل‌ها برای جلوگیری از تداخل عددی
         mask_res = ModelMasker.mask( processed, self._model_prefixes )
         clean_text = mask_res.masked_text
 
-        # ‫۲. استخراج فیلترها با TokenParser
+        # ۲. استخراج فیلترها با TokenParser
         filters = self._parser.parse( clean_text )
 
-        # ‫۳. حل تضاد فیلترها بر اساس قواعد دامنه
+        # ۳. حل تضاد فیلترها بر اساس قواعد دامنه
         filters, conflict_report = self._conflict_resolver.resolve( cast( dict[ str, object ], filters ), processed )
-        sort_directive = None
-        lower_text = processed.lower()
-        sort_keywords_cfg = cast( dict[ str, dict[ str, list[ str ] ] ], self._config.get( "sort_keywords", {} ) )
-        for key, orders in sort_keywords_cfg.items():
-            for order, kws in orders.items():
-                if any( kw in lower_text for kw in kws ):
-                    sort_directive = { "key": key, "order": order }
-                    break
-            if sort_directive: break
 
+        # ۴. تشخیص معناری دایرکتیو مرتب‌سازی (جایگزین حلقهٔ رشته‌ای)
+        sort_directive = self._detect_sort_directive( processed )
+
+        # ۵. حذف تضاد price_range در صورت فعال‌بودن Sort قیمت
         if sort_directive and sort_directive.get( "key" ) == "price" and "price_range" in filters:
             del filters[ "price_range" ]
             log_message( LG.NLU, "🧹 حذف price_range به دلیل فعال‌بودن دایرکتیو مرتب‌سازی قیمت", LogLevel.DEBUG )
 
-        # 5. ساخت semantic_query تمیز برای بردارسازی
+        # ۶. ساخت semantic_query تمیز برای بردارسازی
         semantic_query = self._build_semantic_query( processed )
 
         log_message( LG.NLU, f"✅ NLU تکمیل | Intent: {intent} | Filters: {filters} | Sort: {sort_directive}", LogLevel.DEBUG )
@@ -173,3 +165,32 @@ class NLUPipeline:
         processed = self._preprocess_query( text )
         query_vec = np.array( self._embedder.encode( [ processed ], is_query=True )[ 0 ], dtype=np.float32 )
         return { intent: float( np.max( vecs @ query_vec ) ) for intent, vecs in self._semantic_cache.items() }
+
+    def _preload_directive_vectors( self ) -> None:
+        """تبدیل مثال‌های دایرکتیو به بردار و کش در RAM"""
+        directives = cast( dict[ str, list ], self._config.get( "directive_examples", {} ) )
+        for key, examples in directives.items():
+            if examples:
+                vecs = self._embedder.encode( examples, is_query=True )          # type: ignore
+                self._directive_cache[ key ] = np.array( vecs, dtype=np.float32 )
+
+    def _detect_sort_directive( self, text: str ) -> dict[ str, str ] | None:
+        """تشخیص معناری دایرکتیو مرتب‌سازی با مدل E5"""
+        if not self._embedder or not self._directive_cache:
+            return None
+
+        query_vec = np.array( self._embedder.encode( [ text ], is_query=True )[ 0 ], dtype=np.float32 )
+        best_key, max_sim = None, -1.0
+
+        for key, cached_vecs in self._directive_cache.items():
+            current_max = float( np.max( cached_vecs @ query_vec ) )
+            if current_max > max_sim:
+                max_sim = current_max
+                best_key = key
+
+        if max_sim >= self._directive_threshold and best_key is not None:
+            if "asc" in best_key:
+                return { "key": "price", "order": "asc" }
+            if "desc" in best_key:
+                return { "key": "price", "order": "desc" }
+        return None
