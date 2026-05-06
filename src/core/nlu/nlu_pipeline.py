@@ -50,7 +50,7 @@ class NLUPipeline:
             self._preload_semantic_vectors()
 
         self._directive_cache: dict[ str, np.ndarray ] = {}
-        self._directive_threshold: float = 0.78
+        self._directive_threshold: float = 0.75
         if self._embedder:
             self._preload_directive_vectors()
         log_message( LG.NLU, f"✅ NLUPipeline برای دامنه '{domain}' آماده است", LogLevel.INFO )
@@ -85,10 +85,18 @@ class NLUPipeline:
         filters, conflict_report = self._conflict_resolver.resolve( cast( dict[ str, object ], filters ), processed )
 
         # ۴. تشخیص معناری دایرکتیو مرتب‌سازی (جایگزین حلقهٔ رشته‌ای)
-        sort_directive = self._detect_sort_directive( processed )
+
+        has_limit = any( w in self._stop_words for w in processed.split() )
+        has_digit = any( c.isdigit() or c in "۰۱۲۳۴۵۶۷۸۹" for c in processed )
+        if has_limit and has_digit:
+            sort_directive = None
+        else:
+            sort_directive = self._detect_sort_directive( processed )
 
         # ۵. حذف تضاد price_range در صورت فعال‌بودن Sort قیمت
-        if sort_directive and sort_directive.get( "key" ) == "price" and "price_range" in filters:
+        if ( sort_directive and sort_directive.get( "key" ) == "price"
+             and "price" not in filters          # ← اگه price عددی صریح هست، price_range هم نگه دار
+             and "price_range" in filters ):
             del filters[ "price_range" ]
             log_message( LG.NLU, "🧹 حذف price_range به دلیل فعال‌بودن دایرکتیو مرتب‌سازی قیمت", LogLevel.DEBUG )
 
@@ -194,3 +202,7 @@ class NLUPipeline:
             if "desc" in best_key:
                 return { "key": "price", "order": "desc" }
         return None
+
+    def get_domain_config( self ) -> dict:
+        """‫دسترسی عمومی به کانفیگ دامنه"""
+        return self._config

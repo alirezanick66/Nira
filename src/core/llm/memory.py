@@ -1,16 +1,14 @@
 """‫مدیریت حافظه مکالمه (Conversation Memory)
-‫مسئول: نگهداری تاریخچه چت + فیلترهای اعمال‌شده به‌صورت Session-based با الگوی Sliding Window
+‫مسئول: نگهداری تاریخچه چت، فیلترهای اعمال‌شده، و ادغام فیلترهای refine
 """
-
-#───────────────────── Imports ─────────────────────
 from __future__ import annotations
+
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
 import asyncio
 from typing import Deque
 
-#───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 
 
@@ -23,10 +21,10 @@ class _Turn:
 
 
 class ConversationMemory:
-    """ ‫‫کش حافظه مکالمه درون‌حافظه‌ای برای محیط‌های Stateless وب‌سرویس
+    """‫کش حافظه مکالمه درون‌حافظه‌ای برای محیط‌های Stateless وب‌سرویس
 
     علاوه بر متن پیام‌ها، فیلترهای متادیتای آخرین جستجوی موفق را نیز
-   ‫ به‌ازای هر session نگه می‌دارد تا intent: refine بتواند از آن‌ها بهره ببرد.
+    به‌ازای هر session نگه می‌دارد تا intent: refine بتواند از آن‌ها بهره ببرد.
     """
 
     def __init__( self, max_turns: int = 3 ) -> None:
@@ -70,15 +68,52 @@ class ConversationMemory:
     async def get_last_filters( self, session_id: str ) -> dict:
         """‫آخرین فیلترهای جستجوی موفق نشست را برمی‌گرداند
 
-        برای استفاده در intent: refine جهت حفظ context جستجوی قبلی.
-
         Returns:
             دیکشنری فیلترها یا دیکشنری خالی اگر تاریخچه‌ای وجود نداشته باشد
         """
         async with self._lock:
             turns = self._sessions.get( session_id, deque() )
-            # جستجو از آخر به اول برای یافتن آخرین نوبت با فیلتر غیرخالی
             for turn in reversed( turns ):
                 if turn.applied_filters:
                     return dict( turn.applied_filters )
             return {}
+
+    async def merge_refine_filters(
+        self,
+        intent: str,
+        new_filters: dict,
+        session_id: str,
+        sort_directive: dict | None = None,
+    ) -> dict:
+        """‫فیلترهای جدید را با فیلترهای session قبلی ادغام می‌کند
+
+        منطق ادغام:
+        - اگر intent برابر refine نبود → فیلترهای جدید بدون تغییر برگشت می‌دهد
+        - اگر intent برابر refine بود:
+            ۱. فیلترهای session قبلی به‌عنوان پایه استفاده می‌شوند
+            ۲. فیلترهای جدید روی فیلترهای قبلی override می‌کنند
+            ۳. فیلترهایی مثل brand که در کوئری جدید نیستند، حفظ می‌شوند
+
+        Args:
+            intent: نیت تشخیص‌داده‌شده توسط NLU
+            new_filters: فیلترهای استخراج‌شده از کوئری جدید
+            session_id: شناسه نشست برای دسترسی به حافظه
+
+        Returns:
+            دیکشنری فیلترهای ادغام‌شده
+        """
+        if intent != "refine":
+            return new_filters
+
+        last_filters = await self.get_last_filters( session_id )
+
+        if not last_filters:
+            log_message( LG.LLM, "⚠️ refine: فیلتر قبلی در حافظه یافت نشد، فیلترهای جدید استفاده می‌شوند", LogLevel.WARNING )
+            return new_filters
+
+        merged = { **last_filters, **new_filters }
+        if sort_directive and sort_directive.get( "key" ) == "price":
+            merged.pop( "price", None )
+            merged.pop( "price_range", None )
+        log_message( LG.LLM, f"🔀 refine merge | قبلی: {last_filters} | جدید: {new_filters} | نهایی: {merged}", LogLevel.DEBUG )
+        return merged
