@@ -16,7 +16,7 @@ from src.data.repositories.product_repository import ProductRepository
 from src.config.domain_loader import DomainConfigLoader
 from src.api.schemas import ErrorLog
 from src.config.logging_config import log_message, LogLevel, LG
-from src.core.nlu.nlu_pipeline import NLUPipeline
+from src.core.nlu.llm_extractor import LLMNLUExtractor
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.services.reranker_service import RerankerService
 from src.core.llm.orchestrator import LLMOrchestrator
@@ -42,10 +42,11 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
 
     app.state.db_engine = db_engine
     app.state.product_repo = ProductRepository( db_engine=db_engine )
-    app.state.nlu = NLUPipeline( domain=domain, config_loader=loader, embedding_service=embedder )
     app.state.retriever = QdrantHybridRetriever( config, embedding_service=embedder )
     app.state.reranker = RerankerService()
     app.state.llm = LLMOrchestrator( config )
+    # LLMNLUExtractor به‌اشتراک ConversationMemory از LLMOrchestrator برای sync حافظه
+    app.state.nlu = LLMNLUExtractor( domain=domain, config_loader=loader, memory=app.state.llm._memory )
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield

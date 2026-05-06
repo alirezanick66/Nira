@@ -1,4 +1,7 @@
-"""تشخیص و حل تضاد فیلترها بر اساس کانفیگ دامنه"""
+"""تشخیص و حل تضاد فیلترها بر اساس کانفیگ دامنه
+
+⚠️ منسوخ‌شده (Deprecated): این ماژول به‌نفع LLMNLUExtractor کنار گذاشته شده است.
+"""
 #───────────────────── Imports ─────────────────────
 from __future__ import annotations
 from dataclasses import dataclass, field

@@ -26,7 +26,7 @@ from src.services.query_log_service import log_query
 
 if TYPE_CHECKING:
     from src.core.llm.orchestrator import LLMOrchestrator
-    from src.core.nlu.nlu_pipeline import NLUPipeline
+    from src.core.nlu.llm_extractor import LLMNLUExtractor
     from src.core.vector.qdrant_retriever import QdrantHybridRetriever
     from src.services.reranker_service import RerankerService
 
@@ -40,10 +40,10 @@ router = APIRouter( prefix="/api/v1", tags=[ "Search" ] )
 
 
 def _build_service(
-    nlu: NLUPipeline,
-    retriever: QdrantHybridRetriever,
-    reranker: RerankerService,
-    llm: LLMOrchestrator,
+    nlu: "LLMNLUExtractor",
+    retriever: "QdrantHybridRetriever",
+    reranker: "RerankerService",
+    llm: "LLMOrchestrator",
     product_repo: ProductRepository,
 ) -> SearchService:
     """‫ساخت نمونه SearchService از وابستگی‌های FastAPI"""
@@ -75,10 +75,10 @@ def _sse_event( event: str, data: dict ) -> str:
 async def search_products(
     request_body: SearchRequest,
     request: Request,
-    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
-    retriever: QdrantHybridRetriever = Depends( get_retriever ),
-    reranker: RerankerService = Depends( get_reranker ),
-    llm: LLMOrchestrator = Depends( get_llm ),
+    nlu: "LLMNLUExtractor" = Depends( get_nlu_pipeline ),
+    retriever: "QdrantHybridRetriever" = Depends( get_retriever ),
+    reranker: "RerankerService" = Depends( get_reranker ),
+    llm: "LLMOrchestrator" = Depends( get_llm ),
     product_repo: ProductRepository = Depends( get_product_repo )
 ) -> SearchResponse:
     """‫دریافت کوئری از فروشگاه، اجرای کامل پایپلاین و بازگشت JSON ساختاریافته.
@@ -145,10 +145,10 @@ async def search_products_stream(
     top_k: int = 2,
     session_id: str | None = None,
     client_session_id: str | None = None,
-    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
-    retriever: QdrantHybridRetriever = Depends( get_retriever ),
-    reranker: RerankerService = Depends( get_reranker ),
-    llm: LLMOrchestrator = Depends( get_llm ),
+    nlu: "LLMNLUExtractor" = Depends( get_nlu_pipeline ),
+    retriever: "QdrantHybridRetriever" = Depends( get_retriever ),
+    reranker: "RerankerService" = Depends( get_reranker ),
+    llm: "LLMOrchestrator" = Depends( get_llm ),
     product_repo: ProductRepository = Depends( get_product_repo )
 ) -> StreamingResponse:
     """‫پردازش کوئری با ارسال زنده وضعیت هر مرحله از پایپلاین.

@@ -1,6 +1,8 @@
 """‫پارسر مبتنی بر توکن (جایگزین Regex)
 ‫این ماژول مسئول تبدیل متن نرمال‌شده به MetadataFilters است.
 ‫از الگوی Window-Based Matching، نگاشت‌های کیفی و مدیریت Negation پشتیبانی می‌کند.
+
+⚠️ منسوخ‌شده (Deprecated): این ماژول به‌نفع LLMNLUExtractor کنار گذاشته شده است.
 """
 from __future__ import annotations
 

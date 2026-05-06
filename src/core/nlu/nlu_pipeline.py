@@ -1,9 +1,13 @@
 """خط لوله درک زبان طبیعی (NLU Pipeline) - نسخه Token-Based
 مسئول: نرمال‌سازی، تشخیص نیت، استخراج فیلترها، مدیریت تضاد و تولید کوئری تمیز
 تغییرات کلیدی: جایگزینی Regex با TokenParser، جداسازی کامل دامنه، تزریق وابستگی
+
+⚠️ منسوخ‌شده (Deprecated): این کلاس به‌نفع LLMNLUExtractor (src/core/nlu/llm_extractor.py) کنار گذاشته شده است.
+لطفاً برای کد جدید از LLMNLUExtractor استفاده کنید.
 """
 #─────────────────────imports─────────────────────
 from __future__ import annotations
+import warnings
 import unicodedata
 from typing import cast
 import numpy as np
@@ -32,6 +36,11 @@ class NLUPipeline:
         config_loader: DomainConfigLoader | None = None,
         embedding_service: EmbeddingService | None = None,
     ) -> None:
+        warnings.warn(
+            "NLUPipeline منسوخ شده است. لطفاً از LLMNLUExtractor استفاده کنید.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._loader = config_loader or DomainConfigLoader()
         self._config = self._loader.load( domain )
         self._normalizer = PersianNormalizer()

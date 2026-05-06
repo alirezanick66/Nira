@@ -14,7 +14,7 @@ from typing import AsyncGenerator
 
 from src.api.schemas import PipelineStatus, SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
-from src.core.nlu.nlu_pipeline import NLUPipeline
+from src.core.nlu.llm_extractor import LLMNLUExtractor
 from src.core.nlu.schemas import NLUFilterQuery
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
@@ -42,7 +42,7 @@ class SearchService:
 
     def __init__(
         self,
-        nlu: NLUPipeline,
+        nlu: LLMNLUExtractor,
         retriever: QdrantHybridRetriever,
         reranker: RerankerService,
         llm: LLMOrchestrator,
@@ -92,7 +92,7 @@ class SearchService:
 
         # ── مرحله ۱: NLU ─────────────────────────────────────────────────────
         yield PipelineStatus( step="nlu", message=self._STEP_MESSAGES[ "nlu" ] )
-        nlu_out: NLUFilterQuery = await asyncio.to_thread( self._nlu.process, query )
+        nlu_out: NLUFilterQuery = await self._nlu.extract( query, session_id )
 
         if nlu_out.is_greeting:
             yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
@@ -103,11 +103,7 @@ class SearchService:
             intent=nlu_out.intent,
             new_filters=dict( nlu_out.metadata_filters ),
             session_id=session_id,
-            sort_directive=nlu_out.sort_directive,
         )
-        if ( nlu_out.intent == "refine" and nlu_out.sort_directive and nlu_out.sort_directive.get( "key" ) == "price"
-             and "price" in effective_filters ):
-            del effective_filters[ "price" ]
         log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {nlu_out.intent} | Filters: {effective_filters}", LogLevel.DEBUG )
 
         # ── مرحله ۲: جستجو ───────────────────────────────────────────────────
@@ -255,8 +251,7 @@ class SearchService:
 
     def _build_greeting( self, *, req_id: str, session_id: str, query: str, t0: float ) -> SearchResponse:
         """‫ساخت پاسخ احوال‌پرسی از کانفیگ دامنه"""
-        greeting_cfg = self._nlu.get_domain_config().get( "intent_keywords", {} ).get( "greeting", {} )
-        responses: list[ str ] = greeting_cfg.get( "greeting_responses", [ "سلام! چطور می‌تونم کمکتون کنم؟" ] )
+        responses: list[ str ] = self._nlu.greeting_responses
         return SearchResponse(
             status="success",
             request_id=req_id,
