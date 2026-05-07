@@ -39,7 +39,7 @@ class LLMOrchestrator:
         session_id: str,
         sort_directive: dict | None = None,
     ) -> dict:
-        """ادغام فیلترهای refine از طریق ConversationMemory"""
+        """ادغام فیلترهای refine از طریق ConversationMemory (شامل حذف price_range هنگام sort قیمت)"""
         return await self._memory.merge_refine_filters(
             intent=intent,
             new_filters=new_filters,

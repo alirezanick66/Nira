@@ -2,6 +2,7 @@
 
 #───────────────────── Imports ─────────────────────
 import re
+from functools import lru_cache
 
 #───────────────────── Local Imports ─────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
@@ -66,10 +67,13 @@ class PersianNumberConverter:
     _NOISE_PATTERN: re.Pattern[ str ] = re.compile( r"[‌\- ]+" )
 
     @classmethod
-    def get_number_words( cls ) -> set[ str ]:
+    @lru_cache
+    def get_number_words( cls ) -> frozenset[ str ]:
         """بازگرداندن مجموعه کامل واژه‌های عددی برای پیش‌پردازش متن"""
-        return ( set( cls._UNITS ) | set( cls._TEENS ) | set( cls._TENS ) | set( cls._HUNDREDS )
-                 | set( cls._SCALES ) | set( cls._CONNECTORS ) )
+        return frozenset(
+            set( cls._UNITS ) | set( cls._TEENS ) | set( cls._TENS ) | set( cls._HUNDREDS )
+            | set( cls._SCALES ) | set( cls._CONNECTORS )
+        )
 
     @classmethod
     def convert( cls, text: str ) -> int | None:

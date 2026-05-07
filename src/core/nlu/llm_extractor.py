@@ -66,7 +66,8 @@ _SYSTEM_PROMPT = """تو یک سیستم استخراج اطلاعات ساخت�
 - "ارزونتر/ارزان‌تر" بدون عدد صریح → sort_directive: {"key": "price", "order": "asc"}
 - "گرونتر/گران‌تر" بدون عدد → sort_directive: {"key": "price", "order": "desc"}
 - "رم بیشتر/بالاتر" بدون عدد صریح → sort_directive: {"key": "ram_gb", "order": "desc"}
-- وقتی sort_directive تنظیم شد، metadata_filters را بدون تغییر بگذار (فیلترهای قبلی از حافظه ادغام می‌شوند)
+- وقتی sort_directive تنظیم شد، metadata_filters را بدون تغییر بگذار (فیلترهای قبلی از حافظه ادغام می‌شوند).
+  اگر sort_directive مربوط به price بود و فقط price_range وجود داشت، حذف price_range مجاز است.
 
 ── قوانین intent ──
 - اگر کاربر در مکالمه قبلی جستجو کرده و الان چیزی اضافه یا تغییر می‌دهد → refine
