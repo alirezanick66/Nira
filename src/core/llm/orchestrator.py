@@ -141,9 +141,18 @@ class LLMOrchestrator:
         """تولید داینامیک راهنمای اسکیما و نگاشت‌های کیفی از YAML"""
         parts = [ "⚙️ Available Filters & Types:" ]
         slots = self._config.get( "slot_definitions", {} )
+
         for key, cfg in slots.items():
             s_type = cfg.get( "type", "scalar" )
             units = list( cfg.get( "units", {} ).keys() )
+            # ✅ افزودن مثال‌های صریح برای جلوگیری از Hallucination کلید unit
+            example = ""
+            if key == "price":
+                example = " (مثال صحیح: {'price': {'>=': 50000000}} ← حتماً به تومان و بدون کلید unit)"
+            elif key in ( "ram_gb", "storage_gb", "battery_mah" ):
+                example = f" (واحدهای مجاز: {', '.join(units)})"
+
+            parts.append( f"- {key}: {s_type}{example}" )
             parts.append( f"- {key}: {s_type} (units: {', '.join(units) if units else 'N/A'})" )
 
         qual = self._config.get( "qualitative_mappings", {} )
