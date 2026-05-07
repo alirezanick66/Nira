@@ -87,12 +87,12 @@ class LLMOrchestrator:
         groq_messages = cast( list[ ChatCompletionMessageParam ], messages )
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
-            raw_json = await self._groq.chat_json( groq_messages )
+            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
         except Exception as exc:
             log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
             try:
                 log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
-                raw_json = await self._gemini.chat_json( groq_messages )
+                raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
@@ -109,7 +109,7 @@ class LLMOrchestrator:
             else:
                 json_str = cleaned          # ‫اگر ساختار پیدا نشد، متن خام پاس داده می‌شه تا json.loads خطا بده و لاگ بشه
 
-            log_message( LG.LLM, f"📥 کوئری: '{user_query[:80]}...' | Intent: {intent} | 🔍 پاسخ خام (۲۰۰ کاراکتر اول): {json_str}",
+            log_message( LG.LLM, f"📥 کوئری: '{user_query[:80]}...' | Intent: {intent} | 🔍 پاسخ نهایی (۲۰۰ کاراکتر اول): {json_str}",
                          LogLevel.DEBUG )
 
             validated = self._validator.validate_python( json.loads( json_str ) )
@@ -145,15 +145,12 @@ class LLMOrchestrator:
         for key, cfg in slots.items():
             s_type = cfg.get( "type", "scalar" )
             units = list( cfg.get( "units", {} ).keys() )
-            # ✅ افزودن مثال‌های صریح برای جلوگیری از Hallucination کلید unit
-            example = ""
-            if key == "price":
-                example = " (مثال صحیح: {'price': {'>=': 50000000}} ← حتماً به تومان و بدون کلید unit)"
-            elif key in ( "ram_gb", "storage_gb", "battery_mah" ):
-                example = f" (واحدهای مجاز: {', '.join(units)})"
 
-            parts.append( f"- {key}: {s_type}{example}" )
-            parts.append( f"- {key}: {s_type} (units: {', '.join(units) if units else 'N/A'})" )
+            # ✅ افزودن مثال‌های صریح برای جلوگیری از Hallucination کلید unit
+            example = " (مثال: {'price': {'<=': 20000000}} ← فقط تومان، بدون unit)" if key == "price" else ""
+            unit_str = f" (units: {', '.join(units)})" if units and key != "price" else ""
+
+            parts.append( f"- {key}: {s_type}{example}{unit_str}" )
 
         qual = self._config.get( "qualitative_mappings", {} )
         if qual:
@@ -200,7 +197,7 @@ class LLMOrchestrator:
             raise RuntimeError( "⛔ تمپلیت extract در base.yaml تعریف نشده یا indentation آن شکسته است." )
 
         user_prompt = Template( template_str ).safe_substitute( context_vars )
-        system_prompt = self._config.get( "prompts", {} ).get( "system_base", "" )
+        system_prompt = self._config.get( "prompts", {} ).get( "system_extract", "" )
         messages: list[ ChatCompletionMessageParam ] = [
             {
                 "role": "system",
@@ -215,11 +212,11 @@ class LLMOrchestrator:
         # ۳. فراخوانی LLM (Groq → Gemini Fallback)
         raw_json = ""
         try:
-            raw_json = await self._groq.chat_json( cast( list, messages ) )
+            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
         except Exception as exc:
             log_message( LG.LLM, f"⚠️ Groq failed in extract: {exc} | Switching to Gemini...", LogLevel.WARNING )
             try:
-                raw_json = await self._gemini.chat_json( cast( list, messages ) )
+                raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM در extract ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 raise RuntimeError( "سرویس استخراج LLM در دسترس نیست" ) from gem_exc

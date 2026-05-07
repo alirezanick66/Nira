@@ -45,7 +45,7 @@ def _build_service(
     product_repo: ProductRepository,
 ) -> SearchService:
     """‫ساخت نمونه SearchService از وابستگی‌های FastAPI"""
-    return SearchService( orchestrator=llm, retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
+    return SearchService( retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
