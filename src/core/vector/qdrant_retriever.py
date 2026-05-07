@@ -19,7 +19,7 @@ from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_payload import QdrantProductPayload
-from src.core.nlu.schemas import MetadataFilters
+from src.core.llm.schemas import MetadataFilters
 
 
 class QdrantHybridRetriever:

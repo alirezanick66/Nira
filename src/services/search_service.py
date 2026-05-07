@@ -1,28 +1,26 @@
-"""‫سرویس مشترک پایپلاین جستجو (Search Pipeline Service)
-
-‫مسئول: اجرای کامل زنجیره NLU → Retrieval → Rerank → LLM و بازگشت پاسخ نهایی.
+""" ‫‫سرویس مشترک پایپلاین جستجو (نسخه LLM-Based)
+‫مسئول: اجرای کامل زنجیره Extract(LLM) → Retrieval → Rerank → LLM و بازگشت پاسخ نهایی.
 ‫این ماژول هیچ وابستگی به پروتکل HTTP، SSE یا JSON ندارد و کاملاً Domain-Pure است.
 """
+#─────────────────────  Imports ─────────────────────
 from __future__ import annotations
-
 import asyncio
 import time
 import uuid
-import logging
 import random
 from typing import AsyncGenerator
 
+#───────────────────── Local Imports ─────────────────────
 from src.api.schemas import PipelineStatus, SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
-from src.core.nlu.nlu_pipeline import NLUPipeline
-from src.core.nlu.schemas import NLUFilterQuery
+from src.core.llm.orchestrator import LLMOrchestrator
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
+from src.core.llm.schemas import IntentType, MetadataFilters, LLMExtractSchema
 from src.services.reranker_service import RerankerService
 from src.data.repositories.product_repository import ProductRepository
 from src.config.logging_config import log_message, LogLevel, LG
-
-logger = logging.getLogger( __name__ )
+from src.config.logging_config import log_message, LogLevel, LG
 
 
 class SearchService:
@@ -34,7 +32,7 @@ class SearchService:
     """
 
     _STEP_MESSAGES: dict[ str, str ] = {
-        "nlu": "در حال پردازش پیام شما...",
+        "extract": "در حال پردازش پیام شما...",
         "searching": "در حال جستجو در محصولات...",
         "reranking": "در حال ارزیابی و رتبه‌بندی نتایج...",
         "generating": "در حال آماده‌سازی پاسخ...",
@@ -42,13 +40,13 @@ class SearchService:
 
     def __init__(
         self,
-        nlu: NLUPipeline,
+        orchestrator: LLMOrchestrator,
         retriever: QdrantHybridRetriever,
         reranker: RerankerService,
         llm: LLMOrchestrator,
         image_repo: ProductRepository | None = None,
     ) -> None:
-        self._nlu = nlu
+        self._llm = orchestrator
         self._retriever = retriever
         self._reranker = reranker
         self._llm = llm
@@ -84,38 +82,59 @@ class SearchService:
     # هسته مشترک
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def _run_pipeline( self, *, query: str, session_id: str,
-                             top_k: int ) -> AsyncGenerator[ PipelineStatus | SearchResponse, None ]:
-        """‫اجرای داخلی زنجیره کامل NLU → Retrieval → Rerank → LLM"""
+    async def _run_pipeline(
+        self,
+        *,
+        query: str,
+        session_id: str,
+        top_k: int,
+    ) -> AsyncGenerator[ PipelineStatus | SearchResponse, None ]:
+        """‫اجرای داخلی زنجیره کامل Extract → Retrieval → Rerank → LLM"""
         t0 = time.perf_counter()
         req_id = str( uuid.uuid4() )
 
-        # ── مرحله ۱: NLU ─────────────────────────────────────────────────────
-        yield PipelineStatus( step="nlu", message=self._STEP_MESSAGES[ "nlu" ] )
-        nlu_out: NLUFilterQuery = await asyncio.to_thread( self._nlu.process, query )
+        # ── مرحله ۱: استخراج نیت و فیلتر (LLM Extract + Fast Greeting) ─────
+        yield PipelineStatus( step="extract", message=self._STEP_MESSAGES[ "extract" ] )
 
-        if nlu_out.is_greeting:
+        last_filters = await self._llm._memory.get_last_filters( session_id )
+        history = await self._llm._memory.get_history( session_id )
+        extract_result: LLMExtractSchema = await self._llm.extract(
+            query=query,
+            session_id=session_id,
+            last_filters=last_filters,
+            last_products=None,          # 🔹 در فازهای بعدی از حافظه خوانده می‌شود
+            history=history,
+        )
+
+        # ‫🔹 مدیریت Intentهای خاص قبل از ورود به پایپلاین جستجو
+        if extract_result.intent == IntentType.GENERAL_CHAT:
             yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
             return
 
-        # ── ادغام فیلترهای refine ─────────────────────────────────────────────
-        effective_filters = await self._llm._memory.merge_refine_filters(
-            intent=nlu_out.intent,
-            new_filters=dict( nlu_out.metadata_filters ),
-            session_id=session_id,
-            sort_directive=nlu_out.sort_directive,
-        )
-        if ( nlu_out.intent == "refine" and nlu_out.sort_directive and nlu_out.sort_directive.get( "key" ) == "price"
-             and "price" in effective_filters ):
-            del effective_filters[ "price" ]
-        log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {nlu_out.intent} | Filters: {effective_filters}", LogLevel.DEBUG )
+        if extract_result.needs_clarification:
+            yield self._build_clarification( req_id=req_id,
+                                             session_id=session_id,
+                                             query=query,
+                                             question=extract_result.clarification_question,
+                                             t0=t0 )
+            return
 
-        # ── مرحله ۲: جستجو ───────────────────────────────────────────────────
+        if extract_result.has_conflict:
+            log_message( LG.LLM, f"⚠️ تضاد فیلتر شناسایی شد: {extract_result.conflict_reason}", LogLevel.WARNING )
+
+        log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {extract_result.intent} | Filters: {extract_result.metadata_filters}",
+                     LogLevel.DEBUG )
+
+        # ── مرحله ۲: جستجو ────────────────────────────────────────────────
         yield PipelineStatus( step="searching", message=self._STEP_MESSAGES[ "searching" ] )
-        candidates, fallback_steps = await self._resolve_candidates( nlu_out, effective_filters, top_k )
+        candidates, fallback_steps = await self._resolve_candidates(
+            semantic_query=extract_result.semantic_query,
+            filters=extract_result.metadata_filters,
+            top_k=top_k,
+        )
 
         if not candidates:
-            yield self._build_empty( req_id=req_id, session_id=session_id, nlu_out=nlu_out, t0=t0 )
+            yield self._build_empty( req_id=req_id, session_id=session_id, extract_out=extract_result, t0=t0 )
             return
 
         # ── مرحله ۳: رتبه‌بندی ───────────────────────────────────────────────
@@ -128,17 +147,17 @@ class SearchService:
         llm_out: dict = await self._llm.generate(
             session_id=session_id,
             user_query=query,
-            intent=nlu_out.intent,
-            filters_str=str( nlu_out.metadata_filters ),
+            intent=extract_result.intent.value,
+            filters_str=str( extract_result.metadata_filters ),
             products=final_products,
-            applied_filters=effective_filters,
+            applied_filters=extract_result.metadata_filters,
         )
 
         yield self._build_final_response(
             req_id=req_id,
             session_id=session_id,
-            nlu_out=nlu_out,
-            effective_filters=effective_filters,
+            extract_out=extract_result,
+            effective_filters=extract_result.metadata_filters,
             candidates=candidates,
             final_products=final_products,
             llm_out=llm_out,
@@ -149,53 +168,21 @@ class SearchService:
     # متدهای خصوصی
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def _resolve_candidates(
-        self,
-        nlu_out: NLUFilterQuery,
-        effective_filters: dict,
-        top_k: int,
-    ) -> tuple[ list[ QdrantProductPayload ], int ]:
-        """‫بازیابی کاندیداها با مدیریت کوئری کوتاه و closest-available fallback"""
-        retrieve_query = nlu_out.semantic_query
-        if nlu_out.intent == "refine" and len( retrieve_query.replace( " ", "" ) ) < 4:
+    async def _resolve_candidates( self, semantic_query: str, filters: MetadataFilters | None,
+                                   top_k: int ) -> tuple[ list[ QdrantProductPayload ], int ]:
+        """‫بازیابی کاندیداها با مدیریت کوئری کوتاه و fallback"""
+        retrieve_query = semantic_query
+        if len( retrieve_query.strip() ) < 3:
             retrieve_query = "گوشی موبایل جدید"
-            log_message( LG.LLM, "🌱 کوئری refine کوتاه → تزریق Seed دامنه", LogLevel.DEBUG )
+            log_message( LG.RETRIEVAL, "🌱 کوئری معنایی کوتاه → تزریق Seed دامنه", LogLevel.DEBUG )
 
-        candidates: list[ QdrantProductPayload ] = await asyncio.to_thread(
-            self._retriever.search,
-            query=retrieve_query,
-            filters=effective_filters,
-            top_k=max( top_k * 2, 10 ),
-        )
+        candidates: list[ QdrantProductPayload ] = await asyncio.to_thread( self._retriever.search,
+                                                                            query=retrieve_query,
+                                                                            filters=filters,
+                                                                            top_k=max( top_k * 2, 10 ) )
 
         fallback_steps: int = getattr( self._retriever, "_last_fallback_steps", 0 )
-        if fallback_steps > 0 and candidates:
-            candidates = self._apply_closest_available( candidates, effective_filters )
-        fallback_steps = getattr( self._retriever, "_last_fallback_steps", 0 )
         return candidates, fallback_steps
-
-    @staticmethod
-    def _apply_closest_available(
-        candidates: list[ QdrantProductPayload ],
-        filters: dict,
-    ) -> list[ QdrantProductPayload ]:
-        """‫مرتب‌سازی کاندیداها بر اساس نزدیک‌ترین مقدار به فیلتر عددی در صورت fallback"""
-        for field_name, constraint in filters.items():
-            if not isinstance( constraint, dict ):
-                continue
-            op, target = next( iter( constraint.items() ) )
-            has_match = any( ( v := getattr( c, field_name, None ) ) is not None and ( ( op == ">=" and v >= target ) or (
-                op == "<=" and v <= target ) or ( op == ">" and v > target ) or ( op == "<" and v < target ) ) for c in candidates )
-            if not has_match:
-                reverse = op in ( ">=", ">" )
-                candidates.sort( key=lambda p: getattr( p, field_name, 0 ) or 0, reverse=reverse )
-                log_message(
-                    LG.RETRIEVAL,
-                    f"🎯 نزدیک‌ترین گزینه | {field_name} {op} {target} → {getattr(candidates[0], field_name, 'N/A')}",
-                    LogLevel.INFO,
-                )
-                break
-        return candidates
 
     async def _enrich_products( self, products: list[ QdrantProductPayload ] ) -> None:
         """‫واکشی image_url از PostgreSQL و لاگ محصولات نهایی"""
@@ -208,14 +195,14 @@ class SearchService:
 
         if products:
             summary = [ f"{p.title[:40]}... | {p.price:,.0f} تومان" for p in products[ :2 ] ]
-            log_message( LG.LLM, f"{summary}", LogLevel.DEBUG )
+            log_message( LG.LLM, f"📦 محصولات نهایی: {summary}", LogLevel.DEBUG )
 
     def _build_final_response(
         self,
         req_id: str,
         session_id: str,
-        nlu_out: NLUFilterQuery,
-        effective_filters: dict,
+        extract_out: LLMExtractSchema,
+        effective_filters: MetadataFilters,
         candidates: list[ QdrantProductPayload ],
         final_products: list[ QdrantProductPayload ],
         llm_out: dict,
@@ -239,8 +226,8 @@ class SearchService:
             status="partial" if fallback_steps > 0 else "success",
             request_id=req_id,
             session_id=session_id,
-            intent=nlu_out.intent,
-            semantic_query=nlu_out.semantic_query,
+            intent=extract_out.intent.value,
+            semantic_query=extract_out.semantic_query,
             applied_filters=effective_filters,
             results=results,
             message=str( llm_out.get( "explanation", "" ) ),
@@ -254,33 +241,32 @@ class SearchService:
         )
 
     def _build_greeting( self, *, req_id: str, session_id: str, query: str, t0: float ) -> SearchResponse:
-        """‫ساخت پاسخ احوال‌پرسی از کانفیگ دامنه"""
-        greeting_cfg = self._nlu.get_domain_config().get( "intent_keywords", {} ).get( "greeting", {} )
-        responses: list[ str ] = greeting_cfg.get( "greeting_responses", [ "سلام! چطور می‌تونم کمکتون کنم؟" ] )
+        """‫ساخت پاسخ احوال‌پرسی سریع (بدون LLM)"""
+        fallback_greetings = [ "سلام! چطور می‌تونم کمکتون کنم؟", "درود، چه کمکی از دستم برمیاد؟", "سلام، در خدمتم!" ]
         return SearchResponse(
             status="success",
             request_id=req_id,
             session_id=session_id,
-            intent="greeting",
+            intent=IntentType.GENERAL_CHAT.value,
             semantic_query=query,
             applied_filters={},
             results=[],
-            message=random.choice( responses ),
+            message=random.choice( fallback_greetings ),
             llm_explanation="",
             next_suggestion="نیازتان را بنویسید.",
             meta={ "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ) },
         )
 
     @staticmethod
-    def _build_empty( *, req_id: str, session_id: str, nlu_out: NLUFilterQuery, t0: float ) -> SearchResponse:
+    def _build_empty( *, req_id: str, session_id: str, extract_out: LLMExtractSchema, t0: float ) -> SearchResponse:
         """‫ساخت پاسخ خالی (صفر نتیجه)"""
         return SearchResponse(
             status="empty",
             request_id=req_id,
             session_id=session_id,
-            intent=nlu_out.intent,
-            semantic_query=nlu_out.semantic_query,
-            applied_filters=nlu_out.metadata_filters if nlu_out else {},
+            intent=extract_out.intent.value,
+            semantic_query=extract_out.semantic_query,
+            applied_filters=extract_out.metadata_filters or {},
             results=[],
             message="متأسفانه محصولی با این مشخصات پیدا نشد.",
             llm_explanation="",
@@ -290,4 +276,20 @@ class SearchService:
                 "fallback_steps": 0,
                 "total_candidates": 0
             },
+        )
+
+    def _build_clarification( self, *, req_id: str, session_id: str, query: str, question: str | None, t0: float ) -> SearchResponse:
+        """‫ساخت پاسخ شفاف‌سازی (Clarification)"""
+        return SearchResponse(
+            status="clarification",
+            request_id=req_id,
+            session_id=session_id,
+            intent=IntentType.SEARCH.value,
+            semantic_query=query,
+            applied_filters={},
+            results=[],
+            message=question or "لطفاً جزئیات بیشتری از نیاز خود بفرمایید.",
+            llm_explanation="",
+            next_suggestion="برند، بودجه یا ویژگی خاصی مد نظر دارید؟",
+            meta={ "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ) },
         )

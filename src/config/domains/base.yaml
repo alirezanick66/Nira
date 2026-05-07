@@ -1,69 +1,27 @@
-base_version: "1.0.0"
-
-# ─── واژگان پایه (Single Source of Truth) ───
-_price_low: &price_low [ارزان, ارزان‌تر, ارزون, ارزون‌تر, اقتصادی, بودجه]
-_price_high: &price_high [گران, گرون, پرچم‌دار, پرچمدار, لوکس, premium]
-#  ─────────────────────────────────────
-negation_keywords:
-    - نه
-    - بدون
-    - غیر
-    - به جز
-    - غیر از
-    - بجز
-    - جز
-    - مگر
-
-stop_words_semantic:
-    # نشانگرهای قیمت
-    - زیر
-    - بالای
-    - کمتر
-    - بیشتر
-    - تومان
-    - تومن
-    - حدود
-    - حداقل
-    - حداکثر
-    - تا
-    - الی
-    # واحدها
-    - میلیون
-    - میلیارد
-    - هزار
-    # کلمات اضافه
-    - از
-    - ولی
-    - اما
-    - و
+base_version: "2.0.0"
 
 intent_keywords:
     greeting:
         keywords_fast:
-            [سلام, درود, وقت بخیر, روز بخیر, صبح بخیر, شب بخیر, خداحافظ]
-        canonical_examples:
             [
-                روزت بخیر,
-                حالت چطوره,
-                خسته نباشید,
+                سلام,
+                درود,
+                وقت بخیر,
+                روز بخیر,
+                صبح بخیر,
+                شب بخیر,
+                خداحافظ,
                 خوبی,
-                اوضاع ردیفه؟,
-                احوالت چطوره؟,
+                چطوری,
+                حالت چطوره,
+                احوالت چطوره,
                 چه خبر,
-                سلام خوبی,
-                دمت گرم,
-                مرسی,
-                ممنون,
-                مرسی که هستی,
-                خوشحالم که هستی,
-                عزیزمی,
-                دوستت دارم,
-                عاشقتم,
-                عشقمی,
-                فدات شم,
-                عشق منی,
-                عالی,
-                ایول,
+                خبری نیست,
+                سلامتی,
+                مخلصیم,
+                ارادت,
+                در پناه حق,
+                خدا قوت,
             ]
         greeting_responses:
             [
@@ -73,60 +31,18 @@ intent_keywords:
                 خوشحالم، بفرمایید چطور راهنماییتون کنم؟,
                 ممنون از محبتتون، چه سوالی دارید؟,
             ]
-        threshold: 0.93
-
-    compare:
-        keywords_fast: [مقایسه, فرق, تفاوت, کدوم بهتره, کدوم بهتر, در برابر, vs]
-        canonical_examples: [] # ← خالی؛ پر شدن بر عهدهٔ دامنه
-        threshold: 0.86
-
-    refine:
-        keywords_fast: ["ارزونتر", "گرانتر", "دیگه", "بعدی"]
-        canonical_examples:
-            [
-                گران تر نشون بده,
-                گرون ترش رو میخوام,
-                یه چیز ارزونتر نشون بده,
-                گزینه بعدی رو بگو,
-                سبکتر میخوام,
-                قویترش رو میخوام,
-            ]
-        threshold: 0.92
-
-    search:
-        keywords_fast: [] # سرچ پیش‌فرض است؛ نیازی به کلمه کلیدی ندارد
-        canonical_examples: [] # ← خالی؛ پر شدن بر عهدهٔ دامنه
-        threshold: 0.70
-
-range_separators: [تا, الی, "-", بین]
 
 qualitative_mappings:
     price_range:
-        budget: *price_low
+        budget: [ارزان, ارزان‌تر, ارزون, ارزون‌تر, اقتصادی, بودجه]
         mid: [قیمت مناسب, متوسط, میان‌رده, میان رده]
-        flagship: *price_high
+        flagship: [گران, گرون, پرچم‌دار, پرچمدار, لوکس, premium]
         premium: [بالارده]
     value_for_money:
         excellent: [ارزش خرید بالا]
         good: [به‌صرفه]
 
-conflict_groups:
-    - id: price_polarity
-      terms:
-          - *price_low
-          - *price_high
-      strategy: drop_both
-
-value_conflicts:
-    price_range:
-        - [budget, flagship]
-        - [budget, premium]
-        - [mid, flagship]
-
 slot_definitions:
-    color:
-        type: enum
-        negation_aware: true
     category:
         type: enum
         negation_aware: true
@@ -143,8 +59,44 @@ prompts:
         3. هرگز نگو «محصولی یافت نشد» مگر اینکه واقعاً لیست محصولات خالی باشد.
         4. توضیحاتت باید کوتاه، شفاف و مفید باشد (حداکثر ۲-۳ جمله).
         5. در next_suggestion، یک فیلتر یا اقدام عملی پیشنهاد بده که کاربر می‌تواند برای بهبود نتایج انجام دهد.
+        ۶. اگر نیت را "general_chat" تشخیص دادی:
+            - نیاز به شفاف‌سازی (needs_clarification) را حتماً false بگذار.
+            - semantic_query را خالی ("") قرار بده.
+            - clarification_question را null بگذار.
 
     templates:
+        extract: |
+            تو یک موتور استخراج هوشمند نیت و فیلتر هستی.
+            ورودی کاربر: "$query"
+            تاریخچه مکالمه: $history
+            فیلترهای اعمال‌شده قبلی: $last_filters
+            محصولات قبلی: $last_products
+
+            ⚙️ راهنمای دامنه (فقط از این ساختارها استفاده کن):
+            $domain_schema
+            "- فقط از کلیدهای لیست‌شده استفاده کن.",
+            "- واحدها را دقیق تطبیق بده (GB/TB/mAh/MP).",
+            - مقادیر کیفی را طبق Mappings تبدیل کن.
+            - نام برندها را دقیقاً مطابق لیست مجاز و فقط به صورت فارسی کاننیکال برگردان.
+            "- خروجی فقط JSON معتبر باشد."
+
+            وظایف تو:
+            ۱. نیت کاربر را دقیقاً از بین ["search", "refine", "compare", "general_chat"] انتخاب کن.
+            ۲. یک کوئری معنایی تمیز (`semantic_query`) بدون کلمات فیلترساز، اعداد مدل یا حروف اضافه تولید کن.
+            ۳. فیلترهای متادیتا (`metadata_filters`) را دقیقاً مطابق ساختار Qdrant استخراج کن.
+            - اگر نیت `refine` است، فیلترهای قبلی را با تغییرات جدید ادغام کن و وضعیت نهایی کامل فیلترها را برگردان.
+            - اگر تضاد منطقی بین فیلترها دیدی، `has_conflict` را true کن و در `conflict_reason` دلیل را بنویس.
+            ۴. اگر کوئری مبهم است یا اطلاعات کلیدی کم است، `needs_clarification` را true کن و در `clarification_question` یک سوال کوتاه بپرس.
+                  📐 ساختار خروجی (فقط همین JSON را برگردان):
+            {
+                "intent": "string",
+                "semantic_query": "string",
+                "metadata_filters": {},
+                "needs_clarification": false,
+                "clarification_question": "string or null",
+                "has_conflict": false,
+                "conflict_reason": "string or null"
+            }
         search: |
             کاربر به دنبال محصولی با این ویژگی‌هاست: $filters
             محصولات بازیابی‌شده:

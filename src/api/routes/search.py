@@ -21,12 +21,11 @@ from fastapi.responses import StreamingResponse
 from src.data.repositories.product_repository import ProductRepository
 from src.api.schemas import SearchRequest, SearchResponse
 from src.services.search_service import PipelineStatus, SearchService
-from src.api.dependencies import get_nlu_pipeline, get_retriever, get_reranker, get_llm, get_product_repo
+from src.api.dependencies import get_retriever, get_reranker, get_llm, get_product_repo
 from src.services.query_log_service import log_query
 
 if TYPE_CHECKING:
     from src.core.llm.orchestrator import LLMOrchestrator
-    from src.core.nlu.nlu_pipeline import NLUPipeline
     from src.core.vector.qdrant_retriever import QdrantHybridRetriever
     from src.services.reranker_service import RerankerService
 
@@ -40,14 +39,13 @@ router = APIRouter( prefix="/api/v1", tags=[ "Search" ] )
 
 
 def _build_service(
-    nlu: NLUPipeline,
     retriever: QdrantHybridRetriever,
     reranker: RerankerService,
     llm: LLMOrchestrator,
     product_repo: ProductRepository,
 ) -> SearchService:
     """‫ساخت نمونه SearchService از وابستگی‌های FastAPI"""
-    return SearchService( nlu=nlu, retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
+    return SearchService( orchestrator=llm, retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +73,6 @@ def _sse_event( event: str, data: dict ) -> str:
 async def search_products(
     request_body: SearchRequest,
     request: Request,
-    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
     retriever: QdrantHybridRetriever = Depends( get_retriever ),
     reranker: RerankerService = Depends( get_reranker ),
     llm: LLMOrchestrator = Depends( get_llm ),
@@ -94,7 +91,7 @@ async def search_products(
 
     response: SearchResponse | None = None
     try:
-        service = _build_service( nlu, retriever, reranker, llm, product_repo )
+        service = _build_service( retriever, reranker, llm, product_repo )
         response, _ = await service.run(
             query=request_body.query,
             session_id=session_id,
@@ -145,7 +142,6 @@ async def search_products_stream(
     top_k: int = 2,
     session_id: str | None = None,
     client_session_id: str | None = None,
-    nlu: NLUPipeline = Depends( get_nlu_pipeline ),
     retriever: QdrantHybridRetriever = Depends( get_retriever ),
     reranker: RerankerService = Depends( get_reranker ),
     llm: LLMOrchestrator = Depends( get_llm ),
@@ -172,7 +168,7 @@ async def search_products_stream(
         applied_filters: dict | None = None
 
         try:
-            service = _build_service( nlu, retriever, reranker, llm, product_repo )
+            service = _build_service( retriever, reranker, llm, product_repo )
 
             async for event in service.run_streaming(
                     query=query,

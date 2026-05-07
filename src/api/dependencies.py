@@ -5,18 +5,10 @@ from fastapi import HTTPException, Request, status
 
 #───────────────────── Local Imports ─────────────────────
 if TYPE_CHECKING:
-    from src.core.nlu.nlu_pipeline import NLUPipeline
     from src.core.vector.qdrant_retriever import QdrantHybridRetriever
     from src.services.reranker_service import RerankerService
     from src.core.llm.orchestrator import LLMOrchestrator
     from src.data.repositories.product_repository import ProductRepository
-
-
-def get_nlu_pipeline( request: Request ) -> NLUPipeline:
-    """‫تزریق خط لوله NLU از app.state"""
-    if not hasattr( request.app.state, "nlu" ):
-        raise HTTPException( status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="سرویس NLU در حال راه‌اندازی است" )
-    return request.app.state.nlu
 
 
 def get_retriever( request: Request ) -> QdrantHybridRetriever:

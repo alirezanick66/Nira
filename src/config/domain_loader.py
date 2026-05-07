@@ -41,7 +41,7 @@ class DomainConfigLoader:
         merged = self._deep_merge( base_cfg, domain_cfg )
         self._flatten_qualitative_mappings( merged )
 
-        log_message( LG.NLU, f"✅ کانفیگ دامنه '{domain}' با موفقیت بارگذاری و ادغام شد", LogLevel.INFO )
+        log_message( LG.DATA_PROCESSING, f"✅ کانفیگ دامنه '{domain}' با موفقیت بارگذاری و ادغام شد", LogLevel.INFO )
         return merged
 
     def _read_yaml( self, path: Path ) -> ConfigDict:
@@ -53,10 +53,10 @@ class DomainConfigLoader:
                     raise ValueError( f"فرمت فایل YAML معتبر نیست (باید دیکشنری باشد): {path}" )
                 return cast( ConfigDict, data )
         except yaml.YAMLError as exc:
-            log_message( LG.NLU, f"خطا در پارس YAML {path.name}: {exc}", LogLevel.ERROR )
+            log_message( LG.DATA_PROCESSING, f"خطا در پارس YAML {path.name}: {exc}", LogLevel.ERROR )
             raise
         except Exception as exc:
-            log_message( LG.NLU, f"خطای غیرمنتظره در خواندن {path.name}: {exc}", LogLevel.ERROR )
+            log_message( LG.DATA_PROCESSING, f"خطای غیرمنتظره در خواندن {path.name}: {exc}", LogLevel.ERROR )
             raise
 
     def _deep_merge( self, base: ConfigDict, override: ConfigDict ) -> ConfigDict:
