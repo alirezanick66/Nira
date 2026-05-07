@@ -40,13 +40,11 @@ class SearchService:
 
     def __init__(
         self,
-        orchestrator: LLMOrchestrator,
         retriever: QdrantHybridRetriever,
         reranker: RerankerService,
         llm: LLMOrchestrator,
         image_repo: ProductRepository | None = None,
     ) -> None:
-        self._llm = orchestrator
         self._retriever = retriever
         self._reranker = reranker
         self._llm = llm
