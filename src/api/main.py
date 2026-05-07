@@ -46,7 +46,7 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     app.state.reranker = RerankerService()
     app.state.llm = LLMOrchestrator( config )
     # LLMNLUExtractor به‌اشتراک ConversationMemory از LLMOrchestrator برای sync حافظه
-    app.state.nlu = LLMNLUExtractor( domain=domain, config_loader=loader, memory=app.state.llm._memory )
+    app.state.nlu = LLMNLUExtractor( domain=domain, config_loader=loader, memory=app.state.llm.memory )
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield

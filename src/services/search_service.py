@@ -99,10 +99,11 @@ class SearchService:
             return
 
         # ── ادغام فیلترهای refine ─────────────────────────────────────────────
-        effective_filters = await self._llm._memory.merge_refine_filters(
+        effective_filters = await self._llm.memory.merge_refine_filters(
             intent=nlu_out.intent,
             new_filters=dict( nlu_out.metadata_filters ),
             session_id=session_id,
+            sort_directive=nlu_out.sort_directive,
         )
         log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {nlu_out.intent} | Filters: {effective_filters}", LogLevel.DEBUG )
 

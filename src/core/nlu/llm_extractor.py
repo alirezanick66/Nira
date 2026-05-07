@@ -17,6 +17,7 @@ from src.config.logging_config import log_message, LogLevel, LG
 from src.core.llm.clients import GeminiClient, GroqClient
 from src.core.llm.memory import ConversationMemory
 from src.core.nlu.normalizer import PersianNormalizer
+from src.core.nlu.number_converter import PersianNumberConverter
 from src.core.nlu.schemas import MetadataFilters, NLUFilterQuery
 
 _DEFAULT_GREETING = "سلام! چطور می‌تونم کمکتون کنم؟"
@@ -155,8 +156,9 @@ class LLMNLUExtractor:
     # ── متدهای خصوصی ─────────────────────────────────────────────────────────
 
     def _preprocess( self, text: str ) -> str:
-        """نرمال‌سازی کامل متن ورودی (یکسان با NLUPipeline)"""
+        """نرمال‌سازی کامل متن ورودی + تبدیل اعداد حروفی"""
         normalized = self._normalizer.normalize( text )
+        normalized = self._convert_spelled_numbers( normalized )
         return unicodedata.normalize( "NFKC", normalized ).strip()
 
     def _build_messages(
@@ -176,7 +178,11 @@ class LLMNLUExtractor:
         try:
             return await self._groq.chat_json( messages )
         except Exception as exc:
-            log_message( LG.NLU, f"⚠️ Groq ناموفق در NLU: {exc} — انتقال به Gemini", LogLevel.WARNING )
+            log_message(
+                LG.NLU,
+                f"⚠️ Groq ناموفق در NLU: {type(exc).__name__} | {exc} — انتقال به Gemini",
+                LogLevel.WARNING,
+            )
             return await self._gemini.chat_json( messages )
 
     def _parse_response( self, raw_json: str, fallback_query: str ) -> NLUFilterQuery:
@@ -188,10 +194,23 @@ class LLMNLUExtractor:
             if start != -1 and end > start:
                 cleaned = cleaned[ start:end + 1 ]
             data: dict = json.loads( cleaned )
+        except json.JSONDecodeError as exc:
+            log_message(
+                LG.NLU,
+                f"❌ خطای JSON در پاسخ LLM: {exc} | پاسخ خام: {raw_json[:200]}",
+                LogLevel.ERROR,
+            )
+            return NLUFilterQuery(
+                intent="search",
+                semantic_query=fallback_query,
+                metadata_filters={},
+                is_greeting=False,
+                warnings=[ str( exc ) ],
+            )
         except Exception as exc:
             log_message(
                 LG.NLU,
-                f"❌ خطا در پارس JSON پاسخ LLM: {exc} | پاسخ خام: {raw_json[:200]}",
+                f"❌ خطا در پارس پاسخ LLM: {type(exc).__name__} | {exc} | پاسخ خام: {raw_json[:200]}",
                 LogLevel.ERROR,
             )
             return NLUFilterQuery(
@@ -238,3 +257,40 @@ class LLMNLUExtractor:
             else:
                 result[ key ] = value
         return result
+
+    @staticmethod
+    def _convert_spelled_numbers( text: str ) -> str:
+        """تبدیل اعداد حروفی فارسی به عدد در متن"""
+        number_words = (
+            set( PersianNumberConverter._UNITS )  # pylint: disable=protected-access
+            | set( PersianNumberConverter._TEENS )
+            | set( PersianNumberConverter._TENS )
+            | set( PersianNumberConverter._HUNDREDS )
+            | set( PersianNumberConverter._SCALES )
+            | set( PersianNumberConverter._CONNECTORS )
+        )
+
+        tokens = text.split()
+        result: list[ str ] = []
+        buffer: list[ str ] = []
+
+        def flush() -> None:
+            nonlocal buffer
+            if not buffer:
+                return
+            phrase = " ".join( buffer )
+            converted = PersianNumberConverter.convert( phrase )
+            if converted is None:
+                result.extend( buffer )
+            else:
+                result.append( str( converted ) )
+            buffer = []
+
+        for token in tokens:
+            if token in number_words:
+                buffer.append( token )
+            else:
+                flush()
+                result.append( token )
+        flush()
+        return " ".join( result )

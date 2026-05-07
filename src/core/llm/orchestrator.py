@@ -27,6 +27,11 @@ class LLMOrchestrator:
         self._prompt_engine = PromptEngine( domain_config )          # ✅ تزریق موتور پویا
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
 
+    @property
+    def memory( self ) -> ConversationMemory:
+        """دسترسی عمومی به حافظه مکالمه"""
+        return self._memory
+
     async def generate(
         self,
         session_id: str,

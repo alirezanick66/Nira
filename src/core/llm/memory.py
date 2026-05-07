@@ -83,6 +83,7 @@ class ConversationMemory:
         intent: str,
         new_filters: dict,
         session_id: str,
+        sort_directive: dict | None = None,
     ) -> dict:
         """‫فیلترهای جدید را با فیلترهای session قبلی ادغام می‌کند
 
@@ -97,6 +98,7 @@ class ConversationMemory:
             intent: نیت تشخیص‌داده‌شده توسط NLU
             new_filters: فیلترهای استخراج‌شده از کوئری جدید
             session_id: شناسه نشست برای دسترسی به حافظه
+            sort_directive: دایرکتیو مرتب‌سازی برای حذف فیلترهای کیفی ناسازگار (اختیاری)
 
         Returns:
             دیکشنری فیلترهای ادغام‌شده
@@ -111,5 +113,8 @@ class ConversationMemory:
             return new_filters
 
         merged = { **last_filters, **new_filters }
+        if ( sort_directive and sort_directive.get( "key" ) == "price" and "price" not in merged
+             and "price_range" in merged ):
+            merged.pop( "price_range", None )
         log_message( LG.LLM, f"🔀 refine merge | قبلی: {last_filters} | جدید: {new_filters} | نهایی: {merged}", LogLevel.DEBUG )
         return merged
