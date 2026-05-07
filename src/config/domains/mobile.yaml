@@ -1,4 +1,4 @@
-domain_version: "1.0.0"
+domain_version: "2.0.0"
 
 brands:
     - اپل
@@ -14,21 +14,8 @@ brands:
     - سونی
     - ایسوس
     - گوگل
-    - تی‌سی‌ال
     - ریلمی
     - پوکو
-    - بلک‌بری
-
-model_prefixes:
-    - s
-    - a
-    - p
-    - se
-    - note
-    - redmi
-    - galaxy
-    - iphone
-    - poco
 
 categories:
     #دسته بندی محصول
@@ -54,9 +41,6 @@ os_types:
 
 # فقط بخش‌های سخت‌افزاری خاص موبایل
 qualitative_mappings:
-    price_range:
-        #اصلاحات قیمتی موبایل
-        flagship: [گران, گرون, پرچم‌دار, پرچمدار, لوکس]
     battery_quality:
         #کیفیت باتری
         poor: [باتری ضعیف]
@@ -94,13 +78,8 @@ slot_definitions:
         units:
             میلیارد: 1000000000
             میلیون: 1000000
-            میلیونی: 1000000
             هزار: 1000
             تومان: 1
-            تومن: 1
-        window: 3
-        cues: [تومان, تومن, میلیون, میلیارد, میلیاردی, هزار, میلیونی]
-        pattern: ["op?", "num", "unit?"]
 
     ram_gb:
         type: scalar
@@ -112,9 +91,6 @@ slot_definitions:
             گیگابایت: 1
             گیگ: 1
             gb: 1
-        window: 3
-        cues: ["رم", "ram"]
-        pattern: ["cue?", "op?", "num", "unit?"]
 
     storage_gb:
         type: scalar
@@ -127,30 +103,6 @@ slot_definitions:
             gb: 1
             ترابایت: 1024
             tb: 1024
-        window: 3
-        cues: ["حافظه", "فضا", "هارد", "storage"]
-        pattern: ["cue?", "op?", "num", "unit?"]
-
-conflict_resolution_order:
-    #تعیین برنده در تضادها
-    - price
-    - brand
-    - ram_gb
-    - storage_gb
-    - category
-    - price_range
-    - camera_quality
-    - battery_quality
-    - value_for_money
-    - tags
-
-value_conflicts:
-    battery_quality:
-        - [poor, excellent]
-        - [poor, good]
-    camera_quality:
-        - [poor, excellent]
-        - [poor, good]
 
 relaxation_order:
     # ترتیب ریلکس کردن فیلترها در صورت ۰ نتیجه (از کم‌اهمیت‌ترین به مهم‌ترین)
@@ -190,46 +142,3 @@ filter_cues:
     brand: ["برند", "سامسونگ", "اپل", "شیائومی", "هواوی"]
     ram_gb: ["رم", "ram"]
     storage_gb: ["حافظه", "فضا"]
-
-intent_keywords:
-    compare:
-        canonical_examples:
-            - "فرق این دوتا چیه"
-            - "مقایسه کن"
-            - "کدومش بهتره"
-            - "سامسونگ یا شیائومی"
-            - "آیفون یا سامسونگ"
-            - "اپل یا شیائومی"
-    search:
-        canonical_examples:
-            - "گوشی سامسونگ زیر ۲۰ میلیون"
-            - "آیفون ۱۳ پرو مکس ۲۵۶ گیگ"
-            - "گوشی با دوربین عالی"
-            - "گوشی گیمینگ با شارژدهی بالا"
-            - "گوشی نشون بده"
-            - "ارزون ترین آیفون رو بگو"
-            - "گران ترین گوشی بازار چیه"
-
-#یکسان سازی اسم برندها
-brand_normalization:
-    آیفون: اپل
-    ایفون: اپل
-    اپل: اپل
-    apple: اپل
-    samsung: سامسونگ
-    samsung galaxy: سامسونگ
-
-directive_examples:
-    sort_price_asc:
-        - "ارزون ترینش رو بگو"
-        - "کدوم ارزون تره"
-        - "از کمترین قیمت شروع کن"
-        - "به ترتیب ارزون بچین"
-        - "اقتصادی ترشو نشون بده"
-    sort_price_desc:
-        - "گرون ترین مدل چیه"
-        - "یه چیز گرون تر نشون بده"
-        - "بالاترین قیمت رو میخوام"
-        - "گران ترین مدل رو بیار"
-        - "به ترتیب گرون مرتب کن"
-        - "پرچم دار ترینا رو بیار"

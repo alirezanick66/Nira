@@ -10,7 +10,6 @@ from dataclasses import dataclass
 sys.path.insert( 0, str( Path( __file__ ).resolve().parents[ 1 ] ) )
 
 from src.config.logging_config import log_message, LogLevel, LG
-from src.core.nlu.nlu_pipeline import NLUPipeline
 from src.services.embedding_service import EmbeddingService
 
 
