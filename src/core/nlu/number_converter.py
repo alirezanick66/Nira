@@ -66,6 +66,12 @@ class PersianNumberConverter:
     _NOISE_PATTERN: re.Pattern[ str ] = re.compile( r"[‌\- ]+" )
 
     @classmethod
+    def get_number_words( cls ) -> set[ str ]:
+        """بازگرداندن مجموعه کامل واژه‌های عددی برای پیش‌پردازش متن"""
+        return ( set( cls._UNITS ) | set( cls._TEENS ) | set( cls._TENS ) | set( cls._HUNDREDS )
+                 | set( cls._SCALES ) | set( cls._CONNECTORS ) )
+
+    @classmethod
     def convert( cls, text: str ) -> int | None:
         """‫تبدیل عبارت عددی فارسی به مقدار صحیح‫"""
         cleaned = cls._NOISE_PATTERN.sub( " ", text.strip() ).lower()

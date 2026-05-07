@@ -102,13 +102,7 @@ class LLMNLUExtractor:
         self._gemini = GeminiClient()
         self._memory = memory or ConversationMemory()
 
-        # دریافت پاسخ‌های سلام از کانفیگ دامنه
-        intent_cfg = self._config.get( "intent_keywords", {} )
-        greeting_cfg = intent_cfg.get( "greeting", {} ) if isinstance( intent_cfg, dict ) else {}
-        self._greeting_responses: list[ str ] = (
-            greeting_cfg.get( "greeting_responses", [ _DEFAULT_GREETING ] )
-            if isinstance( greeting_cfg, dict ) else [ _DEFAULT_GREETING ]
-        )
+        self._greeting_responses = self._load_greeting_responses()
         log_message( LG.NLU, f"✅ LLMNLUExtractor برای دامنه '{domain}' آماده است", LogLevel.INFO )
 
     # ── رابط عمومی ───────────────────────────────────────────────────────────
@@ -116,7 +110,7 @@ class LLMNLUExtractor:
     @property
     def greeting_responses( self ) -> list[ str ]:
         """پاسخ‌های احوال‌پرسی از کانفیگ دامنه"""
-        return self._greeting_responses
+        return list( self._greeting_responses )
 
     def get_domain_config( self ) -> dict:
         """دسترسی عمومی به کانفیگ دامنه (برای سازگاری با کد قبلی)"""
@@ -172,6 +166,14 @@ class LLMNLUExtractor:
             messages.append( { "role": msg[ "role" ], "content": msg[ "content" ] } )
         messages.append( { "role": "user", "content": f"کوئری: {query}" } )
         return messages
+
+    def _load_greeting_responses( self ) -> list[ str ]:
+        """خواندن پاسخ‌های احوال‌پرسی از کانفیگ دامنه"""
+        intent_cfg = self._config.get( "intent_keywords", {} )
+        greeting_cfg = intent_cfg.get( "greeting", {} ) if isinstance( intent_cfg, dict ) else {}
+        if not isinstance( greeting_cfg, dict ):
+            return [ _DEFAULT_GREETING ]
+        return cast( list[ str ], greeting_cfg.get( "greeting_responses", [ _DEFAULT_GREETING ] ) )
 
     async def _call_llm( self, messages: list[ ChatCompletionMessageParam ] ) -> str:
         """ارسال به Groq، در صورت خطا fallback به Gemini"""
@@ -261,14 +263,7 @@ class LLMNLUExtractor:
     @staticmethod
     def _convert_spelled_numbers( text: str ) -> str:
         """تبدیل اعداد حروفی فارسی به عدد در متن"""
-        number_words = (
-            set( PersianNumberConverter._UNITS )  # pylint: disable=protected-access
-            | set( PersianNumberConverter._TEENS )
-            | set( PersianNumberConverter._TENS )
-            | set( PersianNumberConverter._HUNDREDS )
-            | set( PersianNumberConverter._SCALES )
-            | set( PersianNumberConverter._CONNECTORS )
-        )
+        number_words = PersianNumberConverter.get_number_words()
 
         tokens = text.split()
         result: list[ str ] = []

@@ -113,8 +113,17 @@ class ConversationMemory:
             return new_filters
 
         merged = { **last_filters, **new_filters }
-        if ( sort_directive and sort_directive.get( "key" ) == "price" and "price" not in merged
-             and "price_range" in merged ):
+        if self._should_remove_price_range( sort_directive, merged ):
             merged.pop( "price_range", None )
         log_message( LG.LLM, f"🔀 refine merge | قبلی: {last_filters} | جدید: {new_filters} | نهایی: {merged}", LogLevel.DEBUG )
         return merged
+
+    @staticmethod
+    def _should_remove_price_range( sort_directive: dict | None, merged: dict ) -> bool:
+        """تصمیم برای حذف price_range هنگام مرتب‌سازی قیمت"""
+        return bool(
+            sort_directive
+            and sort_directive.get( "key" ) == "price"
+            and "price" not in merged
+            and "price_range" in merged
+        )

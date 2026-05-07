@@ -97,12 +97,23 @@ def test_json_error_fallback( runner: _TestRunner ) -> None:
     runner.assert_true( bool( result.warnings ), "در صورت خطا باید warning ثبت شود" )
 
 
+def test_empty_input( runner: _TestRunner ) -> None:
+    extractor = DummyExtractor()
+    extractor.set_response(
+        '{"intent":"greeting","semantic_query":"","metadata_filters":{},'
+        '"is_greeting":true,"sort_directive":null}'
+    )
+    result = asyncio.run( extractor.extract( "", "sess-empty" ) )
+    runner.assert_true( result.is_greeting, "ورودی خالی باید خروجی معتبر تولید کند" )
+
+
 def main() -> int:
     runner = _TestRunner()
     test_history_injected( runner )
     test_number_conversion( runner )
     test_numeric_filter_parsing( runner )
     test_json_error_fallback( runner )
+    test_empty_input( runner )
     return runner.report()
 
 

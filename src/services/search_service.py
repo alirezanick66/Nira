@@ -99,7 +99,7 @@ class SearchService:
             return
 
         # ── ادغام فیلترهای refine ─────────────────────────────────────────────
-        effective_filters = await self._llm.memory.merge_refine_filters(
+        effective_filters = await self._llm.merge_refine_filters(
             intent=nlu_out.intent,
             new_filters=dict( nlu_out.metadata_filters ),
             session_id=session_id,

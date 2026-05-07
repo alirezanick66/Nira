@@ -32,6 +32,21 @@ class LLMOrchestrator:
         """دسترسی عمومی به حافظه مکالمه"""
         return self._memory
 
+    async def merge_refine_filters(
+        self,
+        intent: str,
+        new_filters: dict,
+        session_id: str,
+        sort_directive: dict | None = None,
+    ) -> dict:
+        """ادغام فیلترهای refine از طریق ConversationMemory"""
+        return await self._memory.merge_refine_filters(
+            intent=intent,
+            new_filters=new_filters,
+            session_id=session_id,
+            sort_directive=sort_directive,
+        )
+
     async def generate(
         self,
         session_id: str,
