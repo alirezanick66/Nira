@@ -6,126 +6,141 @@
 User Input (Farsi)
       │
       ▼
-🧩 NLU Pipeline (Hybrid: Rule/Config + Semantic)
-  ├─ PersianNormalizer + PersianNumberConverter
-  ├─ Intent Detector:
-  │     1️⃣ Rule-Based (Fast-Path) →
-  │     2️⃣ Semantic Fallback (Embedding E5)
-  ├─ TokenParser (Window-Based Matching, Config-Driven via YAML)
-  ├─ Slot Filler (Price, Brand, RAM, Storage) + Brand Normalization
-  └─ ConflictResolver (حذف خودکار فیلترهای متناقض + اولویت‌بندی فیلتر + تولید warnings)
+⚡ Fast-Path Greeting Check (Rule-Based, <1ms)
+├─ اگر مچ شد → پاسخ فوری از کانفیگ → پایان (بدون مصرف توکن)
+└─ اگر مچ نشد → ادامه به مرحله بعد
+      │
+      ▼
+🧠 LLM Extract Engine (Call 1)
+├─ PersianNormalizer + تزریق تاریخچه ($history)
+├─ تزریق فیلترهای قبلی ($last_filters) + محصولات قبلی ($last_products)
+├─ تزریق پویای راهنمای دامنه ($domain_schema)
+├─ فراخوانی Groq → Gemini (Fallback)
+└─ اعتبارسنجی سخت‌گیرانه Pydantic (LLMExtractSchema)
+      │
+      ▼
+🚦 مدیریت Intent و فیلترها
+├─ general_chat → پاسخ کوتاه → پایان
+├─ needs_clarification=True → پرسش شفاف‌ساز → پایان
+└─ search/refine/compare → استخراج نهایی:
+   ├─ semantic_query (بهینه‌شده برای Embedding)
+   ├─ metadata_filters (ادغام‌شده توسط LLM برای refine)
+   └─ has_conflict / clarification (لاگ و مدیریت)
       │
       ▼
 🔍 Hybrid Retrieval (Qdrant)
-  ├─ Dense Vector (E5) + Sparse Vector (BM25)
-  ├─ Metadata Filters (price, brand, ram_gb, tags, etc.)
-  ├─ Fusion: RRF (Reciprocal Rank Fusion)
-  └─ 🔄 Smart Fallback: حذف تدریجی فیلترها در صورت 0 نتیجه
+├─ Dense Vector (E5) + Sparse Vector (BM25)
+├─ اعمال Metadata Filters نهایی
+├─ Fusion: RRF (Reciprocal Rank Fusion)
+└─ 🔄 Smart Fallback: حذف تدریجی فیلترها در صورت 0 نتیجه
       │
       ▼
 ⚖️ Reranker Service
-  └─ Cross-Encoder (bge-reranker-v2-m3 | ONNX INT8) → Top 3
+└─ Cross-Encoder (bge-reranker-v2-m3 | ONNX INT8) → Top-K نهایی
       │
       ▼
 🛍️ Post-Retrieval Enrichment (PostgreSQL)
-  └─ واکشی غیرمسدودکنندهٔ image_url و جزئیات تکمیلی برای Top-K نهایی
+└─ واکشی غیرمسدودکنندهٔ image_url و جزئیات تکمیلی
       │
       ▼
-💬 LLM Orchestrator + Context-Aware Memory
-  ├─ ConversationMemory (Sliding Window + Filter Merging)
-  ├─ Intent: refine → تزریق تاریخچه و ادغام هوشمند فیلترها
-  ├─ Groq (Primary) → Gemini (Fallback) → JSON Mode
-  └─ Pydantic Validation + Deterministic Fallback
+💬 LLM Generate Engine (Call 2)
+├─ PromptEngine (YAML-Driven) با تزریق محصولات و فیلترها
+├─ Groq → Gemini (Fallback) → JSON Mode
+└─ Pydantic Validation (LLMResponseSchema)
       │
       ▼
 ✅ Standardized JSON Response → Client
-
-├─ 📦 B2B Contract: `POST /api/v1/search` → JSON (پایدار، کش‌پذیر)
-└─ 🌊 UX Stream: `GET /api/v1/search/stream` → SSE (بازخورد لحظه‌ای وضعیت)
-
-   └─ هسته مشترک: `SearchService` (Protocol-Agnostic، اجرای یکپارچه NLU→Retrieval→Rerank→LLM)
+├─ 📦 B2B Contract: `POST /api/v1/search` → JSON
+└─ 🌊 UX Stream: `GET /api/v1/search/stream` → SSE
+   └─ هسته مشترک: `SearchService` (Protocol-Agnostic)
 ```
 
 ---
 
 ## 🧩 مؤلفه‌های اصلی
 
-|          لایه           |                      مسئولیت                       |                                       پیاده‌سازی فعلی                                       |
-| :---------------------: | :------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
-|    **Backend Core**     | اجرای یکپارچه پایپلاین بدون وابستگی به پروتکل HTTP |                    `SearchService` (AsyncIterator مشترک برای POST و SSE)                    |
-|    **NLU Pipeline**     | نرمال‌سازی، تشخیص نیت، استخراج اسلات، مدیریت تضاد  | `NLUPipeline` + `DomainConfigLoader` (YAML Deep Merge) + `TokenParser` + `ConflictResolver` |
-|      **Retrieval**      |    جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant    |               `QdrantHybridRetriever` (Dense + Sparse + RRF + Smart Fallback)               |
-|      **Reranker**       |                مرتب‌سازی نهایی دقیق                |                `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8)                |
-|  **LLM Orchestrator**   |    تولید پاسخ ساختاریافته و مدیریت Prompt پویا     | `LLMOrchestrator` + `PromptEngine` (YAML-Driven، Groq→Gemini Fallback، Pydantic Validation) |
-|     **Enrichment**      |    واکشی پویا تصاویر و متادیتا پس از رتبه‌بندی     |                   ProductRepository (Async PostgreSQL + JSONB Extraction)                   |
-|       **Memory**        |  مدیریت Context و ادغام فیلترها (Filter Merging)   |                 ConversationMemory (Thread-Safe + Applied Filters Storage)                  |
-| **Logging & Telemetry** |       ثبت غیرمسدودکننده کوئری‌ها و وضعیت‌ها        |          `query_log_service.py` (Global Engine + Per-Task AsyncSession، Fail-Safe)          |
-|      **Frontend**       |              رابط کاربری دمو و تعامل               |                   Vanilla ES Modules + SSE + Context-Aware Quick Actions                    |
+|             لایه             |                                            مسئولیت                                            |                                          پیاده‌سازی فعلی                                          |
+| :--------------------------: | :-------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+|       **Backend Core**       |                      اجرای یکپارچه پایپلاین بدون وابستگی به پروتکل HTTP                       |                       `SearchService` (AsyncIterator مشترک برای POST و SSE)                       |
+| **🧠 LLM Extract & Context** | استخراج نیت، فیلترها و `semantic_query` از کوئری محاوره‌ای + مدیریت `refine` با تزریق تاریخچه | `LLMOrchestrator.extract()` + `Fast-Path Greeting` + `Pydantic Validation` + `ConversationMemory` |
+|        **Retrieval**         |                         جستجوی ترکیبی و فیلتربرداری هوشمند در Qdrant                          |                  `QdrantHybridRetriever` (Dense + Sparse + RRF + Smart Fallback)                  |
+|         **Reranker**         |                                     مرتب‌سازی نهایی دقیق                                      |                   `RerankerService` (Cross-Encoder، Batch Inference، ONNX INT8)                   |
+|     **LLM Orchestrator**     |                          تولید پاسخ ساختاریافته و مدیریت Prompt پویا                          |    `LLMOrchestrator` + `PromptEngine` (YAML-Driven، Groq→Gemini Fallback، Pydantic Validation)    |
+|        **Enrichment**        |                          واکشی پویا تصاویر و متادیتا پس از رتبه‌بندی                          |                      ProductRepository (Async PostgreSQL + JSONB Extraction)                      |
+|          **Memory**          |                        مدیریت Context و ادغام فیلترها (Filter Merging)                        |                    ConversationMemory (Thread-Safe + Applied Filters Storage)                     |
+|   **Logging & Telemetry**    |                             ثبت غیرمسدودکننده کوئری‌ها و وضعیت‌ها                             |             `query_log_service.py` (Global Engine + Per-Task AsyncSession، Fail-Safe)             |
+|         **Frontend**         |                                    رابط کاربری دمو و تعامل                                    |                      Vanilla ES Modules + SSE + Context-Aware Quick Actions                       |
 
 ---
 
 ## 📂 ساختار پروژه (Project Structure)
 
-```text
+```yaml
 ├── .env
 ├── .gitignore
 ├── .style.yapf
 ├── ARCHITECTURE.md           # مستندات معماری پروژه
 ├── FRONT_README.md           # راهنمای رابط کاربری
 ├── INSTRUCTIONS.md           # دستورالعمل‌های توسعه و نصب
+├── PRODUCT.md                # تحلیل محصول و رفتار کاربر
 ├── README.md                 # معرفی کلی پروژه
 ├── ROADMAP.md                # نقشهٔ راه و برنامه‌های آینده
 ├── alembic/                  # مدیریت مایگریشن‌های دیتابیس
 │   ├── README
 │   ├── env.py
 │   ├── script.py.mako
-│   └── versions/
+│   └── versions/             # فایل‌های مهاجرت (query_logs, sync_progress, raw_cache)
 ├── alembic.ini               # تنظیمات اتصال و پیکربندی Alembic
-├── data/                     # لاگ‌ها و دیتای تست
-│   └── logs/
+├── data/                     # لاگ‌ها و داده‌های محلی
+│   └── logs/                 # لاگ‌های تفکیک‌شده (api, database, llm, retrieval, dataprocessing)
 ├── frontend/                 # رابط کاربری دمو
-│   ├── index.html            # ساختار معنایی، لینک به استایل‌ها و اسکریپت‌ها
-│   ├── css/
-│   │   ├── 01-base.css       # توکن‌های طراحی، ریست و تم
-│   │   ├── 02-layout.css     # چیدمان صفحه و حالت‌های Welcome/Chat
-│		│		 ├── 03-components.css # استایل حباب‌ها، کارت‌ها و دکمه‌های اکشن
-│   │   └──  styles.css
-│   └── js/
-│       ├── script.js         # نقطه ورود (Orchestration) و مدیریت رویدادها
-│       ├── session.js        # مدیریت session_id و localStorage
-│       ├── api.js            # لایه ارتباط SSE و مدیریت Callbackها
-│       └── ui.js             # رندر DOM، پیام‌ها، کارت‌ها و وضعیت
+│   ├── css/                  # توکن‌ها، چیدمان، کامپوننت‌ها و استایل اصلی
+│   ├── js/                   # لایه‌های ارتباط، جلسه و رندر DOM
+│   ├── index.html
+│   └── script.js             # نقطه ورود اصلی فرانت‌اند
 ├── models/                   # مدل‌های هوشمند (FP32 & ONNX INT8)
-│   └── onnx/
+│   └── onnx/                 # e5-opt-int8 و reranker-opt-int8 (همراه با کانفیگ و توکنایزر)
 ├── pyproject.toml            # مدیریت وابستگی‌ها و تنظیمات ابزارها
-├── scripts/                  # اسکریپت‌های تست و سناریوهای یکپارچه
+├── scripts/                  # اسکریپت‌های عملیاتی (index, quantize, sync_test)
 ├── src/                      # سورس‌کد اصلی (ماژولار)
 │   ├── api/                  # لایهٔ وب: FastAPI، Schemas، Dependencies، Routers، Middleware
 │   ├── config/               # تنظیمات، لاگینگ، دانش دامنه (YAML)
 │   │   ├── domains/
-│   │   │   ├── base.yaml     # قواعد عمومی، نگاشت‌ها، کلمات کلیدی
-│   │   │   └── mobile.yaml   # Override دامنه، Cue/Unit اسلات‌ها، Relaxation
-│   │   ├── domain_loader.py  # لودر Stateless، Deep Merge، Flatten
+│   │   │   ├── base.yaml     # پرامپت‌ها (system_extract/extract)، Fast-Path، نگاشت‌های کیفی
+│   │   │   └── mobile.yaml   # Slots، Brands، Relaxation، Use-Cases
+│   │   ├── domain_loader.py
 │   │   ├── logging_config.py
 │   │   └── settings.py
 │   ├── core/                 # هستهٔ هوش مصنوعی
-│   │   ├── llm/              # Orchestrator، Clients، Memory، Prompts
-│   │   ├── nlu/              # Pipeline، Normalizer، Schemas
-│   │   │   ├── conflict_resolver.py
-│   │   │   ├── model_masker.py
-│   │   │   ├── nlu_pipeline.py
-│   │   │   ├── normalizer.py
-│   │   │   ├── number_converter.py
-│   │   │   ├── schemas.py
-│   │   │   └── token_parser.py      # جایگزین slot_extractor.py
+│   │   ├── llm/              # لایهٔ استخراج نیت/فیلتر و تولید پاسخ (جایگزین کامل NLU)
+│   │   │   ├── orchestrator.py   # extract() + generate() + Fallback + Domain Schema Cache
+│   │   │   ├── schemas.py        # LLMExtractSchema, LLMResponseSchema, IntentType, MetadataFilters
+│   │   │   ├── clients.py        # GroqClient, GeminiClient (async + retry)
+│   │   │   ├── memory.py         # ConversationMemory (history + applied_filters)
+│   │   │   └── prompt_engine.py  # رندر پویای پرامپت‌ها
+│   │   ├── progress_tracker.py   # مدیریت Checkpoint همگام‌سازی
+│   │   ├── resilience/       # api_resilience.py (Retry + Backoff)
 │   │   └── vector/           # Qdrant Indexer، Payload، Retriever
 │   │       ├── qdrant_indexer.py
 │   │       ├── qdrant_payload.py
 │   │       └── qdrant_retriever.py
-│   ├── data/                 # لایهٔ داده: Fetchers، Models، Repositories، Transformers
-│   ├── services/             # سرویس‌های مستقل: Embedding، Reranker، Enrichment
-│   └── utils/                # ابزارهای کمکی و نرمال‌سازی
+│   ├── data/                 # لایهٔ داده
+│   │   ├── db/               # engine.py, models.py
+│   │   ├── fetchers/         # digikala_api.py
+│   │   ├── models/           # product.py, api_responses.py
+│   │   ├── processing/       # product_pipeline.py
+│   │   ├── repositories/     # product_repository.py
+│   │   ├── sync/             # digikala_sync.py
+│   │   └── transformers/     # product_transformer.py
+│   ├── services/             # سرویس‌های مستقل: search, embedding, reranker, sparse_vectorizer, enrichment, query_log
+│   └── utils/                # ابزارهای کمکی
+│       ├── normalizer.py     # نرمال‌سازی پیشرفتهٔ متن فارسی
+│       ├── spec_normalizer.py
+│       ├── import_tracker.py
+│       └── stracture_project.py
 ├── test/                     # تست‌های یکپارچه و کیفیت
+│   ├── retrival/             # تست‌های بردارسازی، جستجوی ترکیبی، پایپلاین کامل
+│   └── test_intent_detection.py
 └── uv.lock                   # قفل نسخهٔ پکیج‌ها
 ```
 
@@ -133,25 +148,25 @@ User Input (Farsi)
 
 ## ⚙️ تصمیمات طراحی کلیدی (Key Design Decisions)
 
-|                     تصمیم                      |                                                                                  دلیل فنی (Rationale)                                                                                  |                                                                     اثر/مزیت (Impact)                                                                      |
-| :--------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|              **حذف RAG/Chunking**              |                                       هر محصول = ۱ سند ساختاریافته در Qdrant. Chunking باعث تکه‌تکه شدن متادیتا و کاهش دقت فیلترهای عددی می‌شود.                                       |                                               ✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس                                               |
-|    **معماری Config-Driven Token-Based NLU**    |            حذف Regex شکننده و جایگزینی با `TokenParser` (پنجرهٔ لغزان + Cue/Unit/Operator). تمام قواعد دامنه در `YAML` تعریف شده و توسط `DomainConfigLoader` تزریق می‌شوند.            |    ✅ کاهش ۹۰٪ خطای پارس، پشتیبانی قطعی از رنج عددی (`بین X تا Y`)، نگارش‌های کیفی چندکلمه‌ای، حذف کامل `State Leakage`. هزینهٔ توکن صفر، پایداری ۱۰۰٪.     |
-|          **پیاده‌سازی Hybrid Search**          |                 ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند.                 |                                              ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative                                               |
-|              **اجبار خروجی JSON**              |                     استفاده از `response_format={"type": "json_object"}` + اعتبارسنجی با `pydantic.TypeAdapter`. در صورت شکست، `Deterministic Template` برمی‌گردد.                     |                                       ✅ تضمین ساختار پاسخ برای کلاینت، جلوگیری از خطای پارسینگ، تجربهٔ کاربری پایدار                                       |
-| **عدم استفاده از LangChain/LlamaIndex در MVP** |                                                             کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                                              |                                                       ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                                                       |
-|    **بهینه‌سازی ONNX + INT8 Quantization**     |                    تبدیل مدل‌های `E5` و `bge-reranker` به ONNX Runtime با کوانتایزیشن Dynamic INT8. تأیید شده با Drift Test (`Cosine: 0.0014`, `Spearman: 1.0000`)                     |                                       ✅ کاهش ~۶۰٪ مصرف RAM/CPU، کاهش زمان پاسخ به `<3s`، حفظ دقت در حد نویز محاسباتی                                       |
-|      **تزریق وابستگی و مدیریت چرخه حیات**      |                                                 جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`                                                 |               ✅ جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر، امکان `Mock` کردن سرویس‌ها در تست‌های واحد               |
-|       **افزودن `X-API-Key` Middleware**        |                                                                   جلوگیری از سوءاستفاده از توکن/سرور در مدل B2B/SaaS                                                                   |                                              ✅ کنترل دسترسی، ردیابی مصرف هر فروشگاه، آماده‌سازی برای Billing                                               |
-|         **Smart Fallback کانفیگ‌محور**         |                            ترتیب حذف فیلترها، نگاشت شل‌سازی مقادیر (`excellent→good`) و کلمات تأکیدی کاربر (`حتماً، فقط`) مستقیماً از YAML خوانده می‌شوند.                             |             ✅ رتریور ۱۰۰٪ Domain-Agnostic می‌شود. افزودن دامنهٔ جدید بدون تغییر یک خط کد پایتون ممکن است. حفظ تجربهٔ کاربری در شرایط ۰ نتیجه.              |
-|      **نرمال‌سازی مقادیر فنی به `float`**      |                                     تغییر تایپ `ram_gb`, `storage_gb`, `camera_mp` از `int` به `float` و تبدیل خودکار `MB→GB` در لایهٔ Enrichment.                                     |          ✅ رفع باگ فیلتر کاذب (`32MB == 32GB`)، پذیرش مقادیر اعشاری واقعی (`94.5g`, `0.3MP`) بدون `ValidationError`، دقت بالاتر در کوئری‌های رنج           |
-|   **Dynamic Filter Protection در Fallback**    | ترتیب ثابت حذف فیلترها نیازهای لحظه‌ای کاربر (مثل `حتماً اندروید`) را نادیده می‌گرفت. اسکن کوئری برای کلمات تأکیدی و انتقال فیلتر مرتبط به انتهای صف حذف، تجربهٔ کاربری را حفظ می‌کند. |              ✅ نیاز به تعریف دقیق `filter_cues` در کانفیگ. در صورت عدم تطبیق، رفتار به حالت استاتیک پیش‌فرض برمی‌گردد (Backward Compatible).               |
-|    **معماری Domain-Agnostic Prompt Engine**    |             انتقال تمام قالب‌های `system_base` و `templates` به سکشن `prompts:` در YAML. استفاده از `PromptEngine` برای رندر امن متغیرها و تزریق `ConfigDict` در Runtime.              | ✅ افزودن دامنه جدید یا تغییر لحن/دستورالعمل‌ها فقط نیاز به ویرایش YAML دارد. حذف کامل `prompts.py` و هاردکدهای متنی. سازگاری کامل با `refine` و `compare`. |
-|           **استراتژی Dual-Endpoint**           |                                   تفکیک نیازهای فروشگاه‌ها (پایداری، کش، JSON استاندارد) از نیازهای UX دمو (کاهش تاخیر ادراکی، نمایش وضعیت لحظه‌ای).                                   |                             ✅ قرارداد B2B کاملاً پایدار و مستقل از پروتکل SSE. کد تکراری با `SearchService` مشترک حذف می‌گردد.                             |
-|       **Async Logging با Engine گلوبال**       |                                       جلوگیری از خطای `SessionClosed` در `asyncio.create_task` و حذف سربار ساخت Connection Pool برای هر درخواست.                                       |                                ✅ لاگ‌گیری کاملاً Non-Blocking و ایمن. Latency کل چرخه تحت تأثیر نوشتن در DB قرار نمی‌گیرد.                                 |
-|       **فرانت‌اند Vanilla + ES Modules**       |                                        حذف سربار `npm/Vite/React` برای فاز دمو با حفظ ساختار تمیز و قابل نگهداری از طریق تفکیک `css/` و `js/`.                                         |                              ✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تست‌پذیری بهتر لایه‌های کلاینت.                               |
-|             **معماری Hybrid NLU**              |                                                     ترکیب Rule-Based (سرعت) و Semantic Embedding (دقت) برای پوشش جملات محاوره‌ای.                                                      |                                                ✅ تشخیص نیت دقیق بدون سربار LLM + دقت >95% در تست‌های چالشی                                                 |
-|            **Brand Normalization**             |                                                        مپ کردن مترادف‌ها و تایپوها (مثل آیفون/ایفون ← اپل) در لایه TokenParser.                                                        |                                                ✅ جلوگیری از خطای جستجو و افزایش رضایت کاربر با زبان غیررسمی                                                |
+|                     تصمیم                      |                                                                     دلیل فنی (Rationale)                                                                      |                                                            اثر/مزیت (Impact)                                                            |
+| :--------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------: |
+|              **حذف RAG/Chunking**              |                                                            هر محصول = ۱ سند ساختاریافته در Qdrant                                                             |                                     ✅ حفظ یکپارچگی متادیتا، دقت بالاتر در فیلترگذاری، سادگی ایندکس                                      |
+|     **Validation سخت‌گیرانه با Pydantic**      |                                           استفاده از `TypeAdapter(LLMExtractSchema)` + Fail-Fast در صورت خروجی ناقص                                           |                                  ✅ جلوگیری از کرش پایپلاین + لاگ دقیق خطا + حذف کامل `Any` از تایپ‌ها                                   |
+|       **استخراج نیت/فیلتر مبتنی بر LLM**       |                                              کاهش بدهی فنی Rule-Based + پوشش بهتر محاوره + مدیریت خودکار Refine                                               |                       افزایش Latency پایه (~۸۰۰ms) + نیاز به Validation سخت‌گیرانه + کاهش >۸۰٪ پیچیدگی کد پارسینگ                       |
+|       **پیاده‌سازی Hybrid Search + RRF**       |    ترکیب `Dense` (درک معنایی) + `Sparse` (تطبیق دقیق کلمات کلیدی) + `RRF` (ادغام رتبه‌ها) بهترین Coverage را برای کوئری‌های محاوره‌ای فارسی فراهم می‌کند.     |                                     ✅ پوشش همزمان نیازهای معنایی و کلیدواژه‌ای، کاهش False Negative                                     |
+| **عدم استفاده از LangChain/LlamaIndex در MVP** |                                                 کنترل مستقیم بر لایه‌ها، سربار کمتر، دیباگ آسان‌تر، اصل KISS.                                                 |                                             ✅ شفافیت کامل، وابستگی کمتر، سرعت توسعه بالاتر                                              |
+|    **بهینه‌سازی ONNX + INT8 Quantization**     |                                                       کاهش مصرف RAM/CPU برای مدل‌های Embedding/Reranker                                                       |                                             ✅ کاهش ~۶۰٪ منابع + حفظ دقت در حد نویز محاسباتی                                             |
+|      **تزریق وابستگی و مدیریت چرخه حیات**      |                                    جایگزینی کامل الگوی `Singleton` با `FastAPI Lifespan + app.state Dependency Injection`                                     |     ✅ جداسازی کامل نمونه‌سازی از لاجیک تجاری، حذف `State Leakage` در محیط‌های چند-ورکر، امکان `Mock` کردن سرویس‌ها در تست‌های واحد      |
+|       **افزودن `X-API-Key` Middleware**        |                                                      جلوگیری از سوءاستفاده از توکن/سرور در مدل B2B/SaaS                                                       |                                     ✅ کنترل دسترسی، ردیابی مصرف هر فروشگاه، آماده‌سازی برای Billing                                     |
+|         **Smart Fallback کانفیگ‌محور**         |                                           ترتیب حذف فیلترها و نگاشت شل‌سازی مقادیر مستقیماً از YAML خوانده می‌شوند                                            |                                   ✅ رتریور ۱۰۰٪ Domain-Agnostic + حفظ تجربهٔ کاربری در شرایط ۰ نتیجه                                    |
+|      **نرمال‌سازی مقادیر فنی به `float`**      |                        تغییر تایپ `ram_gb`, `storage_gb`, `camera_mp` از `int` به `float` و تبدیل خودکار `MB→GB` در لایهٔ Enrichment.                         | ✅ رفع باگ فیلتر کاذب (`32MB == 32GB`)، پذیرش مقادیر اعشاری واقعی (`94.5g`, `0.3MP`) بدون `ValidationError`، دقت بالاتر در کوئری‌های رنج |
+|   **ادغام Refine توسط LLM (Context-Aware)**    |                                              سپردن منطق Merge به مدل زبانی با تزریق `$history` و `$last_filters`                                              |                             حذف لاجیک پایتونی `merge_refine_filters` + درک طبیعی تغییرات نسبی («ارزان‌تر»)                              |
+|    **معماری Domain-Agnostic Prompt Engine**    | انتقال تمام قالب‌های `system_base` و `templates` به سکشن `prompts:` در YAML. استفاده از `PromptEngine` برای رندر امن متغیرها و تزریق `ConfigDict` در Runtime. |                              ✅ افزودن دامنه جدید یا تغییر لحن/دستورالعمل‌ها فقط نیاز به ویرایش YAML دارد.                               |
+|           **استراتژی Dual-Endpoint**           |                      تفکیک نیازهای فروشگاه‌ها (پایداری، کش، JSON استاندارد) از نیازهای UX دمو (کاهش تاخیر ادراکی، نمایش وضعیت لحظه‌ای).                       |                   ✅ قرارداد B2B کاملاً پایدار و مستقل از پروتکل SSE. کد تکراری با `SearchService` مشترک حذف می‌گردد.                    |
+|       **Async Logging با Engine گلوبال**       |                          جلوگیری از خطای `SessionClosed` در `asyncio.create_task` و حذف سربار ساخت Connection Pool برای هر درخواست.                           |                       ✅ لاگ‌گیری کاملاً Non-Blocking و ایمن. Latency کل چرخه تحت تأثیر نوشتن در DB قرار نمی‌گیرد.                       |
+|       **فرانت‌اند Vanilla + ES Modules**       |                            حذف سربار `npm/Vite/React` برای فاز دمو با حفظ ساختار تمیز و قابل نگهداری از طریق تفکیک `css/` و `js/`.                            |                     ✅ استقرار تک‌خطی، پایداری بالا، شخصی‌سازی آنی با CSS Variables، تست‌پذیری بهتر لایه‌های کلاینت.                     |
+| **دو مرحله‌ای کردن LLM (Extract + Generate)**  |                                                 جداسازی مسئولیت‌ها + امکان کش‌کردن مرحلهٔ اول + دیباگ آسان‌تر                                                 |                           امکان پیاده‌سازی Semantic Cache در فاز بعد + جلوگیری از تداخل Context در پاسخ نهایی                           |
+|        **تزریق پویای `$domain_schema`**        |                                         جلوگیری از Hallucination کلید/واحد/مقدار توسط LLM بدون هاردکد کردن در Prompt                                          |                              افزایش دقت استخراج >۹۰٪ + سربار ناچیز توکن (~۱۵۰ توکن) + تطابق ۱۰۰٪ با اسکیما                              |
 
 ---
 
@@ -231,4 +246,4 @@ User: "کاربر به دنبال محصولی با این ویژگی‌هاست
 - 🔹 **`validate_quantization_drift.py`** برای پایش دوره‌ای افت دقت مدل‌های ONNX
 
 ---
-**نسخه:** 1.0.0 | **آخرین به‌روزرسانی:** 2026/05/05
+**نسخه:** 2.0.0 | **آخرین به‌روزرسانی:** 2026/05/08
