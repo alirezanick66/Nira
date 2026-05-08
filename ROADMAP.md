@@ -4,13 +4,13 @@
 
 ## 📊 وضعیت کلی پروژه
 
-|فاز|وضعیت|هدف کلیدی|
-|:-:|:-:|:-:|
-|🟢 MVP|✅ تکمیل|اثبات مفهوم: NLU → Retrieval → Rerank → LLM JSON → FastAPI|
-|🟢 MVP Refinement|✅ تکمیل|رفع نقص‌های فنی MVP + بهبود دقت استخراج و رتبه‌بندی|
-|🔵 Post-MVP 1|🔵 Planned|تجربه کاربری هوشمندتر: Cache، Personalization، Feedback، Clarification، Time-Aware|
-|🔵 Post-MVP 2|🔵 Planned|یکپارچه‌سازی فروشگاه: سبد خرید، اقساط، Analytics، Compare|
-|🔵 Post-MVP 3|🔵 Planned|مقیاس‌پذیری فنی: Multi-Domain، Evaluation Loop، Docker، Token-Parser|
+|        فاز        |   وضعیت    |                                     هدف کلیدی                                      |
+| :---------------: | :--------: | :--------------------------------------------------------------------------------: |
+|      🟢 MVP       |  ✅ تکمیل  |             اثبات مفهوم: NLU → Retrieval → Rerank → LLM JSON → FastAPI             |
+| 🟢 MVP Refinement |  ✅ تکمیل  |                رفع نقص‌های فنی MVP + بهبود دقت استخراج و رتبه‌بندی                 |
+|   🔵 Post-MVP 1   | 🔵 Planned | تجربه کاربری هوشمندتر: Cache، Personalization، Feedback، Clarification، Time-Aware |
+|   🔵 Post-MVP 2   | 🔵 Planned |             یکپارچه‌سازی فروشگاه: سبد خرید، اقساط، Analytics، Compare              |
+|   🔵 Post-MVP 3   | 🔵 Planned |        مقیاس‌پذیری فنی: Multi-Domain، Evaluation Loop، Docker، Token-Parser        |
 
 ---
 
@@ -26,7 +26,7 @@
 - [x] **FastAPI Endpoint**: `/api/v1/search` با Lifespan + Dependency Injection
 - [x] **Product Enrichment**: استنتاج قطعی `price_range`, `quality_levels`, `tags`
 - [x] **Data Pipeline**: Acquisition → PostgreSQL → Enrichment → Qdrant Indexing
-- [x] **Frontend Demo**: Vanilla SPA  + Session Memory + Theme Customization
+- [x] **Frontend Demo**: Vanilla SPA + Session Memory + Theme Customization
 - [x] **ONNX + INT8 Quantization**: کاهش ~۶۰٪ مصرف منابع + تأییدیه Drift (Cosine: `0.0014`)
 - [x] **معماری سرویس‌محور** (`SearchService`): جداسازی کامل لاجیک پایپلاین از لایه HTTP (Protocol-Agnostic Core)
 - [x] **استراتژی Dual-Endpoint**: تفکیک قرارداد رسمی B2B (`POST`/JSON) از UX دمو (`GET`/SSE)
@@ -40,16 +40,15 @@
 
 ### 🎯 اهداف کلیدی
 
-|                  فیچر                  |                                      توضیح                                      | اولویت  |                    وابستگی‌ها                     |                        معیار موفقیت                         |
-| :------------------------------------: | :-----------------------------------------------------------------------------: | :-----: | :-----------------------------------------------: | :---------------------------------------------------------: |
-|     **🔢 تبدیل واحد قیمت در LLM**      |    استخراج `price` همیشه به تومان (عدد صحیح) + حذف کلید `unit` از خروجی مدل     | ✅ تکمیل | `LLMOrchestrator.extract` + `Pydantic Validation` |          عدم خطای `int_parsing` در فیلترهای Qdrant          |
-|   **🔄 Smart Fallback (0 Results)**    |          حذف خودکار سخت‌ترین فیلتر و تلاش مجدد در صورت عدم یافتن نتیجه          | ✅ تکمیل |              `QdrantHybridRetriever`              |         کاهش ۵۰٪ کوئری‌های `0 نتیجه` بدون افت کیفیت         |
-|       **🧩 مدیریت تضاد فیلترها**       | تشخیص کوئری‌های متناقض → `has_conflict: true` + `conflict_reason` در خروجی JSON | ✅ تکمیل |       `LLMExtractSchema` + پرامپت `extract`       |     جلوگیری از بازگشت نتایج نامربوط، لاگ‌گیری دقیق تضاد     |
+|                 فیچر                  |                                      توضیح                                      |  اولویت  |                    وابستگی‌ها                     |                        معیار موفقیت                         |
+| :-----------------------------------: | :-----------------------------------------------------------------------------: | :------: | :-----------------------------------------------: | :---------------------------------------------------------: |
+|     **🔢 تبدیل واحد قیمت در LLM**     |    استخراج `price` همیشه به تومان (عدد صحیح) + حذف کلید `unit` از خروجی مدل     | ✅ تکمیل | `LLMOrchestrator.extract` + `Pydantic Validation` |          عدم خطای `int_parsing` در فیلترهای Qdrant          |
+|   **🔄 Smart Fallback (0 Results)**   |          حذف خودکار سخت‌ترین فیلتر و تلاش مجدد در صورت عدم یافتن نتیجه          | ✅ تکمیل |              `QdrantHybridRetriever`              |         کاهش ۵۰٪ کوئری‌های `0 نتیجه` بدون افت کیفیت         |
+|      **🧩 مدیریت تضاد فیلترها**       | تشخیص کوئری‌های متناقض → `has_conflict: true` + `conflict_reason` در خروجی JSON | ✅ تکمیل |       `LLMExtractSchema` + پرامپت `extract`       |     جلوگیری از بازگشت نتایج نامربوط، لاگ‌گیری دقیق تضاد     |
 |     **🏷️ نرمال‌سازی ذاتی برندها**     |   حذف دیکشنری سخت‌کد؛ تکیه بر درک معنایی LLM + دستور کاننیکال فارسی در پرامپت   | ✅ تکمیل |        `system_extract` + `$domain_schema`        |       بازگشت نتایج صحیح حتی با نام‌های غیررسمی/تایپو        |
-|  **⚙️ تزریق پویای `$domain_schema`**   |       ساخت خودکار راهنمای اسلات‌ها، واحدها و نگاشت‌های کیفی در `__init__`       | ✅ تکمیل |   `_build_domain_schema()` + `orchestrator.py`    |     افزایش دقت استخراج > ۹۰٪ + سربار توکن ناچیز (~150)      |
+|  **⚙️ تزریق پویای `$domain_schema`**  |       ساخت خودکار راهنمای اسلات‌ها، واحدها و نگاشت‌های کیفی در `__init__`       | ✅ تکمیل |   `_build_domain_schema()` + `orchestrator.py`    |     افزایش دقت استخراج > ۹۰٪ + سربار توکن ناچیز (~150)      |
 | **🛡️ Validation سخت‌گیرانه Pydantic** |    استفاده از `TypeAdapter(LLMExtractSchema)` + Fail-Fast در صورت خروجی ناقص    | ✅ تکمیل |       `schemas.py` + `orchestrator.extract`       |    حذف کرش پایپلاین + لاگ دقیق خطا + تجربه کاربری پایدار    |
-|      🧠 **تفکیک System Prompts**       |    جداسازی کامل `system_extract` (برای Call 1) و `system_base` (برای Call 2)    | ✅ تکمیل |           `base.yaml` + `PromptEngine`            | رفع تناقض Context + جلوگیری از Hallucination در ساختار پاسخ |
-
+|      🧠 **تفکیک System Prompts**      |    جداسازی کامل `system_extract` (برای Call 1) و `system_base` (برای Call 2)    | ✅ تکمیل |           `base.yaml` + `PromptEngine`            | رفع تناقض Context + جلوگیری از Hallucination در ساختار پاسخ |
 
 ### 📦 خروجی‌های مورد انتظار
 
@@ -67,7 +66,7 @@
 |               فیچر               |                               توضیح                               |  اولویت  |                وابستگی‌ها                |                    معیار موفقیت                    |
 | :------------------------------: | :---------------------------------------------------------------: | :------: | :--------------------------------------: | :------------------------------------------------: |
 |  **🕐 زمان‌آگاهی (Time-Aware)**  |     تشخیص زمان ایران برای پیام‌های هوشمند + شمارش معکوس تخفیف     | 🟢 پایین |    Timezone Service + Store API Sync     | نمایش صحیح زمان باقی‌مانده برای ۹۵٪ تخفیف‌های فعال |
-|      **🔄 Refine + Memory**      | پشتیبانی کامل از `Intent: refine` با ادغام پویای فیلترها توسط LLM | ✅ تکمیل  | `LLMOrchestrator` + `ConversationMemory` |    درک صحیح مرجع مقایسه در ۹۵٪ کوئری‌های refine    |
+|      **🔄 Refine + Memory**      | پشتیبانی کامل از `Intent: refine` با ادغام پویای فیلترها توسط LLM | ✅ تکمیل | `LLMOrchestrator` + `ConversationMemory` |    درک صحیح مرجع مقایسه در ۹۵٪ کوئری‌های refine    |
 |      **🧠 Semantic Cache**       |      کش برداری کوئری‌های تکراری + TTL برای کاهش توکن و تأخیر      | 🔴 بالا  |        Qdrant + Embedding Service        |      کاهش ۴۰٪ مصرف توکن برای کوئری‌های تکراری      |
 |   **👤 Personalization Lite**    |           ذخیره سلیقه کاربر + پیشنهاد مبتنی بر تاریخچه            | 🔴 بالا  |    Auth + PostgreSQL + Vector Memory     |  افزایش ۲۰٪ نرخ کلیک روی پیشنهادات شخصی‌سازی‌شده   |
 | **💬 ساختار Clarification Loop** |   پرسش هدایت‌گر هوشمند وقتی `needs_clarification = True` برگردد   | 🔴 بالا  | `LLMExtractSchema` + Prompt Engineering  | کاهش ۳۰٪ کوئری‌های بدون نتیجه + افزایش رضایت کاربر |
@@ -89,13 +88,13 @@
 
 ### 🎯 اهداف کلیدی
 
-|              فیچر               |                              توضیح                               |  اولویت  |                             وابستگی‌ها                              |                      معیار موفقیت                       |
-| :-----------------------------: | :--------------------------------------------------------------: | :------: | :-----------------------------------------------------------------: | :-----------------------------------------------------: |
-|      **🛒 اتصال سبد خرید**      | افزودن محصول پیشنهادی به سبد خرید با OAuth 2.0 + Adapter Pattern | 🔴 بالا  |                  فروشگاه باید API مستند ارائه دهد                   |       امکان افزودن محصول با ۱ کلیک از پاسخ دستیار       |
-|  **🔍 Intent Compare Engine**   |         تولید جدول مقایسه‌ای یا متن تحلیلی بین ۲-۳ محصول         | 🟡 متوسط |            `LLM Orchestrator` + Structured Output Schema            |      تولید پاسخ مقایسه‌ای ساختاریافته در ۹۰٪ موارد      |
-|       **💳 شرایط اقساط**        |           نمایش خودکار شرایط اقساط + محاسبه قسط ماهانه           | 🟡 متوسط |                  Knowledge Base + Rule Engine سبک                   |           پوشش ۱۰۰٪ محصولات دارای گزینه اقساط           |
+|              فیچر               |                              توضیح                               |  اولویت  |                              وابستگی‌ها                              |                      معیار موفقیت                       |
+| :-----------------------------: | :--------------------------------------------------------------: | :------: | :------------------------------------------------------------------: | :-----------------------------------------------------: |
+|      **🛒 اتصال سبد خرید**      | افزودن محصول پیشنهادی به سبد خرید با OAuth 2.0 + Adapter Pattern | 🔴 بالا  |                   فروشگاه باید API مستند ارائه دهد                   |       امکان افزودن محصول با ۱ کلیک از پاسخ دستیار       |
+|  **🔍 Intent Compare Engine**   |         تولید جدول مقایسه‌ای یا متن تحلیلی بین ۲-۳ محصول         | 🟡 متوسط |            `LLM Orchestrator` + Structured Output Schema             |      تولید پاسخ مقایسه‌ای ساختاریافته در ۹۰٪ موارد      |
+|       **💳 شرایط اقساط**        |           نمایش خودکار شرایط اقساط + محاسبه قسط ماهانه           | 🟡 متوسط |                   Knowledge Base + Rule Engine سبک                   |           پوشش ۱۰۰٪ محصولات دارای گزینه اقساط           |
 | **📊 Analytics Dashboard Lite** |  گزارش «نیازهای پرجستجو»، «فیلترهای ناموفق»، «محصولات پربازدید»  | 🟡 متوسط | ✅ زیرساخت `query_logs` و سرویس Async (آماده) + ClickHouse/Timescale |        گزارش هفتگی خودکار برای تیم محصول فروشگاه        |
-|   **🔍 تحلیل پیشرفته نظرات**    |           استخراج خودکار مزایا/معایب از نظرات کاربران            | 🟢 پایین |                  Review Scraper + Lightweight LLM                   | به‌روزرسانی خودکار `battery_quality` / `camera_quality` |
+|   **🔍 تحلیل پیشرفته نظرات**    |           استخراج خودکار مزایا/معایب از نظرات کاربران            | 🟢 پایین |                   Review Scraper + Lightweight LLM                   | به‌روزرسانی خودکار `battery_quality` / `camera_quality` |
 
 ### 📦 خروجی‌های مورد انتظار
 
@@ -111,15 +110,15 @@
 
 ### 🎯 اهداف کلیدی
 
-|فیچر|توضیح|اولویت|وابستگی‌ها|معیار موفقیت|
-|:-:|:-:|:-:|:-:|:-:|
-|**⚡ ONNX Export + Quantization**|کاهش ~۶۰٪ مصرف منابع با Dynamic INT8 Quantization، تأیید شده با Drift Test <0.002|✅ تکمیل|`optimum[onnxruntime]` + تست دقت|کاهش Latency Embedding/Rerank به `<3s` (End-to-End)|
-|**🌍 Domain-Agnostic Prompt Engine**|سوئیچ آسان بین موبایل/هدفون/لپ‌تاپ با `base.yaml` و `{domain}.yaml`|✅ تکمیل|Refactor `PromptEngine` + Domain Router|افزودن دامنه جدید در `<1 ساعت` بدون تغییر کد|
-|**📐 Evaluation Loop**|سنجش خودکار کیفیت با RAGAS / DeepEval + گزارش بنچمارک|🟡 متوسط|Test Dataset + CI/CD Integration|جلوگیری از Regression در کیفیت پاسخ‌ها|
-|**🕸️ Knowledge Graph (ارزیابی)**|بررسی Neo4j + Graph RAG برای استدلال چندمرحله‌ای|🟢 پایین|Graph Schema Design + Query Benchmark|اثبات برتری Graph RAG نسبت به Hybrid Search در سناریوهای پیچیده|
-|**🔄 Event-Driven Sync**|آپدیت لحظه‌ای قیمت/موجودی با Webhook + Message Queue|🟢 پایین|Store Webhook Support + Queue Infrastructure|تأخیر آپدیت قیمت `<۵ دقیقه` از لحظه تغییر در فروشگاه|
-|**🐳 Docker & Deployment**|`docker-compose` برای Qdrant, Postgres, FastAPI + تنظیمات Production|🟡 متوسط|Dockerfile بهینه + Health Checks|استقرار یک‌خطی در محیط جدید با `docker-compose up`|
-|**🎚️ تنظیم آستانه Reranking**|کالیبراسیون `min_score` در `RerankerService` بر اساس دادهٔ واقعی|🔴 بالا|لاگ‌های Reranking + تست A/B|کاهش نتایج نامرتبط در Top-3 بدون افزایش False Negative|
+|                 فیچر                 |                                       توضیح                                       |  اولویت  |                  وابستگی‌ها                  |                          معیار موفقیت                           |
+| :----------------------------------: | :-------------------------------------------------------------------------------: | :------: | :------------------------------------------: | :-------------------------------------------------------------: |
+|  **⚡ ONNX Export + Quantization**   | کاهش ~۶۰٪ مصرف منابع با Dynamic INT8 Quantization، تأیید شده با Drift Test <0.002 | ✅ تکمیل |       `optimum[onnxruntime]` + تست دقت       |       کاهش Latency Embedding/Rerank به `<3s` (End-to-End)       |
+| **🌍 Domain-Agnostic Prompt Engine** |        سوئیچ آسان بین موبایل/هدفون/لپ‌تاپ با `base.yaml` و `{domain}.yaml`        | ✅ تکمیل |   Refactor `PromptEngine` + Domain Router    |          افزودن دامنه جدید در `<1 ساعت` بدون تغییر کد           |
+|        **📐 Evaluation Loop**        |               سنجش خودکار کیفیت با RAGAS / DeepEval + گزارش بنچمارک               | 🟡 متوسط |       Test Dataset + CI/CD Integration       |             جلوگیری از Regression در کیفیت پاسخ‌ها              |
+|   **🕸️ Knowledge Graph (ارزیابی)**   |                 بررسی Neo4j + Graph RAG برای استدلال چندمرحله‌ای                  | 🟢 پایین |    Graph Schema Design + Query Benchmark     | اثبات برتری Graph RAG نسبت به Hybrid Search در سناریوهای پیچیده |
+|       **🔄 Event-Driven Sync**       |               آپدیت لحظه‌ای قیمت/موجودی با Webhook + Message Queue                | 🟢 پایین | Store Webhook Support + Queue Infrastructure |      تأخیر آپدیت قیمت `<۵ دقیقه` از لحظه تغییر در فروشگاه       |
+|      **🐳 Docker & Deployment**      |       `docker-compose` برای Qdrant, Postgres, FastAPI + تنظیمات Production        | 🟡 متوسط |       Dockerfile بهینه + Health Checks       |       استقرار یک‌خطی در محیط جدید با `docker-compose up`        |
+|    **🎚️ تنظیم آستانه Reranking**     |         کالیبراسیون `min_score` در `RerankerService` بر اساس دادهٔ واقعی          | 🔴 بالا  |         لاگ‌های Reranking + تست A/B          |     کاهش نتایج نامرتبط در Top-3 بدون افزایش False Negative      |
 
 ### 📦 خروجی‌های مورد انتظار
 
@@ -151,4 +150,5 @@
 | نگهداری موازی دو Endpoint (REST/SSE) | 🟡 متوسط | 🟡 متوسط | پیاده‌سازی `SearchService` مشترک؛ حذف لاجیک تکراری و استفاده از آداپتور خروجی برای هر Endpoint |
 
 ---
+
 **نسخه:** 2.0.0 | **آخرین به‌روزرسانی:** 2026/05/08
