@@ -1,18 +1,18 @@
 """‫کلاینت غیرهمزمان استخراج داده از API دیجی‌کالا
 ‫این ماژول مسئول دریافت لیست محصولات و جزئیات هر محصول با اعتبارسنجی Pydantic است.
 ‫ویژگی‌ها:
-‫- مدیریت چرخه حیات با Async Context Manager
+‫‫- مدیریت چرخه حیات با Async Context Manager
 ‫- Rate Limiting داخلی (Semaphore + Delay)
 ‫- اعتبارسنجی صریح خروجی API توسط مدل‌های Pydantic
 """
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 import asyncio
 import random
 from typing import AsyncIterator, Self
 from httpx import AsyncClient, HTTPStatusError
 from pydantic import ValidationError
 
-#───────────────────── Imports داخلی پروژه─────────────────────
+#────────────────────────────────────────── local imports ──────────────────────────────────────────
 from src.core.resilience.api_resilience import ApiResilienceLayer
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
@@ -36,7 +36,7 @@ class DigikalaAPIClient:
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
 
-    #─────────────────────public methods─────────────────────
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     async def fetch_product_list( self, page: int = 1 ) -> DigikalaProductListResponse:
         """‫دریافت لیست محصولات از یک صفحه مشخص
 
@@ -49,7 +49,7 @@ class DigikalaAPIClient:
         Raises:
             ValidationError: ‫اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
-        log_message( LG.API, f"درخواست لیست محصولات | صفحه: {page}", LogLevel.DEBUG )
+        log_message( LG.API, f"درخواست لیست محصولات | صفحه: {page}", LogLevel.INFO )
         raw_data = await self._safe_request( "/v1/categories/mobile-phone/search/", params={ "page": page } )
 
         try:
@@ -70,7 +70,7 @@ class DigikalaAPIClient:
         Raises:
             ValidationError: ‫اگر ساختار پاسخ API با مدل Pydantic همخوانی نداشته باشد
         """
-        log_message( LG.API, f"درخواست جزئیات محصول | ID: {product_id}", LogLevel.DEBUG )
+        log_message( LG.API, f"درخواست جزئیات محصول | ID: {product_id}", LogLevel.INFO )
         raw_data = await self._safe_request( f"/v2/product/{product_id}/" )
 
         try:
@@ -110,7 +110,7 @@ class DigikalaAPIClient:
                 log_message( LG.API, f"خطای اعتبارسنجی صفحه {current_page}: {exc}", LogLevel.ERROR )
                 break
 
-    #─────────────────────private methods─────────────────────
+    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
 
     async def __aenter__( self ) -> Self:
         """‫راه‌اندازی کلاینت HTTP و بازگرداندن نمونه جهت استفاده در async with"""

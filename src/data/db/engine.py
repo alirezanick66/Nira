@@ -1,10 +1,11 @@
 """‫مدیریت چرخه حیات اتصال به PostgreSQL
 ‫راه‌اندازی Engine، SessionMaker و اعتبارسنجی اولیهٔ اتصال.
 """
-#─────────────────────imports─────────────────────
+#────────────────────────────────────────── imports ──────────────────────────────────────────
+from __future__ import annotations
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-#─────────────────────local imports─────────────────────
+#────────────────────────────────────────── local imports ──────────────────────────────────────────
 from src.config.settings import get_settings
 from src.data.db.models import Base
 from src.config.logging_config import LG, LogLevel, log_message

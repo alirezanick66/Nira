@@ -12,24 +12,24 @@ from src.utils.spec_normalizer import SpecNormalizer
 class ProductTransformer:
     """‫تبدیل‌گر API Response به Product Model"""
 
-    #───────────────────── public methods ─────────────────────
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     @classmethod
     def transform( cls, api_product: DigikalaProduct ) -> Product:
         """‫تبدیل DigikalaProduct به Product
 
         Args:
-            api_product: داده خام از API دیجی‌کالا
+            api_product:‫ داده خام از API دیجی‌کالا
 
         Returns:
-            Product نرمال‌شده و آماده ذخیره
+            ‫Product نرمال‌شده و آماده ذخیره
 
         Example:
             >>> api_response = DigikalaProductDetailResponse(**api_data)
             >>> api_product = api_response.data.product
             >>> product = ProductTransformer.transform(api_product)
         """
-        # ‫استخراج مشخصات فنی
 
+        # ‫استخراج مشخصات فنی
         normalized_specs = SpecNormalizer.extract_specifications( cls._serialize_specs( api_product.specifications ) )
 
         # ‫ساخت ProductSpecification
@@ -100,7 +100,7 @@ class ProductTransformer:
 
         return product
 
-    #───────────────────── private  methods ─────────────────────
+    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
     @staticmethod
     def _determine_category( title: str ) -> ProductCategory:
         """‫تشخیص category از عنوان محصول
@@ -125,10 +125,10 @@ class ProductTransformer:
 
     @staticmethod
     def _map_status( status: str ) -> ProductStatus:
-        """‫نگاشت status API به ProductStatus enum
+        """‫نگاشت status API به ‫ProductStatus enum
 
         Args:
-            status: وضعیت از API (marketable, stop_production, ...)
+            status: ‫وضعیت از API (marketable, stop_production, ...)
 
         Returns:
             ProductStatus enum
@@ -142,5 +142,5 @@ class ProductTransformer:
 
     @staticmethod
     def _serialize_specs( specs: list[ DigikalaSpecification ] ) -> list[ dict[ str, object ] ]:
-        """تبدیل DigikalaSpecification → dict"""
+        """‫تبدیل DigikalaSpecification → dict"""
         return [ spec.model_dump() for spec in specs ]
