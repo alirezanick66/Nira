@@ -1,49 +1,47 @@
-"""‫مدل‌های Pydantic برای خروجی API  دیجی‌کالا
-
-‫این مدل‌ها دقیقاً ساختار JSON برگشتی از API رو map می‌کنن
-‫فقط فیلدهای مورد نیاز رو extract می‌کنیم، بقیه ignore می‌شن
+"""‫مدل‌های Pydantic برای نگاشت و اعتبارسنجی خروجی API دیجی‌کالا
+‫این لایه صرفاً مسئول تبدیل JSON خام API به اشیای تایپ‌شده است.
+‫فیلدهای اضافی توسط ConfigDict نادیده گرفته می‌شوند.
 """
 
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
+from __future__ import annotations
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
-# ==================== Product ID List API ====================
+# ────────────────────────────────────────── Product ID List API ──────────────────────────────────────────
 
 
 class DigikalaPager( BaseModel ):
-    """‫اطلاعات صفحه"""
+    """ ‫اطلاعات صفحه‌بندی پاسخ API"""
 
-    current_page: int = Field( description="‫صفحه فعلی" )
-    total_pages: int = Field( description="‫تعداد کل صفحات" )
-    total_items: int = Field( description="‫تعداد کل محصولات" )
+    current_page: int = Field( description="شماره صفحه فعلی" )
+    total_pages: int = Field( description="تعداد کل صفحات" )
+    total_items: int = Field( description="تعداد کل آیتم‌ها" )
 
 
 class DigikalaProductListItem( BaseModel ):
-    """‫آیتم محصول در لیست (فقط ID)"""
-
-    id: int = Field( description="‫شناسه محصول" )
+    """آیتم محصول در لیست (فقط شامل شناسه)"""
+    id: int = Field( description="شناسه عددی محصول" )
 
 
 class DigikalaProductListData( BaseModel ):
-    """‫داده‌های اصلی response لیست محصولات"""
-
+    """بدنه اصلی پاسخ لیست محصولات"""
     pager: DigikalaPager
     products: list[ DigikalaProductListItem ]
 
 
 class DigikalaProductListResponse( BaseModel ):
-    """‫Response کامل API لیست محصولات"""
-
-    status: int = Field( default=200 )
+    """‫ساختار کامل پاسخ API لیست محصولات"""
+    status: int = Field( default=200, description="کد وضعیت پاسخ" )
     data: DigikalaProductListData
 
 
-# ==================== Product Detail API ====================
+# ────────────────────────────────────────── Product Detail API ──────────────────────────────────────────
 
 
 class DigikalaURL( BaseModel ):
-    """‫ساختار URL محصول"""
+    """ ‫ساختار آدرس (URL) محصول"""
 
-    uri: str = Field( description="‫مسیر نسبی محصول" )
+    uri: str = Field( description="لینک آدرس محصول" )
 
 
 class DigikalaBrand( BaseModel ):
@@ -56,8 +54,8 @@ class DigikalaBrand( BaseModel ):
 class DigikalaRating( BaseModel ):
     """‫امتیاز محصول"""
 
-    rate: float = Field( ge=0, le=100, description="‫امتیاز از 100" )
-    count: int = Field( ge=0, description="‫تعداد رای‌دهندگان" )
+    rate: float = Field( ge=0, le=100, description="میانگین امتیاز از ۱۰۰" )
+    count: int = Field( ge=0, description="تعداد کل رای‌دهندگان" )
 
 
 class DigikalaColor( BaseModel ):
@@ -67,19 +65,18 @@ class DigikalaColor( BaseModel ):
 
 
 class DigikalaImages( BaseModel ):
-    """تصاویر محصول — فقط تصویر اصلی"""
+    """تصاویر محصول (استخراج خودکار تصویر اصلی)"""
 
     model_config = ConfigDict( extra="ignore" )          # ‫← نادیده گرفتن فیلدهای اضافی مثل "list"
-    webp_url: str | None = Field( default=None, description="لینک تصویر اصلی (WebP)" )
+    webp_url: str | None = Field( default=None, description="‫لینک تصویر اصلی (WebP)" )
 
     @model_validator( mode="before" )
     @classmethod
     def _extract_main_webp_url( cls, data: object ) -> dict:
-        """استخراج اولین URL از main.webp_url قبل از ساخت مدل"""
+        """‫استخراج اولین URL از main.webp_url قبل از ساخت مدل"""
         if not isinstance( data, dict ):
             return { "webp_url": None }
 
-        # اولویت: main.webp_url (تصویر اصلی)
         main = data.get( "main" )
         if isinstance( main, dict ):
             urls = main.get( "webp_url" )
@@ -90,17 +87,16 @@ class DigikalaImages( BaseModel ):
 
 
 class DigikalaPrice( BaseModel ):
-    """‫قیمت محصول"""
-
-    selling_price: int = Field( ge=0, description="‫قیمت فروش (ریال)" )
-    rrp_price: int = Field( ge=0, description="‫قیمت اصلی (ریال)" )
-    discount_percent: int = Field( default=0, ge=0, le=100, description="‫درصد تخفیف" )
-    is_incredible: bool = Field( default=False, description="‫شگفت‌انگیز؟" )
-    is_promotion: bool = Field( default=False, description="‫تخفیف‌دار؟" )
+    """ساختار قیمت و تخفیف (بر حسب ریال)"""
+    selling_price: int = Field( ge=0, description="قیمت فروش نهایی" )
+    rrp_price: int = Field( ge=0, description="قیمت پایه قبل از تخفیف" )
+    discount_percent: int = Field( default=0, ge=0, le=100, description="درصد تخفیف" )
+    is_incredible: bool = Field( default=False, description="وضعیت شگفت‌انگیز" )
+    is_promotion: bool = Field( default=False, description="وضعیت تخفیف‌دار بودن" )
 
 
 class DigikalaProductVariant( BaseModel ):
-    """‫Variant محصول (رنگ/گارانتی مختلف)"""
+    """ محصول (رنگ/گارانتی مختلف)"""
 
     id: int
     status: str = Field( description="‫marketable/stop_production/..." )
@@ -109,14 +105,14 @@ class DigikalaProductVariant( BaseModel ):
 
 
 class DigikalaSpecAttribute( BaseModel ):
-    """‫یک ویژگی در specifications"""
+    """‫ویژگی در specifications"""
 
     title: str = Field( description="‫عنوان ویژگی (مثلاً 'حافظه داخلی')" )
     values: list[ str ] = Field( default_factory=list, description="‫مقادیر (مثلاً ['256 گیگابایت'])" )
 
 
 class DigikalaSpecification( BaseModel ):
-    """‫یک دسته از مشخصات فنی"""
+    """دسته‌بندی مشخصات فنی"""
     model_config = ConfigDict( populate_by_name=True )          #‫فعالسازی alias
 
     category: str | None = Field( default=None, alias="title", description="عنوان دسته)" )          #‫api از فیلد title استفاده میکنه
@@ -124,6 +120,7 @@ class DigikalaSpecification( BaseModel ):
 
 
 class DigikalaExpertSectionItem( BaseModel ):
+    """آیتم متنی در بخش نقد تخصصی"""
     model_config = ConfigDict( extra="ignore" )
 
     text: str | None = Field( default=None, description="متن بخش نقد تخصصی" )
@@ -131,7 +128,7 @@ class DigikalaExpertSectionItem( BaseModel ):
     @field_validator( "text", mode="before" )
     @classmethod
     def _normalize_text( cls, value: object ) -> str | None:
-        """‫تبدیل مقادیر نامعتبر به None"""
+        """تبدیل مقادیر خالی یا نامعتبر به None"""
         if value is None or ( isinstance( value, str ) and value.strip() == "" ):
             return None
         return value if isinstance( value, str ) else str( value )
@@ -146,24 +143,24 @@ class DigikalaExpertReviewSection( BaseModel ):
 
 
 class DigikalaExpertReview( BaseModel ):
-    """‫نقد تخصصی محصول"""
+    """ساختار کامل نقد تخصصی محصول"""
     model_config = ConfigDict( extra="ignore" )
 
-    description: str = Field( default="", description="‫توضیحات اصلی" )
+    description: str = Field( default="", description="توضیحات کلی نقد" )
     review_sections: list[ DigikalaExpertReviewSection ] = Field( default_factory=list )
 
 
 class DigikalaCommentsOverview( BaseModel ):
-    """‫خلاصه نظرات کاربران"""
+    """خلاصه نظرات و بازخوردهای کاربران"""
 
     id: int
-    overview: str = Field( description="‫خلاصه کلی نظرات" )
-    advantages: list[ str ] = Field( default_factory=list, description="‫مزایا از دید کاربران" )
-    disadvantages: list[ str ] = Field( default_factory=list, description="‫معایب از دید کاربران" )
+    overview: str = Field( description="جمع‌بندی کلی نظرات" )
+    advantages: list[ str ] = Field( default_factory=list, description="لیست مزایا از دید کاربران" )
+    disadvantages: list[ str ] = Field( default_factory=list, description="لیست معایب از دید کاربران" )
 
 
 class DigikalaProduct( BaseModel ):
-    """‫اطلاعات کامل محصول از API جزئیات"""
+    """‫اطلاعات کامل محصول دریافتی از API جزئیات"""
 
     # اطلاعات پایه
     id: int
@@ -182,7 +179,7 @@ class DigikalaProduct( BaseModel ):
         """‫تبدیل لیست خالی [] به None برای محصولات بدون واریانت"""
         if isinstance( value, list ) and len( value ) == 0:
             return None
-        return value          # type: ignore  # Pydantic نوع نهایی را چک می‌کند
+        return value          # type: ignore  # ‫Pydantic نوع نهایی را چک می‌کند
 
     # امتیاز
     rating: DigikalaRating
@@ -202,7 +199,7 @@ class DigikalaProduct( BaseModel ):
         alias="expert_reviews"          # ‫← API می‌فرستد expert_reviews، ما داخلی expert_review صدا می‌زنیم
     )
 
-    # Comments Overview (اختیاری)
+    # نظرات کاربران (اختیاری)
     comments_overview: DigikalaCommentsOverview | None = None
 
     @field_validator( "comments_overview", mode="before" )
@@ -217,19 +214,17 @@ class DigikalaProduct( BaseModel ):
         if value is None or isinstance( value, DigikalaCommentsOverview ):
             return value
 
-        # ‫هر نوع دیگر (مثلاً dict خام) → اجازه به Pydantic برای اعتبارسنجی بعدی
-        # ‫با type: ignore چون Pydantic در مرحله بعد نوع نهایی را چک می‌کند
-        return value          # type: ignore[return-value]
+        return value          # type: ignore # ‫Pydantic نوع نهایی را چک می‌کند
 
 
 class DigikalaProductDetailData( BaseModel ):
-    """‫داده‌های اصلی response جزئیات محصول"""
+    """بدنه اصلی پاسخ API جزئیات محصول"""
 
     product: DigikalaProduct
 
 
 class DigikalaProductDetailResponse( BaseModel ):
-    """‫Response کامل API جزئیات محصول"""
+    """ ‫ساختار کامل پاسخ API جزئیات محصول"""
 
     status: int = Field( default=200 )
     data: DigikalaProductDetailData

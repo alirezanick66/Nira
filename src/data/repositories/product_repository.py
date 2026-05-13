@@ -2,14 +2,14 @@
 ‫مسئولیت: تنها نقطهٔ تعامل با جدول product_raw_cache،
 ‫پیاده‌سازی الگوی Repository برای جداسازی لایهٔ داده از منطق تجاری.
 """
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 
 from sqlalchemy import select, distinct
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.db.engine import DatabaseEngine
 from src.data.db.models import ProductRawCache
@@ -21,13 +21,18 @@ class ProductRepository:
     def __init__( self, db_engine: DatabaseEngine ) -> None:
         self._db = db_engine
 
-    #─────────────────────public methods─────────────────────
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     async def save_raw( self, product_id: int, raw_data: dict[ str, object ] ) -> None:
         """ذخیره یا به‌روزرسانی داده خام محصول در جدول کش دیتابیس
-       ‫ در صورت تکرار شناسه، عملیات Update انجام می‌شود.
+
+       ‫ در صورت تکرار شناسه، عملیات Upsert انجام می‌شود.
+
         Args:
             product_id: شناسه محصول
             raw_data: دیکشنری داده خام برای ذخیره
+
+        Raises:
+            SQLAlchemyError: در صورت بروز خطای تراکنش در دیتابیس
         """
         stmt = ( pg_insert( ProductRawCache ).values( product_id=product_id, raw_payload=raw_data ).on_conflict_do_update(
             index_elements=[ ProductRawCache.product_id ], set_=dict( raw_payload=raw_data, updated_at=func.now() ) ) )
@@ -79,7 +84,14 @@ class ProductRepository:
             return [ row[ 0 ] for row in result.all() ]
 
     async def batch_get_image_urls( self, product_ids: list[ int ] ) -> dict[ int, str | None ]:
-        """واکشی غیرمسدودکنندهٔ لینک اولین تصویر اصلی برای لیست محصولات"""
+        """استخراج لینک اولین تصویر  در لیست محصولات
+                Args:
+            product_ids: لیست شناسه محصولات
+
+        Returns:
+           ‫  لینک URL تصویر پس از از استخراج از دیتابیس  (در صورت عدم وجود: None)
+        
+        """
         if not product_ids:
             return {}
 

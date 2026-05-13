@@ -5,11 +5,11 @@
 ‫- جداسازی کامل لایه‌های Transform و Enrich (SRP)
 ‫- مدیریت خطای هدفمند و لاگینگ RTL
 """
-#───────────────────── imports ─────────────────────
+#────────────────────────────────────────── imports ──────────────────────────────────────────
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-#───────────────────── local imports ─────────────────────
+#────────────────────────────────────────── local imports ──────────────────────────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.models.api_responses import DigikalaProductDetailResponse
 from src.data.models.product import Product
@@ -29,7 +29,7 @@ class ProductProcessingPipeline:
         self._transformer = transformer or ProductTransformer()
         self._enricher = enricher or ProductEnrichmentService()
 
-    #───────────────────── public methods ─────────────────────
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     async def process( self, product_id: int ) -> Product | None:
         """‫پردازش کامل یک محصول از حالت خام تا غنی‌شده
 
@@ -39,7 +39,7 @@ class ProductProcessingPipeline:
         Returns:
             مدل Product غنی‌شده یا None در صورت عدم وجود داده/خطای اعتبارسنجی
         """
-        log_message( LG.DATA_PROCESSING, f"شروع پردازش محصول {product_id}", LogLevel.DEBUG )
+        log_message( LG.DATA_PROCESSING, f"شروع پردازش محصول {product_id}", LogLevel.INFO )
 
         try:
             raw_data = await self._repo.get_raw( product_id )
@@ -67,7 +67,7 @@ class ProductProcessingPipeline:
 
         try:
             enriched_product = self._enricher.enrich_product( product )
-            log_message( LG.DATA_PROCESSING, f"محصول {product_id} با موفقیت غنی‌سازی شد", LogLevel.INFO )
+            log_message( LG.DATA_PROCESSING, f"محصول {product_id} با موفقیت غنی‌سازی شد", LogLevel.DEBUG )
             return enriched_product
         except ( ValueError, AttributeError, TypeError ) as exc:
             log_message( LG.DATA_PROCESSING, f"خطای غنی‌سازی (Enrichment) محصول {product_id}: {exc}", LogLevel.ERROR )

@@ -1,9 +1,9 @@
 """‫سرویس همگام‌سازی هوشمند با قابلیت Resume و مدیریت خطای لایه‌ای"""
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 import asyncio
 from httpx import HTTPStatusError
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.fetchers.digikala_api import DigikalaAPIClient
 from src.data.repositories.product_repository import ProductRepository
 from src.core.progress_tracker import ProgressTracker
@@ -21,14 +21,26 @@ class DigikalaSyncService:
         self._repo = ProductRepository( self._db )
         self._tracker = ProgressTracker( self._db )
 
-    #───────────────────── public methods ─────────────────────
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     async def run(
         self,
         max_products: int | None = None,
         checkpoint_every: int = 10,
         stop_event: asyncio.Event | None = None,
     ) -> int:
-        """اجرای چرخهٔ همگام‌سازی با قابلیت Resume دقیق"""
+        """‫اجرای چرخهٔ همگام‌سازی با قابلیت ادامه از نقطهٔ توقف (Resume)
+
+        Args:
+            max_products: حداکثر تعداد محصولات برای پردازش    (اختیاری).
+            checkpoint_every: فاصلهٔ ذخیره‌سازی چک‌پوینت‌ها بر اساس تعداد محصولات پردازش‌شده (پیش‌فرض 10).
+            stop_event: رویداد توقف ایمن برای کنترل خارجی چرخه.
+
+        Returns:
+            تعداد محصولات با موفقیت پردازش‌شده.
+
+        Raises:
+            Exception: در صورت بروز خطای غیرمنتظره در سطح چرخه که توسط لایه‌های پایین‌تر مدیریت نشده باشد.
+        """
         last_id, last_page = await self._tracker.load()
         log_message( LG.DATA_PROCESSING, f"شروع همگام‌سازی | ادامه از ID: {last_id} | صفحه: {last_page}", LogLevel.INFO )
 
@@ -63,22 +75,22 @@ class DigikalaSyncService:
             if current_id and current_id != last_saved_id:
                 try:
                     await self._tracker.save( current_id, page=current_page )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log_message( LG.DATA_PROCESSING, f"⚠️ خطا در ذخیره چک‌پوینت: {exc}", LogLevel.WARNING )
 
-        log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.INFO )
+        log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.DEBUG )
         return success_count
 
-    #───────────────────── private  methods ─────────────────────
+    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
     async def _process_product( self, client: DigikalaAPIClient, product_id: int ) -> bool:
         """‫دریافت، اعتبارسنجی و ذخیرهٔ ایزولهٔ یک محصول"""
         try:
             detail = await client.fetch_product_detail( product_id )
             await self._repo.save_raw( product_id, detail.model_dump() )
-            log_message( LG.DATA_PROCESSING, f"✅ محصول {product_id} ذخیره شد", LogLevel.DEBUG )
+            log_message( LG.DATA_PROCESSING, f"✅ محصول {product_id} ذخیره شد", LogLevel.INFO )
             return True
         except HTTPStatusError as exc:
-            log_message( LG.DATA_PROCESSING, f"🚫 خطای HTTP برای محصول {product_id}: {exc.response.status_code}", LogLevel.DEBUG )
+            log_message( LG.DATA_PROCESSING, f"🚫 خطای HTTP برای محصول {product_id}: {exc.response.status_code}", LogLevel.ERROR )
             return False
         except Exception as exc:
             log_message( LG.DATA_PROCESSING, f"⚠️ خطا در پردازش محصول {product_id}: {exc}", LogLevel.WARNING )
