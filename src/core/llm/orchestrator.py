@@ -10,6 +10,7 @@ from string import Template
 from groq.types.chat import ChatCompletionMessageParam
 
 #───────────────────── Local Imports ─────────────────────
+from src.config.domain_loader import DomainConfig
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.llm.clients import GroqClient, GeminiClient
 from src.core.llm.memory import ConversationMemory
@@ -21,7 +22,7 @@ from src.utils.normalizer import PersianNormalizer
 
 class LLMOrchestrator:
 
-    def __init__( self, domain_config: dict ) -> None:
+    def __init__( self, domain_config: DomainConfig ) -> None:
         self._config = domain_config
         self._memory = ConversationMemory( max_turns=3 )
         self._groq = GroqClient()
@@ -32,8 +33,7 @@ class LLMOrchestrator:
         self._normalizer = PersianNormalizer()
 
         # ‫کش کلمات کلیدی برای Fast-Path Greeting
-        self._greeting_keywords = frozenset(
-            domain_config.get( "intent_keywords", {} ).get( "greeting", {} ).get( "keywords_fast", [] ) )
+        self._greeting_keywords = frozenset( self._config.intent_keywords.get( "greeting", {} ).get( "keywords_fast", [] ) )
 
         # ✅ محاسبهٔ یک‌بارهٔ Domain Schema در استارت‌آپ (جلوگیری از سربار تکراری)
         self._domain_schema_str = self._build_domain_schema()
@@ -92,7 +92,7 @@ class LLMOrchestrator:
             log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
             try:
                 log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
-                raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
+                raw_json, token_usage = await self._gemini.chat_json( cast( list, messages ) )
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
@@ -140,7 +140,7 @@ class LLMOrchestrator:
     def _build_domain_schema( self ) -> str:
         """تولید داینامیک راهنمای اسکیما و نگاشت‌های کیفی از YAML"""
         parts = [ "⚙️ Available Filters & Types:" ]
-        slots = self._config.get( "slot_definitions", {} )
+        slots = self._config.slot_definitions
 
         for key, cfg in slots.items():
             s_type = cfg.get( "type", "scalar" )
@@ -152,7 +152,7 @@ class LLMOrchestrator:
 
             parts.append( f"- {key}: {s_type}{example}{unit_str}" )
 
-        qual = self._config.get( "qualitative_mappings", {} )
+        qual = self._config.qualitative_mappings
         if qual:
             parts.append( "\n🔗 Qualitative Mappings:" )
             for k, v in qual.items():
@@ -189,7 +189,7 @@ class LLMOrchestrator:
             "last_products": json.dumps( last_products or [], ensure_ascii=False ),
             "domain_schema": self._domain_schema_str,          # ✅ فقط خواندن از کش
         }
-        prompts = self._config.get( "prompts" ) or {}
+        prompts = self._config.prompts
         templates = prompts.get( "templates" ) or {}
         template_str = templates.get( "extract", "" )
 
@@ -197,7 +197,7 @@ class LLMOrchestrator:
             raise RuntimeError( "⛔ تمپلیت extract در base.yaml تعریف نشده یا indentation آن شکسته است." )
 
         user_prompt = Template( template_str ).safe_substitute( context_vars )
-        system_prompt = self._config.get( "prompts", {} ).get( "system_extract", "" )
+        system_prompt = self._config.prompts.get( "system_extract", "" )
         messages: list[ ChatCompletionMessageParam ] = [
             {
                 "role": "system",

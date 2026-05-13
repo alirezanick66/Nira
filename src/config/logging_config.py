@@ -1,7 +1,7 @@
+#───────────────────── Imports ─────────────────────
 import sys
 from enum import Enum
 from pathlib import Path
-
 import arabic_reshaper
 from bidi.algorithm import get_display
 from loguru import logger
@@ -53,6 +53,7 @@ logger.add(
     format=CONSOLE_FORMAT,
     colorize=True,
     level="DEBUG",
+    enqueue=True,
     filter=lambda record: record[ "extra" ].get( "target" ) == "console",
 )
 
@@ -70,12 +71,7 @@ for category in LG:
     )
 
 
-def log_message(
-    category: LG,
-    message: str,
-    level: LogLevel = LogLevel.INFO,
-    **kwargs: object,
-) -> None:
+def log_message( category: LG, message: str, level: LogLevel = LogLevel.INFO, **kwargs: object ) -> None:
     """‫ثبت لاگ با پشتیبانی از متن فارسی
 
     ‫پارامترها:
