@@ -13,13 +13,11 @@ from typing import AsyncGenerator
 #───────────────────── Local Imports ─────────────────────
 from src.api.schemas import PipelineStatus, SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
-from src.core.llm.orchestrator import LLMOrchestrator
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
 from src.core.llm.schemas import IntentType, MetadataFilters, LLMExtractSchema
 from src.services.reranker_service import RerankerService
 from src.data.repositories.product_repository import ProductRepository
-from src.config.logging_config import log_message, LogLevel, LG
 from src.config.logging_config import log_message, LogLevel, LG
 
 

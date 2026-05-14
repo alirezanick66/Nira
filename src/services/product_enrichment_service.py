@@ -2,10 +2,10 @@
 
 ‫این ماژول مسئول تحلیل و استنتاج اطلاعات اضافی از محصول هست:
 ‫- محاسبه price_range
-‫- استنتاج quality levels (battery, camera, value_for_money)
+‫- استنتاج ‫quality levels (battery, camera, value_for_money)
 ‫- تولید tags
 """
-
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.models.product import PriceRange, Product, QualityLevel
 
 
@@ -14,9 +14,40 @@ class ProductEnrichmentService:
 
     ‫این کلاس منطق تحلیل رو از مدل Product جدا می‌کنه
     """
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
+    @classmethod
+    def enrich_product( cls, product: Product ) -> Product:
+        """‫غنی‌سازی کامل محصول
 
+        ‫این متد همه فیلدهای محاسباتی رو پر می‌کنه:
+        ‫- price_range
+        ‫- battery_quality
+        ‫- camera_quality
+        ‫- value_for_money
+        ‫- tags
+
+        Args:
+            product: مدل نرمال‌شدهٔ محصول دریافتی از لایهٔ پردازش
+
+        Returns:
+           ‫ همون Product با فیلدهای غنی‌شده
+        """
+        # ‫محاسبه price_range
+        product.price_range = cls._calculate_price_range( product.price )
+
+        # ‫استنتاج quality levels
+        product.battery_quality = cls._infer_battery_quality( product )
+        product.camera_quality = cls._infer_camera_quality( product )
+        product.value_for_money = cls._infer_value_for_money( product )
+
+        # ‫تولید tags
+        product.tags = cls._generate_tags( product )
+
+        return product
+
+    #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     @staticmethod
-    def calculate_price_range( price: int ) -> PriceRange:
+    def _calculate_price_range( price: int ) -> PriceRange:
         """‫محاسبه رنج قیمتی بر اساس قیمت (تومان)
 
         Args:
@@ -35,7 +66,7 @@ class ProductEnrichmentService:
             return PriceRange.FLAGSHIP
 
     @staticmethod
-    def infer_battery_quality( product: Product ) -> QualityLevel:
+    def _infer_battery_quality( product: Product ) -> QualityLevel:
         """‫استنتاج کیفیت باتری
 
         ‫اولویت:
@@ -76,7 +107,7 @@ class ProductEnrichmentService:
             return QualityLevel.POOR
 
     @staticmethod
-    def infer_camera_quality( product: Product ) -> QualityLevel:
+    def _infer_camera_quality( product: Product ) -> QualityLevel:
         """‫استنتاج کیفیت دوربین
 
         ‫اولویت:
@@ -113,7 +144,7 @@ class ProductEnrichmentService:
             return QualityLevel.AVERAGE
 
     @staticmethod
-    def infer_value_for_money( product: Product ) -> QualityLevel:
+    def _infer_value_for_money( product: Product ) -> QualityLevel:
         """‫استنتاج ارزش خرید (value for money)
 
         ‫بر اساس user_feedback
@@ -141,7 +172,7 @@ class ProductEnrichmentService:
         return QualityLevel.AVERAGE
 
     @staticmethod
-    def generate_tags( product: Product ) -> list[ str ]:
+    def _generate_tags( product: Product ) -> list[ str ]:
         """‫تولید برچسب‌های استنتاجی
 
         ‫بر اساس:
@@ -192,34 +223,4 @@ class ProductEnrichmentService:
                     tags.append( "premium_build" )
 
         # ‫حذف تکراری‌ها
-        return sorted( list( set( tags ) ) )
-
-    @classmethod
-    def enrich_product( cls, product: Product ) -> Product:
-        """‫غنی‌سازی کامل محصول
-
-        ‫این متد همه فیلدهای محاسباتی رو پر می‌کنه:
-        ‫- price_range
-        ‫- battery_quality
-        ‫- camera_quality
-        ‫- value_for_money
-        ‫- tags
-
-        Args:
-            product: مدل Product
-
-        Returns:
-            همون Product با فیلدهای غنی‌شده
-        """
-        # ‫محاسبه price_range
-        product.price_range = cls.calculate_price_range( product.price )
-
-        # ‫استنتاج quality levels
-        product.battery_quality = cls.infer_battery_quality( product )
-        product.camera_quality = cls.infer_camera_quality( product )
-        product.value_for_money = cls.infer_value_for_money( product )
-
-        # ‫تولید tags
-        product.tags = cls.generate_tags( product )
-
-        return product
+        return sorted( ( set( tags ) ) )

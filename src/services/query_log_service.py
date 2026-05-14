@@ -1,42 +1,22 @@
-"""
-سرویس لاگ‌گیری کوئری‌ها
-ثبت غیرهمزمان (Non-Blocking) اطلاعات هر درخواست در جدول query_logs.
-"""
+""" ‫سرویس ثبت غیرهمزمان کوئری‌ها در دیتابیس (Non-Blocking Fire & Forget)"""
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
+from __future__ import annotations
 import asyncio
-import logging
 import uuid
-from typing import Optional
-
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.settings import get_settings
+from src.config.logging_config import log_message, LogLevel, LG
 from src.data.db.models import QueryLog
 
-logger = logging.getLogger( __name__ )
-
-# ═══════════════════════════════════════════════════════════════════
-# راه‌اندازی موتور دیتابیس به صورت Global (Singleton)
-# این کار باعث می‌شود Connection Pool فقط یک‌بار ساخته شود.
-# ═══════════════════════════════════════════════════════════════════
+#────────────────────────────────────────── Configuration ──────────────────────────────────────────
 _settings = get_settings()
-_engine = create_async_engine( _settings.DATABASE_URL )
+_engine = create_async_engine( _settings.DATABASE_URL, pool_pre_ping=True )
 _session_factory = async_sessionmaker( _engine, class_=AsyncSession, expire_on_commit=False )
 
 
-async def _write_log( entry: QueryLog ) -> None:
-    """
-    رکورد لاگ را در دیتابیس ثبت می‌کند.
-    از Session مستقل استفاده می‌کند تا با بسته شدن Session درخواست اصلی، دچار خطا نشود.
-    """
-    try:
-        # ایجاد Session جدید و موقت برای این Task
-        async with _session_factory() as session:
-            async with session.begin():
-                session.add( entry )
-    except Exception:
-        logger.exception( "خطا در ثبت لاگ کوئری — request_id=%s", entry.request_id )
-
-
+#────────────────────────────────────────── Public Methods ──────────────────────────────────────────
 def log_query(
     *,
     request_id: uuid.UUID,
@@ -47,14 +27,28 @@ def log_query(
     latency_ms: int,
     response_status: str,
     domain: str = "mobile",
-    user_id: Optional[ str ] = None,
-    client_session_id: Optional[ str ] = None,
-    applied_filters: Optional[ dict ] = None,
+    user_id: str | None = None,
+    client_session_id: str | None = None,
+    applied_filters: dict[ str, object ] | None = None,
     result_count: int = 0,
 ) -> None:
-    """
-    لاگ یک درخواست را به‌صورت Non-Blocking در پس‌زمینه ثبت می‌کند.
-    این تابع بلافاصله return می‌کند و SSE stream را مسدود نمی‌کند.
+    """ثبت لاگ کوئری به‌صورت Fire & Forget در پس‌زمینه
+    
+    این تابع بلافاصله بازمی‌گردد و جریان اصلی SSE/HTTP را مسدود نمی‌کند.
+    
+    Args:
+        request_id: شناسهٔ یکتای درخواست
+        store_id: شناسهٔ فروشگاه
+        session_id: نشست فعال کاربر
+        query: متن پرس‌وجوی ورودی
+        intent: نیت تشخیص‌داده‌شده
+        latency_ms: تأخیر پردازش به میلی‌ثانیه
+        response_status: وضعیت پاسخ نهایی
+        domain: حوزهٔ درخواستی (پیش‌فرض: mobile)
+        user_id: شناسهٔ کاربر (اختیاری)
+        client_session_id: نشست سمت کلاینت (اختیاری)
+        applied_filters: فیلترهای اعمال‌شده (اختیاری)
+        result_count: تعداد نتایج بازگشتی
     """
     entry = QueryLog(
         request_id=request_id,
@@ -71,5 +65,24 @@ def log_query(
         latency_ms=latency_ms,
     )
 
-    # اجرای Task در پس‌زمینه (Fire & Forget)
-    asyncio.create_task( _write_log( entry ) )
+    # اجرای ایمن Task در پس‌زمینه
+    try:
+        asyncio.create_task( _write_log( entry ) )
+    except RuntimeError:
+        # ‫جلوگیری از کرش در صورت بسته بودن Event Loop (هنگام Shutting Down)
+        log_message( LG.DATABASE, "لوپ رویداد بسته شد؛ لاگ کوئری ثبت نشد", LogLevel.WARNING )
+
+
+#────────────────────────────────────────── Private Methods ──────────────────────────────────────────
+async def _write_log( entry: QueryLog ) -> None:
+    """ثبت ایمن رکورد لاگ ‫با Session مستقل برای جلوگیری از تداخل با Transaction اصلی
+    
+    Args:
+        entry: ‫آبجکت QueryLog آمادهٔ درج
+    """
+    try:
+        async with _session_factory() as session:
+            async with session.begin():
+                session.add( entry )
+    except Exception as exc:
+        log_message( LG.DATABASE, f"خطا در ثبت لاگ کوئری (request_id={entry.request_id}): {exc}", LogLevel.ERROR )

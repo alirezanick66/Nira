@@ -42,11 +42,9 @@ class Settings( BaseSettings ):
     # ──────────────────────────────────────────  Qdrant Vector DB ──────────────────────────────────────────
     QDRANT_URL: str = Field( default="http://localhost:6333" )
     QDRANT_COLLECTION: str = Field( default="nira_products" )
-    EMBEDDING_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Embedding" )
     EMBEDDING_DIM: int = Field( default=768, description="ابعاد بردارهای Embedding" )
 
     #────────────────────────────────────────── Reranker ──────────────────────────────────────────
-    RERANKER_MODEL_PATH: Path = Field( default=Path( "" ), description="مسیر محلی مدل Reranker" )
     RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_BATCH_SIZE: int = 8
     # ‫MVP Refinement: آستانه فیلتر نتایج کم‌ربط بعد اضافه شدن دیتا های ساختاریافته محاسبه میشود
@@ -62,7 +60,6 @@ class Settings( BaseSettings ):
     GEMINI_MODEL: str = Field( default="gemini-2.5-flash", description=" ‫مدل Gemini برای تولید پاسخ " )
 
     # ────────────────────────────────────────── ONNX Runtime ──────────────────────────────────────────
-    USE_ONNX: bool = Field( default=True, description="فعال‌سازی ONNX Runtime برای کاهش مصرف CPU/RAM" )
     ONNX_EMBEDDING_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Embedding کوانتایز شده (INT8)" )
     ONNX_RERANKER_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Reranker کوانتایز شده (INT8)" )
 
