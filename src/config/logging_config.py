@@ -18,6 +18,7 @@ class LG( str, Enum ):
     DATA_PROCESSING = "DataProcessing"
     RETRIEVAL = "Retrieval"
     LLM = "LLM"
+    SEARCH = "Search"
 
 
 class LogLevel( str, Enum ):

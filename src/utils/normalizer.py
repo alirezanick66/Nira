@@ -1,4 +1,6 @@
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 import re
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 
 
@@ -34,6 +36,43 @@ class PersianNormalizer:
     def __init__( self ):
         log_message( LG.DATA_PROCESSING, f"Custom Persian Normalizer آماده شد ", LogLevel.INFO )
 
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    def normalize( self, text: str, remove_diacritics: bool = True, remove_kashida: bool = True ) -> str:
+        """
+        نرمال‌سازی کامل متن فارسی
+        """
+        try:
+            if not text or not isinstance( text, str ):
+                return ""
+
+            # ‫2. تبدیل حروف عربی و اعداد (جایگزین حلقه‌های کند)
+            text = self._fix_chars_and_numbers( text )
+
+            # ‫3. اصلاح نیم‌فاصله
+            text = self._fix_zwnj( text )
+
+            # ‫4. حذف اعراب
+            if remove_diacritics:
+                text = self._remove_diacritics( text )
+
+            # ‫5. حذف کشیده
+            if remove_kashida:
+                text = self._remove_kashida( text )
+
+            # ‫6. اصلاح علائم در اعداد
+            text = self._fix_number_punctuation( text )
+
+            # 7. اضافه کردن فاصله بعد از علائم نگارشی
+            text = self._fix_spacing_and_punctuation( text )
+
+            return text
+
+        except Exception as e:
+            log_message( LG.DATA_PROCESSING, f"خطا در نرمال‌سازی متن: {str(e)}", LogLevel.WARNING )
+            # بازگشت حداقلی متن تمیز شده در صورت خطا
+            return " ".join( text.split() )
+
+    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
     def _fix_chars_and_numbers( self, text: str ) -> str:
         """ ‫تبدیل یکپارچه حروف و اعداد با استفاده از translate (بسیار سریع)"""
         return text.translate( self._TRANS_TABLE )
@@ -102,38 +141,3 @@ class PersianNormalizer:
         text = text.strip()
 
         return text
-
-    def normalize( self, text: str, remove_diacritics: bool = True, remove_kashida: bool = True ) -> str:
-        """
-        نرمال‌سازی کامل متن فارسی
-        """
-        try:
-            if not text or not isinstance( text, str ):
-                return ""
-
-            # ‫2. تبدیل حروف عربی و اعداد (جایگزین حلقه‌های کند)
-            text = self._fix_chars_and_numbers( text )
-
-            # ‫3. اصلاح نیم‌فاصله
-            text = self._fix_zwnj( text )
-
-            # ‫4. حذف اعراب
-            if remove_diacritics:
-                text = self._remove_diacritics( text )
-
-            # ‫5. حذف کشیده
-            if remove_kashida:
-                text = self._remove_kashida( text )
-
-            # ‫6. اصلاح علائم در اعداد
-            text = self._fix_number_punctuation( text )
-
-            # 7. اضافه کردن فاصله بعد از علائم نگارشی
-            text = self._fix_spacing_and_punctuation( text )
-
-            return text
-
-        except Exception as e:
-            log_message( LG.DATA_PROCESSING, f"خطا در نرمال‌سازی متن: {str(e)}", LogLevel.WARNING )
-            # بازگشت حداقلی متن تمیز شده در صورت خطا
-            return " ".join( text.split() )

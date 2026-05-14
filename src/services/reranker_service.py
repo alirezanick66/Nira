@@ -1,13 +1,12 @@
-"""سرویس مرتب‌سازی نهایی نتایج (Cross-Encoder Reranker)"""
-#───────────────────── Imports  ─────────────────────
+""" ‫سرویس مرتب‌سازی نهایی نتایج (Cross-Encoder Reranker)"""
+#────────────────────────────────────────── Imports  ──────────────────────────────────────────
 from __future__ import annotations
 import numpy as np
 import onnxruntime as ort
-import torch
 from typing import Sequence
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
-#───────────────────── Imports داخلی پروژه─────────────────────
+#────────────────────────────────────────── Local  Imports ──────────────────────────────────────────
 from src.config.settings import Settings, get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.vector.qdrant_payload import QdrantProductPayload
@@ -21,28 +20,17 @@ class RerankerService:
         self._batch_size = self._settings.RERANKER_BATCH_SIZE
         self._min_score = self._settings.RERANKER_MIN_SCORE          # MVP Refinement
         self._session: ort.InferenceSession | None = None
-        self._model: PreTrainedModel | None = None
         self._tokenizer: PreTrainedTokenizerBase | None = None
 
-        if self._settings.USE_ONNX and ( self._settings.ONNX_RERANKER_PATH / "model_quantized.onnx" ).exists():
-            self._session = ort.InferenceSession(
-                str( self._settings.ONNX_RERANKER_PATH / "model_quantized.onnx" ),
-                providers=[ "CPUExecutionProvider" ],
-            )
-            self._tokenizer = AutoTokenizer.from_pretrained( self._settings.ONNX_RERANKER_PATH )
-            log_message( LG.RETRIEVAL, "سرویس Reranker (ONNX INT8) با موفقیت بارگذاری شد", LogLevel.INFO )
-            return
+        model_path = self._settings.ONNX_RERANKER_PATH / "model_quantized.onnx"
+        if not model_path.exists():
+            raise FileNotFoundError( f"مسیر مدل Reranker یافت نشد: {model_path}" )
 
-        path = self._settings.RERANKER_MODEL_PATH
-        if not path.exists():
-            raise FileNotFoundError( f"مسیر مدل Reranker یافت نشد: {path}" )
+        self._session = ort.InferenceSession( str( model_path ), providers=[ "CPUExecutionProvider" ] )
+        self._tokenizer = AutoTokenizer.from_pretrained( str( self._settings.ONNX_RERANKER_PATH ) )
+        log_message( LG.RETRIEVAL, "سرویس Reranker (ONNX INT8) با موفقیت بارگذاری شد", LogLevel.INFO )
 
-        self._tokenizer = AutoTokenizer.from_pretrained( str( path ) )
-        self._model = AutoModelForSequenceClassification.from_pretrained( str( path ) )
-        if self._model is not None:
-            self._model.eval()          # ✅ ‫انتقال به __init__ برای جلوگیری از فراخوانی تکراری
-        log_message( LG.RETRIEVAL, "سرویس Reranker (PyTorch) بارگذاری شد", LogLevel.INFO )
-
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     def rerank(
         self,
         query: str,
@@ -55,14 +43,14 @@ class RerankerService:
         ‫MVP Refinement: اعمال آستانه فیلتر برای کاهش نتایج نامرتبط در Top-k.
 
         Args:
-            query: کوئری کاربر
-            payloads: نتایج بازیابی‌شده از Hybrid Search
-            top_k: تعداد نهایی
-            min_score: آستانه‌ی Sigmoid (پیش‌فرض: settings.RERANKER_MIN_SCORE).
-                      ‫مقدار `0.0` برای غیرفعال کردن فیلتر.
+            query: کوئری ورودی کاربر
+            payloads:‫نتایج بازیابی‌شده از Hybrid Search
+            top_k: تعداد نهایی محصولات پس از فیلتر
+            min_score: ‫آستانهٔ امتیاز (پیش‌فرض: مقدار تعریف‌شده در settings)
+                
 
         Returns:
-            لیست محصولات مرتب‌شده (حداکثر top_k)
+            لیست مرتب‌شدهٔ محصولات (حداکثر top_k عدد)
         """
         scored = self.rerank_with_scores( query, payloads )
         if not scored:
@@ -73,11 +61,8 @@ class RerankerService:
             filtered = [ ( p, s ) for p, s in scored if s >= threshold ]
             if not filtered:
                 # ‫اگر همه زیر آستانه هستند، حداقل بهترین را برگردان (Recall اولویت دارد)
-                log_message(
-                    LG.RETRIEVAL,
-                    f"⚠️ هیچ نتیجه‌ای آستانه {threshold:.2f} را عبور نکرد - بازگشت به Top-1",
-                    LogLevel.WARNING,
-                )
+                log_message( LG.RETRIEVAL, f"⚠️ هیچ نتیجه‌ای آستانه {threshold:.2f} را عبور نکرد - بازگشت به Top-1",
+                             LogLevel.WARNING )
                 filtered = scored[ :1 ]
         else:
             filtered = scored
@@ -92,68 +77,54 @@ class RerankerService:
 
     def rerank_with_scores( self, query: str,
                             payloads: Sequence[ QdrantProductPayload ] ) -> list[ tuple[ QdrantProductPayload, float ] ]:
-        """‫نسخه‌ای از rerank که امتیازات Sigmoid را هم برمی‌گرداند.
+        """محاسبهٔ امتیاز تطابق کوئری با هر سند و مرتب‌سازی نزولی
 
-        ‫مورد استفاده: کالیبراسیون آستانه (`scripts/calibrate_reranker.py`)
+        Args:
+            query: متن کوئری کاربر
+            payloads: لیست محصولات کاندید برای رتبه‌بندی
+
+        Returns:
+            لیست تاپل‌های (محصول, امتیاز) مرتب‌شده بر اساس بیشترین شباهت
         """
-        if not payloads or not self._tokenizer: return []
+        if not payloads or not self._tokenizer or not self._session:
+            return []
 
         try:
             queries = [ query ] * len( payloads )
             docs = [ self._prepare_document_text( p ) for p in payloads ]
             scores: list[ float ] = []
 
-            if self._session and self._tokenizer:
-                for i in range( 0, len( payloads ), self._batch_size ):
-                    batch_q = queries[ i:i + self._batch_size ]
-                    batch_d = docs[ i:i + self._batch_size ]
-                    inputs = self._tokenizer(
-                        text=batch_q,
-                        text_pair=batch_d,
-                        padding=True,
-                        truncation=True,
-                        max_length=256,
-                        return_tensors="np",
-                    )
-                    outputs = self._session.run( None, dict( inputs ) )
-                    logits = np.asarray( outputs[ 0 ] ).squeeze( axis=-1 )
-                    batch_scores = 1.0 / ( 1.0 + np.exp( -logits ) )
-                    scores.extend( batch_scores.tolist() if batch_scores.ndim != 0 else [ float( batch_scores ) ] )
-
-            elif self._model and self._tokenizer:
-                model = self._model
-                with torch.inference_mode():
-                    for i in range( 0, len( payloads ), self._batch_size ):
-                        batch_q = queries[ i:i + self._batch_size ]
-                        batch_d = docs[ i:i + self._batch_size ]
-                        inputs = self._tokenizer(
-                            text=batch_q,
-                            text_pair=batch_d,
-                            padding=True,
-                            truncation=True,
-                            max_length=256,
-                            return_tensors="pt",
-                        )
-                        inputs = { k: v.to( model.device ) for k, v in inputs.items() }
-                        outputs = model( **inputs ).logits.squeeze( -1 )
-                        batch_scores = torch.sigmoid( outputs ).cpu().tolist()
-                        scores.extend( batch_scores if isinstance( batch_scores, list ) else [ batch_scores ] )
+            for i in range( 0, len( payloads ), self._batch_size ):
+                batch_q = queries[ i:i + self._batch_size ]
+                batch_d = docs[ i:i + self._batch_size ]
+                inputs = self._tokenizer(
+                    text=batch_q,
+                    text_pair=batch_d,
+                    padding=True,
+                    truncation=True,
+                    return_tensors="np",
+                )
+                outputs = self._session.run( None, dict( inputs ) )
+                logits = np.asarray( outputs[ 0 ] ).squeeze( axis=-1 )
+                batch_scores = 1.0 / ( 1.0 + np.exp( -logits ) )
+                scores.extend( batch_scores.tolist() if batch_scores.ndim != 0 else [ float( batch_scores ) ] )
 
             scored = sorted( zip( payloads, scores ), key=lambda x: x[ 1 ], reverse=True )
             return list( scored )
 
         except Exception as exc:
-            log_message( LG.RETRIEVAL, f"خطا در Reranking: {exc}", LogLevel.WARNING )
+            log_message( LG.RETRIEVAL, f"خطا در Reranking: {exc}", LogLevel.ERROR )
             return [ ( p, 0.0 ) for p in payloads ]
 
     @staticmethod
-    @staticmethod
     def _prepare_document_text( payload: QdrantProductPayload ) -> str:
-        """‫ساخت متن ورودی Reranker از Payload محصول
+        """تولید متن بهینه از Payload برای تزریق به Cross-Encoder
 
-        ‫تغییر MVP Refinement: اضافه شدن قیمت واقعی (تومان)، رم، باتری و دوربین
-        ‫به متن — تا Reranker بتواند کوئری‌های عددی مثل «زیر ۱۰ میلیون» یا
-        ‫«رم ۸ گیگ» را با محصول واقعی مقایسه کند، نه فقط برچسب price_range.
+        Args:
+            payload: داده‌های ساختاریافته محصول
+
+        Returns:
+            رشتهٔ ترکیبی شامل عنوان، قیمت، مشخصات کلیدی و بازخورد کاربران
         """
         parts: list[ str ] = [ payload.title ]
 

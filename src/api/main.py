@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi.responses import JSONResponse
 
 #─────────────────────local imports─────────────────────
+from services.search_service import SearchService
 from src.data.repositories.product_repository import ProductRepository
 from src.config.domain_loader import DomainConfigLoader
 from src.api.schemas import ErrorLog
@@ -44,6 +45,12 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     app.state.retriever = QdrantHybridRetriever( config, embedding_service=embedder )
     app.state.reranker = RerankerService()
     app.state.llm = LLMOrchestrator( config )
+    app.state.search_service = SearchService(
+        retriever=app.state.retriever,
+        reranker=app.state.reranker,
+        llm=app.state.llm,
+        image_repo=app.state.product_repo,
+    )
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield

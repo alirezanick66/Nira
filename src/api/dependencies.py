@@ -1,14 +1,15 @@
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from fastapi import HTTPException, Request, status
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 if TYPE_CHECKING:
     from src.core.vector.qdrant_retriever import QdrantHybridRetriever
     from src.services.reranker_service import RerankerService
     from src.core.llm.orchestrator import LLMOrchestrator
     from src.data.repositories.product_repository import ProductRepository
+    from src.services.search_service import SearchService
 
 
 def get_retriever( request: Request ) -> QdrantHybridRetriever:
@@ -40,3 +41,8 @@ def get_product_repo( request: Request ) -> ProductRepository:
             detail="سرویس دیتابیس محصول در حال راه‌اندازی است",
         )
     return request.app.state.product_repo
+
+
+async def get_search_service( request: Request ) -> SearchService:
+    """ ‫تزریق نمونهٔ Singleton ساخته‌شده در Lifespan"""
+    return request.app.state.search_service
