@@ -28,8 +28,9 @@ class QdrantIndexer:
 
     #────────────────────────────────────────── Public Methods ───────────────────────────────────────────────────────────────
 
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     def index_products( self, products: Sequence[ Product ] ) -> int:
-        """‫تبدیل، بردارسازی و آپلود محصولات به Qdrant
+        """تبدیل، بردارسازی و آپلود محصولات ‫به Qdrant
 
         Args:
             products: لیست محصولات پردازش‌شده
@@ -38,8 +39,9 @@ class QdrantIndexer:
             تعداد محصولات ایندکس‌شده
         """
         self._ensure_collection()
-        points = []
+        points: list[ models.PointStruct ] = []
 
+        # ‫بردارسازی دسته‌ای (Batch Dense)
         texts = [ f"passage: {p.title}" for p in products ]
         dense_vectors = self._embedder.encode( texts, is_query=False )
 
@@ -59,7 +61,7 @@ class QdrantIndexer:
 
         if points:
             self._client.upsert( collection_name=self._collection, points=points )
-            log_message( LG.DATA_PROCESSING, f"{len(points)} محصول در Qdrant ایندکس شد", LogLevel.INFO )
+            log_message( LG.DATA_PROCESSING, f"✅ {len(points)} محصول در Qdrant ایندکس شد", LogLevel.DEBUG )
 
         return len( points )
 
@@ -82,7 +84,7 @@ class QdrantIndexer:
         log_message( LG.DATA_PROCESSING, f"کالکشن {self._collection} با پشتیبانی Hybrid ایجاد شد", LogLevel.INFO )
 
         # ‫ایندکس‌های Payload برای فیلتربرداری سریع
-        # ‫MVP Refinement: ایندکس واحدها برای فیلتر دقیق ‫GB/MB/TB
+
         payload_indexes: dict[ str, PayloadSchemaType ] = {
             "price": PayloadSchemaType.INTEGER,
             "is_available": PayloadSchemaType.BOOL,

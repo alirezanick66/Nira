@@ -22,27 +22,135 @@ from src.utils.normalizer import PersianNormalizer
 
 class LLMOrchestrator:
 
-    def __init__( self, domain_config: DomainConfig ) -> None:
+    def __init__(
+        self,
+        domain_config: DomainConfig,
+        groq_client: GroqClient | None = None,
+        gemini_client: GeminiClient | None = None,
+        memory: ConversationMemory | None = None,
+        normalizer: PersianNormalizer | None = None,
+    ) -> None:
+        """ارکستراتور اصلی LLM با پشتیبانی از تزریق وابستگی (DI) برای تست‌پذیری
+
+        Args:
+            domain_config: پیکربندی دامنه بارگذاری‌شده
+            groq_client: ‫کلاینت Groq (اختیاری)
+            gemini_client: ‫کلاینت Gemini (اختیاری)
+            memory: ‫سرویس حافظه مکالمه (اختیاری)
+            normalizer: ‫نرمال‌ساز متن فارسی (اختیاری)
+        """
         self._config = domain_config
-        self._memory = ConversationMemory( max_turns=3 )
-        self._groq = GroqClient()
-        self._gemini = GeminiClient()
+        self._memory = memory or ConversationMemory( max_turns=3 )
+        self._groq = groq_client or GroqClient()
+        self._gemini = gemini_client or GeminiClient()
         self._validator = TypeAdapter( LLMResponseSchema )
         self._extract_validator = TypeAdapter( LLMExtractSchema )
         self._prompt_engine = PromptEngine( domain_config )
-        self._normalizer = PersianNormalizer()
+        self._normalizer = normalizer or PersianNormalizer()
 
-        # ‫کش کلمات کلیدی برای Fast-Path Greeting
         self._greeting_keywords = frozenset( self._config.intent_keywords.get( "greeting", {} ).get( "keywords_fast", [] ) )
-
-        # ✅ محاسبهٔ یک‌بارهٔ Domain Schema در استارت‌آپ (جلوگیری از سربار تکراری)
         self._domain_schema_str = self._build_domain_schema()
+
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 🟢 فاز ۲: متدهای جدید استخراج نیت/فیلتر + چک سریع
-    # ═══════════════════════════════════════════════════════════════════════════
+    # ──────────────────────────────────────  فاز 1:متدهای جدید استخراج نیت/فیلتر + چک   ──────────────────────────────────────
+    async def extract(
+        self,
+        query: str,
+        session_id: str,
+        last_filters: MetadataFilters | None = None,
+        last_products: list[ str ] | None = None,
+        history: list[ dict[ str, str ] ] | None = None,
+    ) -> LLMExtractSchema:
+        """استخراج نیت، فیلترها و کوئری معنایی با اعتبارسنجی سخت‌گیرانه
 
+        Args:
+            query: متن ورودی کاربر
+            session_id: شناسه نشست فعال
+            last_filters: فیلترهای اعمال‌شده در مرحله قبل
+            last_products: محصولات پیشنهادی قبلی
+            history: تاریخچه مکالمه
+
+        Returns:
+            ‫LLMExtractSchema اعتبارسنجی‌شده
+
+        Raises:
+            RuntimeError: ‫در صورت عدم دسترسی به سرویس‌های LLM
+            ValueError: ‫در صورت خروجی JSON نامعتبر
+        """
+        normalized = self._normalizer.normalize( query )
+
+        # ‫۱. Fast-Path Greeting Check
+        if self._is_greeting_fast( normalized ):
+            log_message( LG.LLM, "👋 Greeting شناسایی شد (Fast-Path) | بدون فراخوانی LLM", LogLevel.DEBUG )
+            return LLMExtractSchema(
+                intent=IntentType.GENERAL_CHAT,
+                semantic_query="",
+                metadata_filters={},
+                needs_clarification=False,
+                clarification_question=None,
+                has_conflict=False,
+                conflict_reason=None,
+            )
+
+        # ‫۲. ساخت Context پویا
+        context_vars = {
+            "query": normalized,
+            "history": json.dumps( history or [], ensure_ascii=False ),
+            "last_filters": json.dumps( last_filters or {}, ensure_ascii=False ),
+            "last_products": json.dumps( last_products or [], ensure_ascii=False ),
+            "domain_schema": self._domain_schema_str,
+        }
+
+        templates = self._config.prompts.get( "templates" )
+        if isinstance( templates, dict ):
+            template_str = templates.get( "extract", "" )
+        else:
+            template_str = ""
+
+        user_prompt = Template( template_str ).safe_substitute( context_vars )
+        system_prompt = str( self._config.prompts.get( "system_extract", "" ) )
+        messages: list[ ChatCompletionMessageParam ] = [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            },
+        ]
+
+        # ‫۳. فراخوانی LLM (Groq → Gemini Fallback)
+        raw_json = ""
+        try:
+            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
+        except Exception as exc:
+            log_message( LG.LLM, f"⚠️ Groq failed in extract: {exc} | Switching to Gemini...", LogLevel.WARNING )
+            try:
+                raw_json, token_usage = await self._gemini.chat_json( cast( list, messages ) )
+            except Exception as gem_exc:
+                log_message( LG.LLM, f"❌ هر دو سرویس LLM در extract ناموفق بودند: {gem_exc}", LogLevel.ERROR )
+                raise RuntimeError( "سرویس استخراج LLM در دسترس نیست" ) from gem_exc
+
+        # ‫ ۴. پارس و اعتبارسنجی سخت‌گیرانه Pydantic
+        try:
+            cleaned = raw_json.replace( "```json", "" ).replace( "```", "" ).strip()
+            start, end = cleaned.find( "{" ), cleaned.rfind( "}" )
+            if start != -1 and end != -1 and end > start:
+                cleaned = cleaned[ start:end + 1 ]
+
+            validated = self._extract_validator.validate_python( json.loads( cleaned ) )
+            log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | Session: {session_id}",
+                         LogLevel.DEBUG )
+            log_message( LG.LLM, f"📥 Extract Tokens: {token_usage.get('total_tokens', 0)}", LogLevel.DEBUG )
+            return validated
+
+        except Exception as exc:
+            log_message( LG.LLM, f"❌ خطای اعتبارسنجی Extract: {exc}", LogLevel.ERROR )
+            raise ValueError( "خروجی LLM ساختار JSON معتبر ندارد" ) from exc
+
+    # ──────────────────────────────────────  فاز 2   ──────────────────────────────────────
     async def generate(
         self,
         session_id: str,
@@ -61,7 +169,11 @@ class LLMOrchestrator:
             filters_str: نمایش رشته‌ای فیلترهای اعمال‌شده برای تزریق به پرامپت
             products: لیست محصولات بازیابی‌شده
             applied_filters: فیلترهای متادیتای اعمال‌شده (برای ذخیره در حافظه)
+            
+        Returns:
+            دیکشنری پاسخ اعتبارسنجی‌شده
         """
+
         # ‫۱. ثبت پیام کاربر در حافظه
         await self._memory.add_message( session_id, "user", user_query )
 
@@ -71,7 +183,7 @@ class LLMOrchestrator:
         # ‫ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
         history = await self._memory.get_history( session_id )
         if len( history ) > 1:
-            # ‫درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
+            #‫ ‫درج پیام‌های قبلی قبل از پیام فعلی (حفظ ساختار role/content)
             for msg in history[ :-1 ]:
                 messages.insert( -1, msg )
 
@@ -84,7 +196,6 @@ class LLMOrchestrator:
 
         # ‫۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
-        groq_messages = cast( list[ ChatCompletionMessageParam ], messages )
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
             raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
@@ -114,7 +225,11 @@ class LLMOrchestrator:
 
             validated = self._validator.validate_python( json.loads( json_str ) )
             await self._memory.add_message( session_id, "assistant", validated.explanation, applied_filters=applied_filters or {} )
-            return validated.model_dump()
+            result = validated.model_dump()
+            result[ "meta" ] = {
+                "token_usage": token_usage
+            }          #‫ اضافه کردن آمار توکن‌ها برای ذخیره در سطح بالاتر(query_log_service)
+            return result
         except Exception as exc:
             log_message( LG.LLM, f"❌ خطای اعتبارسنجی JSON: {exc}", LogLevel.ERROR )
             return self._fallback_response( user_query, products )
@@ -144,7 +259,7 @@ class LLMOrchestrator:
 
         for key, cfg in slots.items():
             s_type = cfg.get( "type", "scalar" )
-            units = list( cfg.get( "units", {} ).keys() )
+            units = list( cfg.get( "units", {} ).keys() )          # type: ignore
 
             # ✅ افزودن مثال‌های صریح برای جلوگیری از Hallucination کلید unit
             example = " (مثال: {'price': {'<=': 20000000}} ← فقط تومان، بدون unit)" if key == "price" else ""
@@ -160,78 +275,3 @@ class LLMOrchestrator:
                     parts.append( f"- {k}: {list(v.keys())}" )
 
         return "\n".join( parts )
-
-    async def extract( self,
-                       query: str,
-                       session_id: str,
-                       last_filters: MetadataFilters | None = None,
-                       last_products: list[ str ] | None = None,
-                       history: list[ dict[ str, str ] ] | None = None ) -> LLMExtractSchema:
-        """استخراج نیت، فیلترها و کوئری معنایی با اعتبارسنجی سخت‌گیرانه"""
-        normalized = self._normalizer.normalize( query )
-
-        # ۱. Fast-Path Greeting Check
-        if self._is_greeting_fast( normalized ):
-            log_message( LG.LLM, "👋 Greeting شناسایی شد (Fast-Path) | بدون فراخوانی LLM", LogLevel.DEBUG )
-            return LLMExtractSchema( intent=IntentType.GENERAL_CHAT,
-                                     semantic_query="",
-                                     metadata_filters={},
-                                     needs_clarification=False,
-                                     clarification_question=None,
-                                     has_conflict=False,
-                                     conflict_reason=None )
-
-        # ۲. ساخت Context پویا
-        context_vars = {
-            "query": normalized,
-            "history": json.dumps( history or [], ensure_ascii=False ),
-            "last_filters": json.dumps( last_filters or {}, ensure_ascii=False ),
-            "last_products": json.dumps( last_products or [], ensure_ascii=False ),
-            "domain_schema": self._domain_schema_str,          # ✅ فقط خواندن از کش
-        }
-        prompts = self._config.prompts
-        templates = prompts.get( "templates" ) or {}
-        template_str = templates.get( "extract", "" )
-
-        if not template_str:
-            raise RuntimeError( "⛔ تمپلیت extract در base.yaml تعریف نشده یا indentation آن شکسته است." )
-
-        user_prompt = Template( template_str ).safe_substitute( context_vars )
-        system_prompt = self._config.prompts.get( "system_extract", "" )
-        messages: list[ ChatCompletionMessageParam ] = [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            },
-        ]
-
-        # ۳. فراخوانی LLM (Groq → Gemini Fallback)
-        raw_json = ""
-        try:
-            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
-        except Exception as exc:
-            log_message( LG.LLM, f"⚠️ Groq failed in extract: {exc} | Switching to Gemini...", LogLevel.WARNING )
-            try:
-                raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
-            except Exception as gem_exc:
-                log_message( LG.LLM, f"❌ هر دو سرویس LLM در extract ناموفق بودند: {gem_exc}", LogLevel.ERROR )
-                raise RuntimeError( "سرویس استخراج LLM در دسترس نیست" ) from gem_exc
-
-        # ۴. پارس و اعتبارسنجی سخت‌گیرانه Pydantic
-        try:
-            cleaned = raw_json.replace( "```json", "" ).replace( "```", "" ).strip()
-            start, end = cleaned.find( "{" ), cleaned.rfind( "}" )
-            if start != -1 and end != -1 and end > start:
-                cleaned = cleaned[ start:end + 1 ]
-
-            validated = self._extract_validator.validate_python( json.loads( cleaned ) )
-            log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]} |  {validated}", LogLevel.DEBUG )
-            return validated
-
-        except Exception as exc:
-            log_message( LG.LLM, f"❌ خطای اعتبارسنجی Extract: {exc}", LogLevel.ERROR )
-            raise ValueError( "خروجی LLM ساختار JSON معتبر ندارد" ) from exc

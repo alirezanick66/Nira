@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi.responses import JSONResponse
 
 #─────────────────────local imports─────────────────────
-from services.search_service import SearchService
+from src.services.search_service import SearchService
 from src.data.repositories.product_repository import ProductRepository
 from src.config.domain_loader import DomainConfigLoader
 from src.api.schemas import ErrorLog

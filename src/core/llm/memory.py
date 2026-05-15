@@ -1,23 +1,24 @@
 """‫مدیریت حافظه مکالمه (Conversation Memory)
 ‫مسئول: نگهداری تاریخچه چت، فیلترهای اعمال‌شده، و ادغام فیلترهای refine
 """
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
-
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
 import asyncio
 from typing import Deque
 
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 
 
-@dataclass
+@dataclass( frozen=True )
 class _Turn:
     """یک نوبت مکالمه شامل پیام و فیلترهای اعمال‌شده"""
     role: str
     content: str
-    applied_filters: dict = field( default_factory=dict )
+    applied_filters: dict[ str, object ] = field( default_factory=dict )
 
 
 class ConversationMemory:
@@ -34,7 +35,14 @@ class ConversationMemory:
         log_message( LG.LLM, "سرویس ConversationMemory راه‌اندازی شد", LogLevel.INFO )
 
     async def get_or_create_session( self, session_id: str | None = None ) -> str:
-        """‫بازگرداندن یا ایجاد شناسه نشست جدید"""
+        """دریافت یا ایجاد شناسه نشست جدید
+
+        Args:
+            ‫session_id: شناسه نشست فعال یا None برای ایجاد خودکار
+
+        Returns:
+           ‫ شناسه نشست نهایی (str)
+        """
         if not session_id:
             session_id = str( uuid.uuid4() )
         async with self._lock:
@@ -54,7 +62,7 @@ class ConversationMemory:
             session_id: شناسه نشست فعال
             role: نقش فرستنده (user | assistant)
             content: متن پیام
-            applied_filters: فیلترهای متادیتای اعمال‌شده در این نوبت (اختیاری)
+            applied_filters: فیلترهای متادیتای اعمال‌شده در این نوبت
         """
         async with self._lock:
             self._sessions.setdefault( session_id, deque( maxlen=self._max_turns ) )

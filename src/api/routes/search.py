@@ -19,7 +19,8 @@ from fastapi.responses import StreamingResponse
 
 #─────────────────────local imports─────────────────────
 from src.data.repositories.product_repository import ProductRepository
-from src.api.schemas import SearchRequest, SearchResponse
+from src.api.schemas import SearchRequest
+from src.core.schemas import SearchResponse
 from src.services.search_service import PipelineStatus, SearchService
 from src.api.dependencies import get_retriever, get_reranker, get_llm, get_product_repo
 from src.services.query_log_service import log_query
@@ -110,6 +111,7 @@ async def search_products(
             detail="خطای داخلی سرور.",
         )
     finally:
+        tokens = response.meta.get( "token_usage", {} ) if response else {}
         log_query(
             request_id=uuid.uuid4(),
             store_id=store_id,
@@ -123,6 +125,9 @@ async def search_products(
             result_count=len( response.results ) if response else 0,
             response_status=response_status,
             latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+            prompt_tokens=tokens.get( "prompt_tokens", 0 ),
+            completion_tokens=tokens.get( "completion_tokens", 0 ),
+            total_tokens=tokens.get( "total_tokens", 0 ),
         )
 
 
@@ -166,7 +171,7 @@ async def search_products_stream(
         result_intent = "unknown"
         result_count = 0
         applied_filters: dict | None = None
-
+        tokens: dict = {}
         try:
             service = _build_service( retriever, reranker, llm, product_repo )
 
@@ -183,6 +188,7 @@ async def search_products_stream(
                     result_intent = event.intent
                     result_count = len( event.results )
                     applied_filters = json.loads( json.dumps( dict( event.applied_filters ), ensure_ascii=False ) )
+                    tokens = ( val if isinstance( val := ( event.meta or {} ).get( "token_usage" ), dict ) else {} )
                     yield _sse_event( "result", event.model_dump() )
 
         except Exception:
@@ -203,6 +209,9 @@ async def search_products_stream(
                 result_count=result_count,
                 response_status=response_status,
                 latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+                prompt_tokens=tokens.get( "prompt_tokens", 0 ),
+                completion_tokens=tokens.get( "completion_tokens", 0 ),
+                total_tokens=tokens.get( "total_tokens", 0 ),
             )
 
     return StreamingResponse(

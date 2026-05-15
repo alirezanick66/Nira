@@ -2,7 +2,10 @@
 
 ‫این ماژول مسئول تبدیل داده‌های خام API دیجی‌کالا به مدل Product نرمال‌شده هست
 """
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
+import re
 
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.models.product import ( ExpertReview, Product, ProductSpecification, ReviewSectionItem, UserFeedback, ProductCategory,
                                       ProductStatus )
 from src.data.models.api_responses import DigikalaProduct, DigikalaSpecification
@@ -69,6 +72,13 @@ class ProductTransformer:
             price = api_product.default_variant.price.selling_price
             original_price = api_product.default_variant.price.rrp_price
             discount_percent = api_product.default_variant.price.discount_percent
+
+        # ‫پارس دوربین و تزریق به مشخصات (بدون تغییر اسکیما)
+        camera_meta = cls._parse_camera_specs( specifications.raw_specifications )
+        specifications._camera_meta = camera_meta          # type: ignore
+        camera_mp = camera_meta.get( "camera_mp" )
+        if specifications.camera_mp is None and isinstance( camera_mp, ( int, float ) ):
+            specifications.camera_mp = float( camera_mp )
 
         # ‫ساخت Product
         product = Product(
@@ -139,6 +149,65 @@ class ProductTransformer:
         }
 
         return status_map.get( status, ProductStatus.OUT_OF_STOCK )
+
+    @staticmethod
+    def _parse_camera_specs( raw_specs: list[ dict[ str, object ] ] ) -> dict[ str, object ]:
+        """استخراج و پارس مشخصات دوربین از داده‌های خام API
+
+        Args:
+            ‫raw_specs: لیست گروه‌های مشخصات فنی دریافتی از API
+
+        Returns:
+           ‫ دیکشنری شامل: camera_mp, main_camera_mp, has_ultrawide, video_4k, camera_summary
+        """
+        mp_pattern = re.compile( r'(\d+)\s*(?:مگاپیکسل|MP)', re.IGNORECASE )
+        all_attrs: list[ tuple[ str, str ] ] = []
+
+        for group in raw_specs:
+            if not isinstance( group, dict ): continue
+            attrs = group.get( "attributes" )
+            if isinstance( attrs, list ):
+                for attr in attrs:
+                    if isinstance( attr, dict ):
+                        title = str( attr.get( "title", "" ) ).strip()
+                        values = attr.get( "values", [] )
+                        val_text = " ".join( str( v ) for v in values if isinstance( v, ( str, int, float ) ) )
+                        if title and val_text: all_attrs.append( ( title, val_text ) )
+
+        main_mp: int | None = None
+        has_ultrawide = False
+        video_4k = False
+        summary_parts: list[ str ] = []
+
+        for title, val in all_attrs:
+            if "رزولوشن دوربین اصلی" in title:
+                match = mp_pattern.search( val )
+                if match:
+                    main_mp = int( match.group( 1 ) )
+                    summary_parts.append( f"{main_mp}MP اصلی" )
+
+            if "نوع لنز دوربین" in title or "لنز دوم" in title:
+                if any( kw in val.lower() for kw in ( "فوق عریض", "اولترا واید", "ultrawide", "wide" ) ):
+                    has_ultrawide = True
+
+            if "رزولوشن فیلمبرداری" in title or "فیلمبرداری" in title:
+                if "4k" in val.lower() or "۴k" in val: video_4k = True
+
+            if "رزولوشن دوربین سلفی" in title:
+                match = mp_pattern.search( val )
+                if match: summary_parts.append( f"سلفی {match.group(1)}MP" )
+
+            if "مشخصات دوربین" in title or "فیلمبرداری" in title:
+                if any( kw in val for kw in ( "لرزشگیر", "OIS" ) ): summary_parts.append( "لرزشگیر" )
+                if any( kw in val.lower() for kw in ( "dolby vision", "hdr" ) ): summary_parts.append( "HDR" )
+
+        return {
+            "camera_mp": main_mp,
+            "main_camera_mp": main_mp,
+            "has_ultrawide": has_ultrawide,
+            "video_4k": video_4k,
+            "camera_summary": " | ".join( summary_parts ) or None,
+        }
 
     @staticmethod
     def _serialize_specs( specs: list[ DigikalaSpecification ] ) -> list[ dict[ str, object ] ]:

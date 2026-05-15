@@ -18,7 +18,7 @@ class DomainConfig( BaseModel ):
     intent_keywords: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
     qualitative_mappings: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
     slot_definitions: dict[ str, dict[ str, object ] ] = Field( default_factory=dict )
-    prompts: dict[ str, str ] = Field( default_factory=dict )
+    prompts: dict[ str, object ] = Field( default_factory=dict )
 
     #mobile.yaml Config
     brands: list[ str ] = Field( default_factory=list )

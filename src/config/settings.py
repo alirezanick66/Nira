@@ -59,6 +59,10 @@ class Settings( BaseSettings ):
     GROQ_MODEL: str = Field( default="llama-3.3-70b-versatile", description=" ‫مدل Groq برای تولید پاسخ" )
     GEMINI_MODEL: str = Field( default="gemini-2.5-flash", description=" ‫مدل Gemini برای تولید پاسخ " )
 
+    LLM_TEMPERATURE: float = Field( default=0.3, ge=0.0, le=1.0 )
+    GROQ_TIMEOUT_SEC: float = Field( default=15.0, gt=0.0 )
+    LLM_MAX_RETRIES: int = Field( default=2, ge=1 )
+    LLM_BACKOFF_FACTOR: float = Field( default=1.5, gt=0.0 )
     # ────────────────────────────────────────── ONNX Runtime ──────────────────────────────────────────
     ONNX_EMBEDDING_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Embedding کوانتایز شده (INT8)" )
     ONNX_RERANKER_PATH: Path = Field( default=Path( "" ), description="‫مسیر مدل Reranker کوانتایز شده (INT8)" )
