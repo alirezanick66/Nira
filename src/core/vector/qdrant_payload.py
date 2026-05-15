@@ -7,7 +7,6 @@
 """
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
 from pydantic import BaseModel, Field
-import re
 
 #────────────────────────────────────────── Local  Imports  ──────────────────────────────────────────
 from src.data.models.product import Product
@@ -93,24 +92,16 @@ class QdrantProductPayload( BaseModel ):
             product: مدل Product نرمال‌شده
 
         Returns:
-            QdrantProductPayload آماده برای ذخیره در Qdrant
+            ‫QdrantProductPayload آماده برای ذخیره در Qdrant
         """
         # ‫خلاصه expert review
-        expert_summary = None
-        if product.expert_review:
-            expert_summary = product.expert_review.get_summary( max_length=200 )
+        expert_summary = product.expert_review.get_summary( max_length=200 ) if product.expert_review else None
 
-        # ‫مزایا/معایب کاربران
-        user_advantages = []
-        user_disadvantages = []
-        if product.user_feedback:
-            user_advantages = product.user_feedback.advantages
-            user_disadvantages = product.user_feedback.disadvantages
+        # مزایا/معایب کاربران
+        user_advantages = product.user_feedback.advantages if product.user_feedback else []
+        user_disadvantages = product.user_feedback.disadvantages if product.user_feedback else []
 
-        #دوربین
-        cam_summary, main_mp, uw, v4k = cls._extract_camera_data( product.specifications.raw_specifications )
-
-        # ‫متن جستجو
+        # متن جستجو (بهینه‌سازی با جنراتور تمیز)
         text_parts = [ product.title ]
         if product.expert_review: text_parts.append( product.expert_review.get_summary() )
         if product.user_feedback:
@@ -118,12 +109,13 @@ class QdrantProductPayload( BaseModel ):
             text_parts.extend( product.user_feedback.disadvantages[ :3 ] )
         search_text = " | ".join( filter( None, text_parts ) )
 
-        # ‫MVP Refinement: استنتاج واحد storage بر اساس مقدار
         # ‫(گوشی‌های مدرن معمولاً 64-512 GB یا 1-2 TB دارند)
         storage_gb = product.specifications.storage_gb
         storage_unit = "TB" if storage_gb and storage_gb >= 1024 else "GB"
+        #دوربین
+        cam_meta = getattr( product.specifications, "_camera_meta", {} )
 
-        return cls(
+        payload = cls(
             product_id=product.product_id,
             title=product.title,
             brand=product.brand,
@@ -136,7 +128,7 @@ class QdrantProductPayload( BaseModel ):
           # امتیاز
             rating=product.rating,
             rating_count=product.rating_count,
-          # مشخصات (MVP Refinement: واحد صریح)
+          # مشخصات فنی
             ram_gb=product.specifications.ram_gb,
             ram_unit="GB",
             storage_gb=storage_gb,
@@ -146,10 +138,10 @@ class QdrantProductPayload( BaseModel ):
             screen_size_inch=product.specifications.screen_size_inch,
           # دوربین
             camera_mp=product.specifications.camera_mp,
-            main_camera_mp=main_mp,
-            has_ultrawide=uw,
-            video_4k=v4k,
-            camera_summary=cam_summary,
+            main_camera_mp=cam_meta.get( "main_camera_mp" ),
+            has_ultrawide=cam_meta.get( "has_ultrawide", False ),
+            video_4k=cam_meta.get( "video_4k", False ),
+            camera_summary=cam_meta.get( "camera_summary" ),
 
           # دسته‌بندی
             os=product.specifications.os,
@@ -168,71 +160,4 @@ class QdrantProductPayload( BaseModel ):
             value_for_money=product.value_for_money.value,
             search_text=search_text,
         )
-
-    @staticmethod
-    def _extract_camera_data( raw_specs: list[ dict[ str, object ] ] ) -> tuple[ str | None, int | None, bool, bool ]:
-        """‫استخراج خلاصه و مشخصات کلیدی دوربین از مشخصات خام API
-
-      Args:
-          raw_specs: لیست گروه‌های مشخصات فنی دریافتی از API دیجی‌کالا
-
-      Returns:
-          (camera_summary, main_camera_mp, has_ultrawide, video_4k)
-      """
-        # ‫تسطیح attributes برای جستجوی سریع‌تر
-        all_attrs: list[ tuple[ str, str ] ] = []
-        for group in raw_specs:
-            if not isinstance( group, dict ):
-                continue
-            attrs = group.get( "attributes" )
-            if isinstance( attrs, list ):
-                for attr in attrs:
-                    if isinstance( attr, dict ):
-                        title = str( attr.get( "title", "" ) ).strip()
-                        values = attr.get( "values", [] )
-                        # ✅ رفع باگ: بررسی نوع تک‌تک آیتم‌ها به‌جای بررسی خود لیست
-                        val_text = " ".join( str( v ) for v in values if isinstance( v, ( str, int, float ) ) )
-                        if title and val_text:
-                            all_attrs.append( ( title, val_text ) )
-
-        main_mp: int | None = None
-        has_ultrawide = False
-        video_4k = False
-        summary_parts: list[ str ] = []
-
-        for title, val in all_attrs:
-            # ‫رزولوشن دوربین اصلی
-            if "رزولوشن دوربین اصلی" in title:
-                mp_match = re.search( r'(\d+)\s*(?:مگاپیکسل|MP)', val, re.IGNORECASE )
-                if mp_match:
-                    main_mp = int( mp_match.group( 1 ) )
-                    summary_parts.append( f"{main_mp}MP اصلی" )
-
-            # ‫دوربین فوق‌عریض
-            if "نوع لنز دوربین" in title or "لنز دوم" in title:
-                if any( kw in val.lower() for kw in ( "فوق عریض", "اولترا واید", "ultrawide", "wide" ) ):
-                    has_ultrawide = True
-
-            # ‫فیلمبرداری 4K
-            if "رزولوشن فیلمبرداری" in title or "فیلمبرداری" in title:
-                if "4k" in val.lower() or "۴k" in val:
-                    video_4k = True
-
-            # ‫دوربین سلفی
-            if "رزولوشن دوربین سلفی" in title:
-                mp_match = re.search( r'(\d+)\s*(?:مگاپیکسل|MP)', val, re.IGNORECASE )
-                if mp_match:
-                    summary_parts.append( f"سلفی {mp_match.group(1)}MP" )
-
-            # ‫ویژگی‌های تکمیلی برای خلاصه
-            if "مشخصات دوربین" in title or "فیلمبرداری" in title:
-                if any( kw in val for kw in ( "لرزشگیر", "OIS" ) ):
-                    summary_parts.append( "لرزشگیر" )
-                if any( kw in val.lower() for kw in ( "dolby vision", "hdr" ) ):
-                    summary_parts.append( "HDR" )
-
-        return " | ".join( summary_parts ) or None, main_mp, has_ultrawide, video_4k
-
-    def to_dict( self ) -> dict:
-        """‫تبدیل به dictionary برای Qdrant"""
-        return self.model_dump( exclude_none=False )
+        return payload

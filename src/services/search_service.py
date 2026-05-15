@@ -2,7 +2,7 @@
 ‫مسئول: اجرای کامل زنجیره Extract(LLM) → Retrieval → Rerank → LLM و بازگشت پاسخ نهایی.
 ‫این ماژول هیچ وابستگی به پروتکل HTTP، SSE یا JSON ندارد و کاملاً Domain-Pure است.
 """
-#─────────────────────  Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 import asyncio
 import time
@@ -10,8 +10,8 @@ import uuid
 import random
 from typing import AsyncGenerator
 
-#───────────────────── Local Imports ─────────────────────
-from src.api.schemas import PipelineStatus, SearchResponse, SearchResultItem
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
+from src.core.schemas import PipelineStatus, SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.core.vector.qdrant_retriever import QdrantHybridRetriever
@@ -65,11 +65,13 @@ class SearchService:
         latency_ms = int( float( result.meta.get( "latency_ms", 0 ) ) )          # type: ignore
         return result, latency_ms
 
-    async def run_streaming( self,
-                             *,
-                             query: str,
-                             session_id: str,
-                             top_k: int = 2 ) -> AsyncGenerator[ PipelineStatus | SearchResponse, None ]:
+    async def run_streaming(
+        self,
+        *,
+        query: str,
+        session_id: str,
+        top_k: int = 2,
+    ) -> AsyncGenerator[ PipelineStatus | SearchResponse, None ]:
         """‫اجرای پایپلاین با انتشار وضعیت هر مرحله (برای SSE endpoint)"""
         async for event in self._run_pipeline( query=query, session_id=session_id, top_k=top_k ):
             yield event
@@ -233,6 +235,7 @@ class SearchService:
                 "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ),
                 "fallback_steps": fallback_steps,
                 "total_candidates": len( candidates ),
+                **( llm_out.get( "meta", {} ) ),          # ✅ ادغام ایمن token_usage
             },
         )
 

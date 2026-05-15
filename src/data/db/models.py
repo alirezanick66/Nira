@@ -83,6 +83,11 @@ class QueryLog( Base ):
     result_count: Mapped[ int ] = mapped_column( Integer, nullable=False, default=0 )
     response_status: Mapped[ str ] = mapped_column( String( 10 ), nullable=False )
     latency_ms: Mapped[ int ] = mapped_column( Integer, nullable=False )
+    #Token Usage
+    prompt_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
+    completion_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
+    total_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
+
     created_at: Mapped[ datetime ] = mapped_column( TIMESTAMP( timezone=True ), server_default=func.now(), nullable=False )
 
     __table_args__ = (

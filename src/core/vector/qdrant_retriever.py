@@ -6,11 +6,12 @@
 from __future__ import annotations
 from copy import deepcopy
 from qdrant_client import QdrantClient
+from qdrant_client import models
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 from typing import cast
 
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
-from config.domain_loader import DomainConfig
+from src.config.domain_loader import DomainConfig
 from src.services.embedding_service import EmbeddingService
 from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
@@ -54,21 +55,18 @@ class QdrantHybridRetriever:
         top_k: int = 10,
         enable_fallback: bool = True,
     ) -> list[ QdrantProductPayload ]:
-        """‫اجرای جستجوی ترکیبی واقعی (Dense Embedding + Sparse BM25) با RRF
-
-        ‫MVP Refinement #4: در صورت عدم یافتن نتیجه، فیلترهای سخت به‌ترتیب حذف می‌شوند
-        ‫تا حداکثر `_MAX_RELAXATION_STEPS` بار - بدون افت کیفیت در فیلترهای کلیدی (برند).
+        """‫اجرای جستجوی ترکیبی (Dense + Sparse) با RRF و مدیریت Smart Fallback
 
         Args:
-            query: متن کوئری
-            filters: فیلترهای متادیتا (خروجی NLU)
-            top_k: تعداد نتایج
-            enable_fallback: ‫فعال‌سازی Smart Fallback (پیش‌فرض: True)
+            ‫query: متن کوئری
+            ‫filters: فیلترهای متادیتا (خروجی NLU)
+           ‫ ‫top_k: تعداد نتایج
+            ‫enable_fallback: فعال‌سازی حذف تدریجی فیلترها در صورت صفر نتیجه
 
         Returns:
-           ‫ لیست QdrantProductPayload 
+           ‫ لیست QdrantProductPayload مرتب‌شده بر اساس امتیاز RRF
         """
-        # ‫تولید بردار یک‌بار (مستقل از فیلتر) → بهینه‌سازی fallback
+
         dense_vec = self._embedder.encode( query, is_query=True )[ 0 ]
         sparse_vec = BM25Vectorizer.query_to_sparse( query )
 
@@ -106,12 +104,13 @@ class QdrantHybridRetriever:
     #────────────────────────────────────────── Private  Methods ──────────────────────────────────────────
     def _execute_search(
         self,
-        dense_vec,
-        sparse_vec,
+        dense_vec: list[ float ],
+        sparse_vec: models.SparseVector,
         filters: MetadataFilters | None,
         top_k: int,
     ) -> list[ QdrantProductPayload ]:
-        """‫اجرای یک تلاش جستجو با فیلترهای داده‌شده"""
+        """ ‫اجرای یک تلاش جستجو با فیلترهای داده‌شده و اعتبارسنجی Payload"""
+
         query_filter = self._build_metadata_filter( filters )
 
         result = self._client.query_points(
@@ -133,6 +132,7 @@ class QdrantHybridRetriever:
             try:
                 payload = QdrantProductPayload.model_validate( point.payload )
                 payloads.append( payload )
+
             except Exception as exc:
                 log_message( LG.RETRIEVAL, f"خطای اعتبارسنجی Payload محصول {point.id}: {exc}", LogLevel.WARNING )
 
@@ -167,35 +167,29 @@ class QdrantHybridRetriever:
         return None
 
     def _build_metadata_filter( self, filters: MetadataFilters | None ) -> Filter | None:
-        """ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
+        """ ‫ساخت فیلتر Qdrant از دیکشنری فیلترهای NLU با تایپ‌دهی صریح"""
         if not filters:
             return None
 
         must_conditions: list[ Condition ] = []
 
         must_not_conditions: list[ Condition ] = []
+        op_map = { "<": "lt", "<=": "lte", ">": "gt", ">=": "gte" }
 
         for key, value in filters.items():
-            # ✅ پشتیبانی از فیلترهای منفی (مثلاً: brand_not = ["اپل"])
             if key.endswith( "_not" ):
                 base_key = key[ :-4 ]
                 vals = value if isinstance( value, list ) else [ value ]
                 must_not_conditions.append( FieldCondition( key=base_key, match=MatchAny( any=cast( "list[str]", vals ) ) ) )
                 continue
 
-            if isinstance( value, dict ):
-                for op, val in value.items():
-                    if op == "<": must_conditions.append( FieldCondition( key=key, range=Range( lt=val ) ) )
-                    elif op == ">": must_conditions.append( FieldCondition( key=key, range=Range( gt=val ) ) )
-                    elif op == "<=": must_conditions.append( FieldCondition( key=key, range=Range( lte=val ) ) )
-                    elif op == ">=": must_conditions.append( FieldCondition( key=key, range=Range( gte=val ) ) )
-            elif isinstance( value, list ):
-                must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
-            elif isinstance( value, ( str, int, bool ) ):
-                must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
+        if isinstance( value, dict ):
+            for op, val in value.items():
+                if op in op_map:
+                    must_conditions.append( FieldCondition( key=key, range=Range( **{ op_map[ op ]: val } ) ) )
+        elif isinstance( value, list ):
+            must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
+        elif isinstance( value, ( str, int, bool ) ):
+            must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
 
-        if not must_conditions and not must_not_conditions:
-            return None
-
-        return Filter( must=must_conditions if must_conditions else None,
-                       must_not=must_not_conditions if must_not_conditions else None )
+        return Filter( must=must_conditions or None, must_not=must_not_conditions or None )

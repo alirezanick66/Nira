@@ -1,14 +1,13 @@
 """‫مدل‌های Pydantic برای اعتبارسنجی خروجی ساختاریافته ‫LLM
 ‫مسئول: تعریف اسکیماهای دقیق JSON که مدل موظف به تولید آن‌هاست (فاز استخراج و پاسخ نهایی)
 """
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
-from enum import Enum
-from pydantic import BaseModel, Field
+from enum import StrEnum
+from pydantic import BaseModel, Field, ConfigDict
 from typing import TypeAlias
 
-# ──────────────────────────────────────────────────────────────────────────
-# نوع‌های داده‌ای فیلترهای متادیتا (انتقال‌یافته از لایهٔ NLU برای قطع وابستگی)
-# ──────────────────────────────────────────────────────────────────────────
+#────────────────────────────────────────── Type Aliases ──────────────────────────────────────────
 NumericFilterValue: TypeAlias = int | float
 RangeFilter: TypeAlias = dict[ str, NumericFilterValue ]
 ListFilter: TypeAlias = list[ str ]
@@ -17,10 +16,8 @@ MetadataFilterValue: TypeAlias = RangeFilter | ListFilter | ScalarFilter
 MetadataFilters: TypeAlias = dict[ str, MetadataFilterValue ]
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# تعریف نیت‌های مجاز
-# ──────────────────────────────────────────────────────────────────────────
-class IntentType( str, Enum ):
+#────────────────────────────────────────── Intent Enum ──────────────────────────────────────────
+class IntentType( StrEnum ):
     """
     نیت‌های مجاز برای تشخیص توسط مدل زبانی.
     """
@@ -30,13 +27,10 @@ class IntentType( str, Enum ):
     GENERAL_CHAT = "general_chat"          # احوال‌پرسی یا سوال نامرتبط
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# اسکیمای استخراج (LLM Call 1)
-# ──────────────────────────────────────────────────────────────────────────
+#────────────────────────────────────────── Extraction Schema (LLM Call 1)  ──────────────────────────────────────────
 class LLMExtractSchema( BaseModel ):
     """
-    ساختار خروجی مرحلهٔ اول LLM (استخراج نیت و فیلترها).
-    تمام فیلدها اجباری هستند تا از تولید JSON ناقص جلوگیری شود.
+   ‫ ساختار خروجی مرحلهٔ اول LLM (استخراج نیت و فیلترها)
     """
     intent: IntentType = Field( description="نیت تشخیص‌داده‌شده" )
     semantic_query: str = Field( description="عبارت بهینه‌شده و تمیز برای جستجوی برداری/کلیدواژه‌ای" )
@@ -46,14 +40,15 @@ class LLMExtractSchema( BaseModel ):
     conflict_reason: str | None = Field( default=None, description="دلیل تشخیص تضاد در فیلترها (در صورت وجود)" )
     has_conflict: bool = Field( default=False, description="آیا تضاد منطقی بین فیلترهای درخواست‌شده وجود دارد؟" )
 
+    model_config = ConfigDict( validate_default=True )
 
-# ──────────────────────────────────────────────────────────────────────────
-# اسکیمای پاسخ نهایی (LLM Call 2 - حفظ‌شده برای سازگاری)
-# ──────────────────────────────────────────────────────────────────────────
+
+#──────────────────────────────────────────  Response Schema (LLM Call 2)  ──────────────────────────────────────────
 class LLMResponseSchema( BaseModel ):
     """‫ساختار استاندارد پاسخ LLM برای دستیار خرید
-   ‫ تمامی فیلدها اجباری هستند تا از تولید JSON ناقص جلوگیری شود
     """
     product_ids: list[ int ] = Field( description="لیست شناسه محصولات پیشنهادی (حداکثر 2 عدد)" )
     explanation: str = Field( description="توضیح شفاف، دوستانه و مبتنی بر نیاز کاربر درباره دلیل پیشنهاد" )
     next_suggestion: str = Field( description="پیشنهاد اقدام بعدی یا فیلتر جدید در صورت عدم رضایت" )
+
+    model_config = ConfigDict( validate_default=True )
