@@ -1,19 +1,16 @@
-"""‫سرویس بازیابی ترکیبی (Hybrid Retrieval) از Qdrant
+"""‫سرویس بازیابی ترکیبی (Hybrid Retrieval) از ‫Qdrant
 ‫مسئول: تبدیل کوئری متنی به بردارهای Dense + Sparse، اجرای جستجوی ترکیبی با RRF،
 ‫و اعمال فیلترهای متادیتا از خروجی NLU Pipeline
-
-‫تغییرات MVP Refinement:
-- Smart Fallback (0 Results): اگر هیچ نتیجه‌ای پیدا نشد، سخت‌ترین فیلتر را
-  حذف کرده و دوباره جستجو می‌کند تا کاربر هرگز با لیست خالی مواجه نشود.
 """
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 from copy import deepcopy
 from qdrant_client import QdrantClient
 from qdrant_client.models import ( Filter, FieldCondition, MatchValue, MatchAny, Range, Condition, Fusion, FusionQuery, Prefetch )
 from typing import cast
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
+from config.domain_loader import DomainConfig
 from src.services.embedding_service import EmbeddingService
 from src.services.sparse_vectorizer import BM25Vectorizer
 from src.config.settings import get_settings
@@ -23,17 +20,16 @@ from src.core.llm.schemas import MetadataFilters
 
 
 class QdrantHybridRetriever:
-    """‫بازیاب هوشمند با پشتیبانی از جستجوی معنایی + کلیدواژه‌ای + فیلتربرداری"""
+    """‫بازیابی هوشمند با پشتیبانی از جستجوی معنایی + کلیدواژه‌ای + فیلتربرداری"""
 
     # ‫ترتیب حذف فیلترها در Smart Fallback (سخت‌ترین → ساده‌ترین)
     # ‫فیلترهایی که در ابتدای لیست هستند، اول حذف می‌شوند.
-    # ‫MVP Refinement #4: weight_g و camera_quality سخت‌گیرترین هستند.
 
     _MAX_RELAXATION_STEPS: int = 5          # ‫حداکثر پنج فیلتر حذف می‌شود
 
     def __init__(
         self,
-        domain_config,
+        domain_config: DomainConfig,
         client: QdrantClient | None = None,
         embedding_service: EmbeddingService | None = None,
     ) -> None:
@@ -42,15 +38,15 @@ class QdrantHybridRetriever:
         self._collection = self._settings.QDRANT_COLLECTION
         self._embedder = embedding_service or EmbeddingService()
 
-        # ✅ بارگذاری کاملاً از کانفیگ (بدون هاردکد)
-        self._relax_order = tuple( domain_config.get( "relaxation_order", [] ) )
-        self._relax_map = domain_config.get( "relaxation_mappings", {} )
-        self._emphasis_kw = frozenset( domain_config.get( "emphasis_keywords", [] ) )
-        self._filter_cues = domain_config.get( "filter_cues", {} )
+        self._relax_order = domain_config.relaxation_order
+        self._relax_map = domain_config.relaxation_mappings
+        self._emphasis_kw = frozenset( domain_config.emphasis_keywords )
+        self._filter_cues = domain_config.filter_cues
+        self._last_fallback_steps: int = 0
 
         log_message( LG.RETRIEVAL, "QdrantHybridRetriever بارگذاری شد", LogLevel.INFO )
 
-    #───────────────────── public  methods ─────────────────────
+    #────────────────────────────────────────── Public  Methods ──────────────────────────────────────────
     def search(
         self,
         query: str,
@@ -67,10 +63,10 @@ class QdrantHybridRetriever:
             query: متن کوئری
             filters: فیلترهای متادیتا (خروجی NLU)
             top_k: تعداد نتایج
-            enable_fallback: فعال‌سازی Smart Fallback (پیش‌فرض: True)
+            enable_fallback: ‫فعال‌سازی Smart Fallback (پیش‌فرض: True)
 
         Returns:
-            لیست QdrantProductPayload (ممکن است با فیلترهای ریلکس‌شده برگردد)
+           ‫ لیست QdrantProductPayload 
         """
         # ‫تولید بردار یک‌بار (مستقل از فیلتر) → بهینه‌سازی fallback
         dense_vec = self._embedder.encode( query, is_query=True )[ 0 ]
@@ -82,7 +78,7 @@ class QdrantHybridRetriever:
             log_message( LG.RETRIEVAL, f"✅ {len(results)} محصول با Hybrid Search + RRF بازیابی شد", LogLevel.DEBUG )
             return results
 
-        # ‫تلاش‌های Fallback: حذف تدریجی فیلترهای سخت
+        # ‫‫تلاش‌های Fallback: حذف تدریجی فیلترهای سخت
         log_message( LG.RETRIEVAL, "🔄 Smart Fallback فعال شد - تلاش با حذف فیلترهای سخت‌گیر", LogLevel.INFO )
 
         relaxed_filters = deepcopy( filters )
@@ -107,7 +103,7 @@ class QdrantHybridRetriever:
         log_message( LG.RETRIEVAL, f"✅ {len(results)} محصول با Fallback نهایی بازیابی شد", LogLevel.DEBUG )
         return results
 
-    #───────────────────── private  methods ─────────────────────
+    #────────────────────────────────────────── Private  Methods ──────────────────────────────────────────
     def _execute_search(
         self,
         dense_vec,
@@ -132,6 +128,8 @@ class QdrantHybridRetriever:
 
         payloads: list[ QdrantProductPayload ] = []
         for point in result.points:
+            if point.payload is None:          # ✅ ‫گارد ایمنی برای Payloadهای خالی
+                continue
             try:
                 payload = QdrantProductPayload.model_validate( point.payload )
                 payloads.append( payload )

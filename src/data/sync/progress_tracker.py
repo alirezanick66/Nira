@@ -1,10 +1,10 @@
 """‫ردیاب پیشرفت همگام‌سازی برای قابلیت Resume (لایه ۴)"""
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy import func
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.db.models import SyncProgress
 from src.data.db.engine import DatabaseEngine
 from src.config.logging_config import log_message, LogLevel, LG
@@ -17,7 +17,7 @@ class ProgressTracker:
         self._db = db_engine
 
     async def load( self ) -> tuple[ int | None, int ]:
-        """‫بارگذاری آخرین وضعیت: (last_processed_id, last_page)"""
+        """‫‫بارگذاری آخرین وضعیت: (last_processed_id, last_page)"""
         stmt = select( SyncProgress.last_processed_id, SyncProgress.last_page ).where( SyncProgress.id == 1 )
         async with self._db.session_maker() as session:
             result = await session.execute( stmt )

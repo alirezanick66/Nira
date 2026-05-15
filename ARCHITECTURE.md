@@ -1,6 +1,6 @@
 # 🏗️ معماری فنی
 
-## 🔄 جریان درخواست (Request Flow)
+# 🔄 جریان درخواست (Request Flow)
 
 ```text
 User Input (Farsi)
@@ -118,7 +118,6 @@ User Input (Farsi)
 │   │   │   ├── clients.py        # GroqClient, GeminiClient (async + retry)
 │   │   │   ├── memory.py         # ConversationMemory (history + applied_filters)
 │   │   │   └── prompt_engine.py  # رندر پویای پرامپت‌ها
-│   │   ├── progress_tracker.py   # مدیریت Checkpoint همگام‌سازی
 │   │   ├── resilience/       # api_resilience.py (Retry + Backoff)
 │   │   └── vector/           # Qdrant Indexer، Payload، Retriever
 │   │       ├── qdrant_indexer.py
@@ -130,7 +129,7 @@ User Input (Farsi)
 │   │   ├── models/           # product.py, api_responses.py
 │   │   ├── processing/       # product_pipeline.py
 │   │   ├── repositories/     # product_repository.py
-│   │   ├── sync/             # digikala_sync.py
+│   │   ├── sync/             # digikala_sync.py, progress_tracker.py
 │   │   └── transformers/     # product_transformer.py
 │   ├── services/             # سرویس‌های مستقل: search, embedding, reranker, sparse_vectorizer, enrichment, query_log
 │   └── utils/                # ابزارهای کمکی

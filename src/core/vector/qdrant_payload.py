@@ -5,9 +5,11 @@
 ‫- خلاصه محتوا (برای context)
 ‫- متادیتا (tags, quality levels)
 """
-
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from pydantic import BaseModel, Field
 import re
+
+#────────────────────────────────────────── Local  Imports  ──────────────────────────────────────────
 from src.data.models.product import Product
 
 
