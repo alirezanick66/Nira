@@ -1,20 +1,21 @@
 """ ‫موتور قالب‌سازی پرامپت‌های چند-دامنه‌ای (Domain-Agnostic)
 ‫مسئولیت: بارگذاری تمپلیت‌ها از YAML، جایگزینی ایمن متغیرها، و تولید لیست پیام‌های ساختاریافته
 """
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 from string import Template
 from typing import cast
 
-#───────────────────── Local Imports ─────────────────────
-from src.config.domain_loader import ConfigDict
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
+from src.config.domain_loader import DomainConfig
 from src.core.vector.qdrant_payload import QdrantProductPayload
 
 
 class PromptEngine:
     """تولیدکنندهٔ پرامپت‌های پارامتریک بر اساس پیکربندی دامنه"""
 
-    def __init__( self, domain_config: ConfigDict ) -> None:
-        self._prompts = cast( dict[ str, str ], domain_config.get( "prompts", {} ) )
+    def __init__( self, domain_config: DomainConfig ) -> None:
+        self._prompts = domain_config.prompts
         self._sys_base = self._prompts.get( "system_base", "" )
         self._templates = cast( dict[ str, str ], self._prompts.get( "templates", {} ) )
 

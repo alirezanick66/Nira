@@ -32,7 +32,7 @@ async def main() -> None:
 
     products = [ p for p in products if p.price > 0 ]
     # آپلود به Qdrant
-    count = indexer.index_products( products, vector_size=get_settings().EMBEDDING_DIM )
+    count = indexer.index_products( products )
     log_message( LG.DATA_PROCESSING, f"✅ پایان تست | {count} محصول آماده جستجوی ترکیبی", LogLevel.INFO )
 
 

@@ -1,12 +1,12 @@
 """‫سرویس ایندکس‌سازی و مدیریت بردارهای محصولات در Qdrant
 ‫مسئول: ایجاد کالکشن، پیکربندی Hybrid (Dense+Sparse)، آپلود محصولات
 """
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from typing import Sequence
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import ( Distance, PayloadSchemaType )
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.models.product import Product
@@ -23,10 +23,48 @@ class QdrantIndexer:
         self._client = client or QdrantClient( url=self._settings.QDRANT_URL, prefer_grpc=False, timeout=60 )
         self._collection = self._settings.QDRANT_COLLECTION
         self._embedder = embedding_service or EmbeddingService()
+
         log_message( LG.DATA_PROCESSING, "QdrantIndexer با سرویس Embedding فعال راه‌اندازی شد", LogLevel.INFO )
 
-    #───────────────────── Public Methods ─────────────────────
-    def ensure_collection( self, vector_size: int ) -> None:
+    #────────────────────────────────────────── Public Methods ───────────────────────────────────────────────────────────────
+
+    def index_products( self, products: Sequence[ Product ] ) -> int:
+        """‫تبدیل، بردارسازی و آپلود محصولات به Qdrant
+
+        Args:
+            products: لیست محصولات پردازش‌شده
+
+        Returns:
+            تعداد محصولات ایندکس‌شده
+        """
+        self._ensure_collection()
+        points = []
+
+        texts = [ f"passage: {p.title}" for p in products ]
+        dense_vectors = self._embedder.encode( texts, is_query=False )
+
+        for idx, prod in enumerate( products ):
+            payload = QdrantProductPayload.from_product( prod )
+            sparse_vec = BM25Vectorizer.query_to_sparse( payload.search_text or payload.title )
+
+            points.append(
+                models.PointStruct(
+                    id=payload.product_id,
+                    vector={
+                        "dense": dense_vectors[ idx ],
+                        "sparse": sparse_vec
+                    },
+                    payload=payload.model_dump( exclude_none=True ),
+                ) )
+
+        if points:
+            self._client.upsert( collection_name=self._collection, points=points )
+            log_message( LG.DATA_PROCESSING, f"{len(points)} محصول در Qdrant ایندکس شد", LogLevel.INFO )
+
+        return len( points )
+
+    #────────────────────────────────────────── Private Methods ───────────────────────────────────────────────────────────────
+    def _ensure_collection( self ) -> None:
         """‫ایجاد Collection و ایندکس‌های Payload در صورت عدم وجود"""
         if self._client.collection_exists( self._collection ):
             log_message( LG.DATA_PROCESSING, f"کالکشن {self._collection} از قبل موجود است", LogLevel.DEBUG )
@@ -35,7 +73,7 @@ class QdrantIndexer:
         self._client.create_collection(
             collection_name=self._collection,
             vectors_config={
-                "dense": models.VectorParams( size=vector_size, distance=Distance.COSINE ),
+                "dense": models.VectorParams( size=self._settings.EMBEDDING_DIM, distance=Distance.COSINE ),
             },
             sparse_vectors_config={
                 "sparse": models.SparseVectorParams( index=models.SparseIndexParams( on_disk=False ) ),
@@ -67,45 +105,13 @@ class QdrantIndexer:
             "value_for_money": PayloadSchemaType.KEYWORD,
         }
         for field, schema_type in payload_indexes.items():
-            self._client.create_payload_index(
-                collection_name=self._collection,
-                field_name=field,
-                field_schema=schema_type,
-            )
+            try:
+                self._client.create_payload_index(
+                    collection_name=self._collection,
+                    field_name=field,
+                    field_schema=schema_type,
+                )
+            except Exception as exc:
+                log_message( LG.DATA_PROCESSING, f"خطا یا تکرار در ایجاد ایندکس {field}: {exc}", LogLevel.WARNING )
+
         log_message( LG.DATA_PROCESSING, "ایندکس‌های Payload با موفقیت ایجاد شدند", LogLevel.DEBUG )
-
-    def index_products( self, products: Sequence[ Product ], vector_size: int ) -> int:
-        """‫تبدیل، بردارسازی و آپلود محصولات به Qdrant
-
-        Args:
-            products: لیست محصولات پردازش‌شده
-            vector_size: ابعاد بردار مدل Embedding
-
-        Returns:
-            تعداد محصولات ایندکس‌شده
-        """
-        self.ensure_collection( vector_size )
-        points = []
-
-        texts = [ f"passage: {p.title}" for p in products ]
-        dense_vectors = self._embedder.encode( texts, is_query=False )
-
-        for idx, prod in enumerate( products ):
-            payload = QdrantProductPayload.from_product( prod )
-            sparse_vec = BM25Vectorizer.query_to_sparse( payload.search_text or payload.title )
-
-            points.append(
-                models.PointStruct(
-                    id=payload.product_id,
-                    vector={
-                        "dense": dense_vectors[ idx ],
-                        "sparse": sparse_vec
-                    },
-                    payload=payload.model_dump( exclude_none=True ),
-                ) )
-
-        if points:
-            self._client.upsert( collection_name=self._collection, points=points )
-            log_message( LG.DATA_PROCESSING, f"{len(points)} محصول در Qdrant ایندکس شد", LogLevel.INFO )
-
-        return len( points )
