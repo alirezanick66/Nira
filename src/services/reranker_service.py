@@ -19,8 +19,8 @@ class RerankerService:
         self._settings = settings or get_settings()
         self._batch_size = self._settings.RERANKER_BATCH_SIZE
         self._min_score = self._settings.RERANKER_MIN_SCORE          # MVP Refinement
-        self._session: ort.InferenceSession | None = None
-        self._tokenizer: PreTrainedTokenizerBase | None = None
+        self._session: ort.InferenceSession
+        self._tokenizer: PreTrainedTokenizerBase
 
         model_path = self._settings.ONNX_RERANKER_PATH / "model_quantized.onnx"
         if not model_path.exists():
@@ -28,6 +28,7 @@ class RerankerService:
 
         self._session = ort.InferenceSession( str( model_path ), providers=[ "CPUExecutionProvider" ] )
         self._tokenizer = AutoTokenizer.from_pretrained( str( self._settings.ONNX_RERANKER_PATH ) )
+
         log_message( LG.RETRIEVAL, "سرویس Reranker (ONNX INT8) با موفقیت بارگذاری شد", LogLevel.INFO )
 
     #────────────────────────────────────────── Public methods ──────────────────────────────────────────
@@ -85,6 +86,9 @@ class RerankerService:
 
         Returns:
             لیست تاپل‌های (محصول, امتیاز) مرتب‌شده بر اساس بیشترین شباهت
+
+        Raises:
+            RuntimeError: ‫در صورت شکست استنتاج ONNX Runtime
         """
         if not payloads or not self._tokenizer or not self._session:
             return []
@@ -109,12 +113,12 @@ class RerankerService:
                 batch_scores = 1.0 / ( 1.0 + np.exp( -logits ) )
                 scores.extend( batch_scores.tolist() if batch_scores.ndim != 0 else [ float( batch_scores ) ] )
 
-            scored = sorted( zip( payloads, scores ), key=lambda x: x[ 1 ], reverse=True )
-            return list( scored )
+            indices = np.argsort( scores )[ ::-1 ].tolist()
+            return [ ( payloads[ idx ], scores[ idx ] ) for idx in indices ]
 
         except Exception as exc:
-            log_message( LG.RETRIEVAL, f"خطا در Reranking: {exc}", LogLevel.ERROR )
-            return [ ( p, 0.0 ) for p in payloads ]
+            log_message( LG.RETRIEVAL, f"خطای بحرانی در Reranking: {exc}", LogLevel.ERROR )
+            raise RuntimeError( "سرویس Reranking در استنتاج مدل با شکست مواجه شد" ) from exc
 
     @staticmethod
     def _prepare_document_text( payload: QdrantProductPayload ) -> str:

@@ -70,6 +70,9 @@ class Settings( BaseSettings ):
     #────────────────────────────────────────── API Key Store ──────────────────────────────────────────
     API_KEY_STORE_MAP: str = Field( default="" )
 
+    #──────────────────────────────────────────  Domains ──────────────────────────────────────────
+    DEFAULT_DOMAIN: str = Field( default="mobile", description="دامنه پیش‌فرض بارگذاری‌شده در استارت‌آپ" )
+
     # ────────────────────────────────────────── Computed Fields ──────────────────────────────────────────
     @computed_field
     @property

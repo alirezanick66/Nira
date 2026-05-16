@@ -7,51 +7,30 @@
 ‫است و هیچ منطق تجاری مستقیمی ندارد.
 """
 
-#─────────────────────imports─────────────────────
+#──────────────────────────────────────────  Imports ──────────────────────────────────────────
 from __future__ import annotations
 import json
-import logging
 import time
 import uuid
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-#─────────────────────local imports─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.repositories.product_repository import ProductRepository
 from src.api.schemas import SearchRequest
 from src.core.schemas import SearchResponse
 from src.services.search_service import PipelineStatus, SearchService
-from src.api.dependencies import get_retriever, get_reranker, get_llm, get_product_repo
+from src.api.dependencies import get_retriever, get_reranker, get_llm, get_product_repo, get_search_service
 from src.services.query_log_service import log_query
-
-if TYPE_CHECKING:
-    from src.core.llm.orchestrator import LLMOrchestrator
-    from src.core.vector.qdrant_retriever import QdrantHybridRetriever
-    from src.services.reranker_service import RerankerService
-
-logger = logging.getLogger( __name__ )
+from src.core.llm.orchestrator import LLMOrchestrator
+from src.core.vector.qdrant_retriever import QdrantHybridRetriever
+from src.services.reranker_service import RerankerService
+from src.config.logging_config import log_message, LogLevel, LG
 
 router = APIRouter( prefix="/api/v1", tags=[ "Search" ] )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ابزار کمکی: ساخت SearchService از وابستگی‌های تزریق‌شده
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def _build_service(
-    retriever: QdrantHybridRetriever,
-    reranker: RerankerService,
-    llm: LLMOrchestrator,
-    product_repo: ProductRepository,
-) -> SearchService:
-    """‫ساخت نمونه SearchService از وابستگی‌های FastAPI"""
-    return SearchService( retriever=retriever, reranker=reranker, llm=llm, image_repo=product_repo )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ابزار کمکی: فرمت‌بندی رویداد SSE
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────  فرمت‌بندی رویداد SSE──────────────────────────────────────────
 
 
 def _sse_event( event: str, data: dict ) -> str:
@@ -59,9 +38,7 @@ def _sse_event( event: str, data: dict ) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Endpoint 1: جستجوی B2B (قرارداد رسمی فروشگاه‌ها)
-# ─────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────── Endpoint 1: جستجوی B2B ──────────────────────────────────────────
 
 
 @router.post(
@@ -74,6 +51,7 @@ def _sse_event( event: str, data: dict ) -> str:
 async def search_products(
     request_body: SearchRequest,
     request: Request,
+    service: SearchService = Depends( get_search_service ),
     retriever: QdrantHybridRetriever = Depends( get_retriever ),
     reranker: RerankerService = Depends( get_reranker ),
     llm: LLMOrchestrator = Depends( get_llm ),
@@ -92,7 +70,6 @@ async def search_products(
 
     response: SearchResponse | None = None
     try:
-        service = _build_service( retriever, reranker, llm, product_repo )
         response, _ = await service.run(
             query=request_body.query,
             session_id=session_id,
@@ -105,13 +82,13 @@ async def search_products(
     except HTTPException:
         raise
     except Exception:
-        logger.exception( "خطای پیش‌بینی‌نشده در POST /search" )
+        log_message( LG.API, f"خطای پیش‌بینی‌نشده در POST /search | Query: {request_body.query[:50]}", LogLevel.ERROR )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="خطای داخلی سرور.",
         )
     finally:
-        tokens = response.meta.get( "token_usage", {} ) if response else {}
+        tokens = response.meta.get( "token_usage", {} ) if response and response.meta else {}
         log_query(
             request_id=uuid.uuid4(),
             store_id=store_id,
@@ -125,15 +102,14 @@ async def search_products(
             result_count=len( response.results ) if response else 0,
             response_status=response_status,
             latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
-            prompt_tokens=tokens.get( "prompt_tokens", 0 ),
-            completion_tokens=tokens.get( "completion_tokens", 0 ),
-            total_tokens=tokens.get( "total_tokens", 0 ),
+          #tokens
+            prompt_tokens=tokens.get( "prompt_tokens", 0 ),          #type:ignore
+            completion_tokens=tokens.get( "completion_tokens", 0 ),          #type:ignore
+            total_tokens=tokens.get( "total_tokens", 0 ),          #type:ignore
         )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Endpoint 2: جستجوی SSE (فرانت‌اند و UX لحظه‌ای)
-# ─────────────────────────────────────────────────────────────────────────────
+#────────────────────────────────────────── Endpoint 2 ──────────────────────────────────────────
 
 
 @router.get(
@@ -142,15 +118,16 @@ async def search_products(
     response_description="جریان رویدادهای text/event-stream",
 )
 async def search_products_stream(
-    query: str,
-    request: Request,
-    top_k: int = 2,
-    session_id: str | None = None,
-    client_session_id: str | None = None,
-    retriever: QdrantHybridRetriever = Depends( get_retriever ),
-    reranker: RerankerService = Depends( get_reranker ),
-    llm: LLMOrchestrator = Depends( get_llm ),
-    product_repo: ProductRepository = Depends( get_product_repo )
+        query: str,
+        request: Request,
+        top_k: int = 2,
+        session_id: str | None = None,
+        client_session_id: str | None = None,
+        retriever: QdrantHybridRetriever = Depends( get_retriever ),
+        reranker: RerankerService = Depends( get_reranker ),
+        llm: LLMOrchestrator = Depends( get_llm ),
+        product_repo: ProductRepository = Depends( get_product_repo ),
+        service: SearchService = Depends( get_search_service ),
 ) -> StreamingResponse:
     """‫پردازش کوئری با ارسال زنده وضعیت هر مرحله از پایپلاین.
 
@@ -173,8 +150,6 @@ async def search_products_stream(
         applied_filters: dict | None = None
         tokens: dict = {}
         try:
-            service = _build_service( retriever, reranker, llm, product_repo )
-
             async for event in service.run_streaming(
                     query=query,
                     session_id=active_session_id,
@@ -187,12 +162,12 @@ async def search_products_stream(
                     response_status = event.status
                     result_intent = event.intent
                     result_count = len( event.results )
-                    applied_filters = json.loads( json.dumps( dict( event.applied_filters ), ensure_ascii=False ) )
+                    applied_filters = dict( event.applied_filters ) if event.applied_filters else None
                     tokens = ( val if isinstance( val := ( event.meta or {} ).get( "token_usage" ), dict ) else {} )
                     yield _sse_event( "result", event.model_dump() )
 
         except Exception:
-            logger.exception( "خطای غیرمنتظره در SSE stream" )
+            log_message( LG.API, f"خطای غیرمنتظره در SSE stream | Query: {query[:50]}", LogLevel.ERROR )
             yield _sse_event( "error", { "message": "خطای داخلی سرور. لطفاً دوباره تلاش کنید." } )
 
         finally:

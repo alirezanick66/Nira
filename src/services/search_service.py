@@ -179,7 +179,7 @@ class SearchService:
                                                                             filters=filters,
                                                                             top_k=max( top_k * 2, 10 ) )
 
-        fallback_steps: int = getattr( self._retriever, "_last_fallback_steps", 0 )
+        fallback_steps: int = self._retriever._last_fallback_steps
         return candidates, fallback_steps
 
     async def _enrich_products( self, products: list[ QdrantProductPayload ] ) -> None:
@@ -188,8 +188,7 @@ class SearchService:
             ids = [ p.product_id for p in products ]
             url_map = await self._image_repo.batch_get_image_urls( ids )
             for p in products:
-                if hasattr( p, "image_url" ):
-                    p.image_url = url_map.get( p.product_id )
+                p.image_url = url_map.get( p.product_id )
 
         if products:
             summary = [ f"{p.title[:40]}... | {p.price:,.0f} تومان" for p in products[ :2 ] ]
@@ -207,7 +206,7 @@ class SearchService:
         t0: float,
     ) -> SearchResponse:
         """‫ساخت SearchResponse نهایی از خروجی تمام مراحل پایپلاین"""
-        fallback_steps: int = getattr( self._retriever, "_last_fallback_steps", 0 )
+        fallback_steps: int = self._retriever._last_fallback_steps
         results = [
             SearchResultItem(
                 product_id=p.product_id,
