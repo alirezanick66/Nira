@@ -47,6 +47,11 @@ class QdrantHybridRetriever:
 
         log_message( LG.RETRIEVAL, "QdrantHybridRetriever بارگذاری شد", LogLevel.INFO )
 
+    @property
+    def last_fallback_steps( self ) -> int:
+        """تعداد گام‌های حذف فیلتر در آخرین جستجو (برای گزارش‌دهی)"""
+        return self._last_fallback_steps
+
     #────────────────────────────────────────── Public  Methods ──────────────────────────────────────────
     def search(
         self,

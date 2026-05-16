@@ -11,7 +11,7 @@ from src.config.logging_config import log_message, LogLevel, LG
 
 
 class EmbeddingService:
-    """مدیریت مدل Embedding و تولید بردارهای Dense"""
+    """‫مدیریت مدل Embedding و تولید بردارهای Dense"""
 
     def __init__( self, settings: Settings | None = None ) -> None:
         self._settings = settings or get_settings()
@@ -65,11 +65,8 @@ class EmbeddingService:
         if not self._session or not self._tokenizer:
             raise RuntimeError( "سرویس Embedding به‌درستی راه‌اندازی نشده است." )
 
-        try:
-            return self._encode_onnx( formatted )
-        except Exception as exc:
-            log_message( LG.RETRIEVAL, f"خطا در تولید بردارهای Embedding: {exc}", LogLevel.ERROR )
-            return [ [ 0.0 ] * self._dimension for _ in input_texts ]
+        # حذف فال‌بک خطرناک بردار صفر؛ خطا به لایه بالا پاس داده می‌شود تا مدیریت صریح گردد
+        return self._encode_onnx( formatted )
 
     #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     def _encode_onnx( self, formatted_texts: list[ str ] ) -> list[ list[ float ] ]:
@@ -87,7 +84,15 @@ class EmbeddingService:
 
     @staticmethod
     def _mean_pooling( model_output: dict[ str, np.ndarray ], attention_mask: np.ndarray ) -> np.ndarray:
-        """ ‫محاسبهٔ میانگین بردارها روی توکن‌های فعال (مخصوص مدل‌های E5)"""
+        """‫‫محاسبهٔ میانگین بردارها روی توکن‌های فعال (مخصوص مدل‌های E5)
+
+        Args:
+            model_output: ‫خروجی مدل شامل last_hidden_state
+            attention_mask: ماسک توجه برای نادیده گرفتن پدینگ
+
+        Returns:
+            بردارهای تجمیع‌شده‫ (Mean Pooled)
+        """
         token_embeddings = model_output[ "last_hidden_state" ]
         input_mask_expanded = np.expand_dims( attention_mask, axis=-1 )
         sum_embeddings = np.sum( token_embeddings * input_mask_expanded, axis=1 )

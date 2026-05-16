@@ -4,7 +4,7 @@
 #─────────────────────imports─────────────────────
 from __future__ import annotations
 from typing import AsyncGenerator
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -33,8 +33,9 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
 
     log_message( LG.API, "🚀 در حال بارگذاری سرویس‌های پایه...", LogLevel.INFO )
 
+    settings = get_settings()
     loader = DomainConfigLoader()
-    domain = "mobile"
+    domain = settings.DEFAULT_DOMAIN
     config = loader.load( domain )
 
     embedder = EmbeddingService()
@@ -54,6 +55,8 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield
+    # ✅ بستن ایمن Connection Pool قبل از پایان چرخه عمر
+    await app.state.db_engine.close()
     log_message( LG.API, "🛑 پایان چرخه عمر سرویس‌ها و آزادسازی منابع", LogLevel.INFO )
 
 
@@ -90,7 +93,7 @@ async def log_error( error: ErrorLog ):
 
 
 @app.exception_handler( HTTPException )
-async def custom_http_exception( request, exc ):
+async def custom_http_exception( request: Request, exc: HTTPException ):
     return JSONResponse( status_code=exc.status_code,
                          content={
                              "status": "error",

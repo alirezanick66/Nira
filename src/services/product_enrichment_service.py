@@ -7,6 +7,7 @@
 """
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.models.product import PriceRange, Product, QualityLevel
+from src.config.logging_config import log_message, LogLevel, LG
 
 
 class ProductEnrichmentService:
@@ -42,7 +43,7 @@ class ProductEnrichmentService:
 
         # ‫تولید tags
         product.tags = cls._generate_tags( product )
-
+        log_message( LG.DATA_PROCESSING, f"✅ محصول {product.product_id} غنی‌سازی شد", LogLevel.DEBUG )
         return product
 
     #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
@@ -173,7 +174,7 @@ class ProductEnrichmentService:
 
     @staticmethod
     def _generate_tags( product: Product ) -> list[ str ]:
-        """‫تولید برچسب‌های استنتاجی
+        """تولید برچسب‌های استنتاجی یکتا و مرتب‌شده
 
         ‫بر اساس:
         ‫- category
@@ -182,10 +183,10 @@ class ProductEnrichmentService:
         ‫- user_feedback
 
         Args:
-            product: مدل Product
+            product: مدل Product غنی‌شده
 
         Returns:
-            لیست برچسب‌ها (یکتا)
+            لیست نهایی تگ‌ها
         """
         tags = []
 

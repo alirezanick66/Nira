@@ -158,7 +158,7 @@ class LLMOrchestrator:
         intent: str,
         filters_str: str | None,
         products: list[ QdrantProductPayload ],
-        applied_filters: dict | None = None,
+        applied_filters: MetadataFilters | None = None,
     ) -> dict[ str, object ]:
         """اجرای کامل پایپلاین تولید پاسخ
  
