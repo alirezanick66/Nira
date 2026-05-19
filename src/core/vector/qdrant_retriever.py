@@ -188,13 +188,13 @@ class QdrantHybridRetriever:
                 must_not_conditions.append( FieldCondition( key=base_key, match=MatchAny( any=cast( "list[str]", vals ) ) ) )
                 continue
 
-        if isinstance( value, dict ):
-            for op, val in value.items():
-                if op in op_map:
-                    must_conditions.append( FieldCondition( key=key, range=Range( **{ op_map[ op ]: val } ) ) )
-        elif isinstance( value, list ):
-            must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
-        elif isinstance( value, ( str, int, bool ) ):
-            must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
+            if isinstance( value, dict ):
+                for op, val in value.items():
+                    if op in op_map:
+                        must_conditions.append( FieldCondition( key=key, range=Range( **{ op_map[ op ]: val } ) ) )
+            elif isinstance( value, list ):
+                must_conditions.append( FieldCondition( key=key, match=MatchAny( any=value ) ) )
+            elif isinstance( value, ( str, int, bool ) ):
+                must_conditions.append( FieldCondition( key=key, match=MatchValue( value=value ) ) )
 
         return Filter( must=must_conditions or None, must_not=must_not_conditions or None )

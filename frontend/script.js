@@ -60,6 +60,19 @@ function handleSend(overrideQuery) {
 
 			if (data.results?.length) renderProducts(data.results)
 
+			// ─── نمایش هوشمند next_suggestion ─────────────────────────────────────
+			const suggestion = data.next_suggestion?.trim()
+			if (
+				suggestion &&
+				suggestion.length > 10 &&
+				data.results?.length > 0
+			) {
+				const tipEl = document.createElement("div")
+				tipEl.className = "context-tip"
+				tipEl.innerHTML = `💡 <span>${suggestion}</span>`
+				document.getElementById("chat").appendChild(tipEl)
+			}
+
 			// ‫callback برای دکمه‌های اکشن — query رو مستقیم به handleSend میده
 			if (data.intent !== "greeting") {
 				renderQuickActions((q) => handleSend(q), data.results ?? [])
