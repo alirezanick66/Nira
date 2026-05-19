@@ -141,9 +141,9 @@ class LLMOrchestrator:
                 cleaned = cleaned[ start:end + 1 ]
 
             validated = self._extract_validator.validate_python( json.loads( cleaned ) )
-            log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | Session: {session_id}",
+            total_usage = token_usage.get( 'total_tokens', 0 )
+            log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | TotalUsage: {total_usage}",
                          LogLevel.DEBUG )
-            log_message( LG.LLM, f"📥 Extract Tokens: {token_usage.get('total_tokens', 0)}", LogLevel.DEBUG )
             return validated
 
         except Exception as exc:
@@ -245,11 +245,13 @@ class LLMOrchestrator:
         }
 
     def _is_greeting_fast( self, text: str ) -> bool:
-        """تشخیص آنی احوال‌پرسی بدون فراخوانی LLM (Latency <۱ms)"""
+        """‫تشخیص آنی احوال‌پرسی بدون فراخوانی LLM (Latency <۱ms)"""
         if not self._greeting_keywords:
             return False
         normalized = self._normalizer.normalize( text ).strip()
         tokens = set( normalized.split() )
+        if len( tokens ) > 3:
+            return False
         return bool( tokens & self._greeting_keywords )
 
     def _build_domain_schema( self ) -> str:

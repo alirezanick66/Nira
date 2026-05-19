@@ -62,6 +62,7 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
 
 app = FastAPI(
     title=get_settings().APP_NAME,
+    debug=get_settings().APP_DEBUG,
     description="دستیار هوشمند خرید موبایل مبتنی بر جستجوی ترکیبی، درک زبان طبیعی و تولید پاسخ ساختاریافته",
     version="1.0.0",
     lifespan=lifespan,

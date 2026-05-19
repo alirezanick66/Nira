@@ -288,3 +288,23 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 .action-btn:active {
 	transform: translateY(0);
 }
+/* ═══════════════════════════════════════════════════════════════════
+پیشنهاد هوشمند (Context Tip)
+═══════════════════════════════════════════════════════════════════ */
+.context-tip {
+	margin-top: 0.75rem;
+	padding: 0.6rem 0.9rem;
+	background: var(--color-surface);
+	border: 1px dashed var(--color-border-strong);
+	border-radius: var(--radius-md);
+	font-size: 0.82rem;
+	color: var(--color-text-muted);
+	line-height: 1.6;
+	direction: rtl;
+	animation: fadeIn 0.4s ease both;
+	animation-delay: 0.2s;
+}
+.context-tip span {
+	font-weight: 500;
+	color: var(--color-text);
+}
