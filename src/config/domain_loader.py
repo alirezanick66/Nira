@@ -32,6 +32,7 @@ class DomainConfig( BaseModel ):
     relaxation_mappings: dict[ str, dict[ str, str ] ] = Field( default_factory=dict )
     emphasis_keywords: list[ str ] = Field( default_factory=list )
     filter_cues: dict[ str, list[ str ] ] = Field( default_factory=dict )
+    brand_aliases: dict[ str, str ] = Field( default_factory=dict, description="نگاشت مترادف‌های برند به نام کانونیکال" )
 
     @computed_field
     @property

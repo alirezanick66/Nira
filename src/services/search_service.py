@@ -151,6 +151,9 @@ class SearchService:
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step="generating", message=self._STEP_MESSAGES[ "generating" ] )
 
+        user_budget = extract_result.metadata_filters.get( "price", {} ).get( "<=" )          # type: ignore
+        min_price = min( ( p.price for p in final_products ), default=0 )
+
         filters_str = json.dumps( extract_result.metadata_filters, ensure_ascii=False, indent=2 )
         llm_out: dict = await self._llm.generate(
             session_id=session_id,
@@ -159,6 +162,8 @@ class SearchService:
             filters_str=filters_str,
             products=final_products,
             applied_filters=extract_result.metadata_filters,
+            user_budget=user_budget,
+            min_price=min_price,
         )
 
         yield self._build_final_response(
