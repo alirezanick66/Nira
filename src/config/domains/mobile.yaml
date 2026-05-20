@@ -2,8 +2,6 @@ domain_version: "2.0.0"
 
 brands:
     - اپل
-    - آیفون
-    - ایفون
     - سامسونگ
     - شیائومی
     - هواوی
@@ -16,6 +14,15 @@ brands:
     - گوگل
     - ریلمی
     - پوکو
+
+brand_aliases:
+    آیفون: اپل
+    ایفون: اپل
+    iphone: اپل
+    apple: اپل
+    samsung: سامسونگ
+    xiaomi: شیائومی
+    huawei: هواوی
 
 categories:
     #دسته بندی محصول

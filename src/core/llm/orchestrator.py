@@ -180,6 +180,8 @@ class LLMOrchestrator:
         filters_str: str | None,
         products: list[ QdrantProductPayload ],
         applied_filters: MetadataFilters | None = None,
+        user_budget: int | float | None = None,
+        min_price: int | float = 0,
     ) -> dict[ str, object ]:
         """اجرای کامل پایپلاین تولید پاسخ
  
@@ -199,7 +201,14 @@ class LLMOrchestrator:
         await self._memory.add_message( session_id, "user", user_query )
 
         # ‫۲. ساخت پرامپت پایه
-        messages = self._prompt_engine.render( intent, filters_str or "بدون فیلتر خاص", products, refine_query=user_query )
+        messages = self._prompt_engine.render(
+            intent,
+            filters_str or "بدون فیلتر خاص",
+            products,
+            refine_query=user_query,
+            user_budget=str( int( user_budget ) ) if user_budget else "نامشخص",
+            min_price=str( int( min_price ) ),
+        )
 
         # ‫ تزریق تاریخچه مکالمه برای refine (و سایر intentها)
         history = await self._memory.get_history( session_id )
@@ -276,19 +285,22 @@ class LLMOrchestrator:
         return bool( tokens & self._greeting_keywords )
 
     def _build_domain_schema( self ) -> str:
-        """تولید داینامیک راهنمای اسکیما و نگاشت‌های کیفی از YAML"""
+        """‫تولید داینامیک راهنمای اسکیما و نگاشت‌های کیفی از YAML"""
         parts = [ "⚙️ Available Filters & Types:" ]
         slots = self._config.slot_definitions
 
         for key, cfg in slots.items():
             s_type = cfg.get( "type", "scalar" )
             units = list( cfg.get( "units", {} ).keys() )          # type: ignore
-
-            # ✅ افزودن مثال‌های صریح برای جلوگیری از Hallucination کلید unit
             example = " (مثال: {'price': {'<=': 20000000}} ← فقط تومان، بدون unit)" if key == "price" else ""
             unit_str = f" (units: {', '.join(units)})" if units and key != "price" else ""
-
             parts.append( f"- {key}: {s_type}{example}{unit_str}" )
+
+        aliases = self._config.brand_aliases
+        if aliases:
+            parts.append( "\n🏷️ Brand Aliases (همیشه نام کانونیکال را برگردان):" )
+            for alias, canonical in aliases.items():
+                parts.append( f"- '{alias}' → '{canonical}'" )
 
         qual = self._config.qualitative_mappings
         if qual:
