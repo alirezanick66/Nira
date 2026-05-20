@@ -15,6 +15,7 @@ class DomainConfig( BaseModel ):
     model_config = PydanticConfig( extra="allow" )          # پذیرش فیلدهای دامنه‌های آینده بدون شکست
 
     #base.yaml Config
+    price_ceiling_multiplier: float = Field( default=1.8, description="ضریب سقف هوشمند قیمت نسبت به کف" )
     intent_keywords: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
     qualitative_mappings: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
     slot_definitions: dict[ str, dict[ str, object ] ] = Field( default_factory=dict )

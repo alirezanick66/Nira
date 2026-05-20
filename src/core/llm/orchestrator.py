@@ -50,8 +50,19 @@ class LLMOrchestrator:
 
         self._greeting_keywords = frozenset( self._config.intent_keywords.get( "greeting", {} ).get( "keywords_fast", [] ) )
         self._domain_schema_str = self._build_domain_schema()
+        self._price_ceiling_multiplier: float = domain_config.price_ceiling_multiplier
 
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
+
+    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+
+    async def get_session_history( self, session_id: str ) -> list[ dict[ str, str ] ]:
+        """دریافت تاریخچه مکالمه نشست فعال"""
+        return await self._memory.get_history( session_id )
+
+    async def get_session_last_filters( self, session_id: str ) -> dict:
+        """دریافت آخرین فیلترهای جستجوی موفق نشست"""
+        return await self._memory.get_last_filters( session_id )
 
     # ──────────────────────────────────────  فاز 1:متدهای جدید استخراج نیت/فیلتر + چک   ──────────────────────────────────────
     async def extract(
@@ -141,6 +152,16 @@ class LLMOrchestrator:
                 cleaned = cleaned[ start:end + 1 ]
 
             validated = self._extract_validator.validate_python( json.loads( cleaned ) )
+
+            price_filter = validated.metadata_filters.get( "price" )
+            if isinstance( price_filter, dict ):
+                floor = price_filter.get( ">=" ) or price_filter.get( ">" )
+                has_ceiling = "<=" in price_filter or "<" in price_filter
+                if floor and not has_ceiling:
+                    price_filter[ "<=" ] = int( float( floor ) * self._price_ceiling_multiplier )
+
+                    log_message( LG.LLM, f"🔒 سقف قیمت هوشمند فعال شد: < {price_filter['<=']:,}", LogLevel.DEBUG )
+
             total_usage = token_usage.get( 'total_tokens', 0 )
             log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | TotalUsage: {total_usage}",
                          LogLevel.DEBUG )
