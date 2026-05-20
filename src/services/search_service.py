@@ -161,11 +161,12 @@ class SearchService:
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step="generating", message=self._STEP_MESSAGES[ "generating" ] )
 
+        filters_str = json.dumps( extract_result.metadata_filters, ensure_ascii=False, indent=2 )
         llm_out: dict = await self._llm.generate(
             session_id=session_id,
             user_query=query,
             intent=extract_result.intent.value,
-            filters_str=json.dumps( filters, ensure_ascii=False, indent=2 ),
+            filters_str=filters_str,
             products=final_products,
             applied_filters=extract_result.metadata_filters,
         )
@@ -297,6 +298,9 @@ class SearchService:
 
     def _build_clarification( self, *, req_id: str, session_id: str, query: str, question: str | None, t0: float ) -> SearchResponse:
         """‫ساخت پاسخ شفاف‌سازی (Clarification)"""
+        clarification_msg = question or "لطفاً جزئیات بیشتری از نیاز خود بفرمایید."
+        log_message( LG.LLM, f"❓ Clarification Question: {clarification_msg}", LogLevel.DEBUG )
+
         return SearchResponse(
             status="clarification",
             request_id=req_id,
@@ -305,7 +309,7 @@ class SearchService:
             semantic_query=query,
             applied_filters={},
             results=[],
-            message=question or "لطفاً جزئیات بیشتری از نیاز خود بفرمایید.",
+            message=clarification_msg,
             llm_explanation="",
             next_suggestion="برند، بودجه یا ویژگی خاصی مد نظر دارید؟",
             meta={ "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ) },
