@@ -95,8 +95,8 @@ class SearchService:
         # ── مرحله ۱: استخراج نیت و فیلتر (LLM Extract + Fast Greeting) ─────
         yield PipelineStatus( step="extract", message=self._STEP_MESSAGES[ "extract" ] )
 
-        last_filters = await self._llm._memory.get_last_filters( session_id )
-        history = await self._llm._memory.get_history( session_id )
+        last_filters = await self._llm.get_session_last_filters( session_id )
+        history = await self._llm.get_session_history( session_id )
         extract_result: LLMExtractSchema = await self._llm.extract(
             query=query,
             session_id=session_id,
@@ -121,17 +121,6 @@ class SearchService:
         if extract_result.has_conflict:
             log_message( LG.LLM, f"⚠️ تضاد فیلتر شناسایی شد: {extract_result.conflict_reason}", LogLevel.WARNING )
 
-        # 🔧 ۱. اعمال سقف هوشمند قیمت (Smart Ceiling Logic)
-        #‫ اگر LLM سقف نگذاشت ولی کف قیمت داده بود، ما اینجا سقف ۱.۸ برابری اعمال می‌کنیم.
-        filters = extract_result.metadata_filters
-        if "price" in filters and isinstance( filters[ "price" ], dict ):
-            price_range = filters[ "price" ]
-            floor = price_range.get( ">" ) or price_range.get( ">=" )
-            if floor and ( "<=" not in price_range and "<" not in price_range ):
-                # اگر سقف تعریف نشده بود، ۱.۸ برابر کف رو به عنوان سقف موقت ست می‌کنیم
-                price_range[ "<=" ] = int( floor * 1.8 )
-                log_message( LG.LLM, f"🔒 سقف قیمت هوشمند فعال شد: < {price_range['<=']:,}", LogLevel.DEBUG )
-
         log_message( LG.LLM, f"🔀 فیلترهای مؤثر | Intent: {extract_result.intent} | Filters: {extract_result.metadata_filters}",
                      LogLevel.DEBUG )
 
@@ -153,7 +142,8 @@ class SearchService:
         await self._enrich_products( final_products )
         # 🔧 ۲. مرتب‌سازی بر اساس نزدیکی به قیمت (Price Proximity Sort)
         # تضمین می‌کنه محصولاتی که به بودجه کاربر نزدیک‌ترن، اولویت بالاتری داشته باشن.
-        floor_price = filters.get( "price", {} ).get( ">" ) or filters.get( "price", {} ).get( ">=" )          #type: ignore
+        filters = extract_result.metadata_filters
+        floor_price = filters.get( "price", {} ).get( ">" ) or filters.get( "price", {} ).get( ">=" )          # type: ignore
         if floor_price:
             final_products.sort( key=lambda p: abs( p.price - floor_price ) )
             log_message( LG.LLM, "📉 مرتب‌سازی بر اساس نزدیکی به کف قیمت انجام شد.", LogLevel.DEBUG )
