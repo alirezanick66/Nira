@@ -12,12 +12,16 @@ async def main() -> None:
 
     # ‫تست ۱: کوئری ساده بدون فیلتر
     results = retriever.search(
-        query=" Redmi Note 14 Pro 5G",
+        query=" Galaxy S25 Ultra",
         top_k=5,
     )
     log_message( LG.RETRIEVAL, f"📋 نتایج کوئری ساده: {len(results)} محصول", LogLevel.INFO )
     for i, p in enumerate( results, 1 ):
-        log_message( LG.RETRIEVAL, f" title :  {p.title}id: {p.product_id}", LogLevel.DEBUG )
+        log_message(
+            LG.RETRIEVAL,
+            f" title :  {p.title}\nid: {p.product_id}\nprice: {p.price}\nprice_range: {p.price_range}\ncamera_summary: {p.camera_summary}\ncamera_quality: {p.camera_quality}\n..................",
+            LogLevel.DEBUG,
+        )
 
     # # ‫تست ۲: کوئری با فیلتر قیمت و برند
     # results_filtered = retriever.search(

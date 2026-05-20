@@ -14,6 +14,15 @@ from src.config.logging_config import log_message, LogLevel, LG
 class PromptEngine:
     """تولیدکنندهٔ پرامپت‌های پارامتریک بر اساس پیکربندی دامنه"""
 
+    # ✅ مپینگ مقادیر کیفی داخلی به معادل فارسی کاربرپسند
+    _QUALITY_MAP: dict[ str, str ] = {
+        "excellent": "عالی",
+        "good": "خوب",
+        "average": "متوسط",
+        "poor": "ضعیف",
+        "unknown": "نامشخص",
+    }
+
     def __init__( self, domain_config: DomainConfig ) -> None:
         self._prompts: dict[ str, object ] = domain_config.prompts
         self._sys_base: str = str( self._prompts.get( "system_base", "" ) )
@@ -30,8 +39,15 @@ class PromptEngine:
         parts: list[ str ] = []
         for p in products[ :2 ]:
             tags_str = ", ".join( p.tags ) if p.tags else "بدون تگ"
+
+            # 🔧 تبدیل مقادیر کیفی به فارسی قبل از تزریق به پرامپت
+            camera_quality_fa = PromptEngine._QUALITY_MAP.get( p.camera_quality )
+            battery_quality_fa = PromptEngine._QUALITY_MAP.get( p.battery_quality )
+            value_fa = PromptEngine._QUALITY_MAP.get( p.value_for_money )
+
             parts.append( f"| {p.title} | قیمت: {p.price:,} | رنج: {p.price_range} | "
-                          f"دوربین: {p.camera_quality} | تگ‌ها: {tags_str}" )
+                          f"دوربین: {camera_quality_fa} | باتری: {battery_quality_fa} | ارزش: {value_fa} | تگ‌ها: {tags_str}" )
+
         return "\n".join( parts )
 
     def render( self,

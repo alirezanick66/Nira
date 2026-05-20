@@ -62,14 +62,16 @@ function handleSend(overrideQuery) {
 
 			// ─── نمایش هوشمند next_suggestion ─────────────────────────────────────
 			const suggestion = data.next_suggestion?.trim()
+			console.log("📦 [DEBUG] next_suggestion:", suggestion) // ← کنسول مرورگر رو چک کن
+
 			if (
 				suggestion &&
-				suggestion.length > 10 &&
+				suggestion.length > 5 &&
 				data.results?.length > 0
 			) {
 				const tipEl = document.createElement("div")
 				tipEl.className = "context-tip"
-				tipEl.innerHTML = `💡 <span>${suggestion}</span>`
+				tipEl.textContent = `💡 ${suggestion}` // ✅ ایمن‌تر از innerHTML
 				document.getElementById("chat").appendChild(tipEl)
 			}
 
