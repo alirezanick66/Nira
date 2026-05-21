@@ -45,8 +45,8 @@ class PromptEngine:
             battery_quality_fa = PromptEngine._QUALITY_MAP.get( p.battery_quality )
             value_fa = PromptEngine._QUALITY_MAP.get( p.value_for_money )
 
-            parts.append( f"| {p.title} | قیمت: {p.price:,} | رنج: {p.price_range} | "
-                          f"دوربین: {camera_quality_fa} | باتری: {battery_quality_fa} | ارزش: {value_fa} | تگ‌ها: {tags_str}" )
+        parts.append( f"[ID: {p.product_id}] | {p.title} | قیمت: {p.price:,} | رنج: {p.price_range} | "
+                      f"دوربین: {camera_quality_fa} | باتری: {battery_quality_fa} | ارزش: {value_fa} | تگ‌ها: {tags_str}" )
 
         return "\n".join( parts )
 

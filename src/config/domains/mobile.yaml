@@ -140,7 +140,7 @@ relaxation_mappings:
         premium: flagship
 
     # کلمات تأکیدی و کلیدهای مرتبط برای حفاظت پویا
-emphasis_keywords: ["حتماً", "فقط", "الزامی", "باید", "اصلی", "مهم"]
+emphasis_keywords: ["حتما", "فقط", "الزامی", "باید", "اصلی", "مهم", "دقیقا"]
 filter_cues:
     os: ["اندروید", "ios", "سیستم عامل"]
     camera_quality: ["دوربین", "عکس", "فیلم"]
