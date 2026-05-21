@@ -280,8 +280,10 @@ class LLMOrchestrator:
             return False
         normalized = self._normalizer.normalize( text ).strip()
         tokens = set( normalized.split() )
+
         if len( tokens ) > 3:
             return False
+
         return bool( tokens & self._greeting_keywords )
 
     def _build_domain_schema( self ) -> str:
