@@ -25,7 +25,7 @@ from src.api.routes.search import router as search_router
 from src.api.middleware.api_key_middleware import ApiKeyMiddleware
 from src.services.embedding_service import EmbeddingService
 from src.data.db.engine import DatabaseEngine
-from src.services.semantic_cache import AsyncTTLCache
+from services.semantic_cache_service import AsyncTTLCache
 
 
 @asynccontextmanager
