@@ -24,12 +24,18 @@ class _BaseLLMClient:
 
     @staticmethod
     async def _retry_on_rate_limit( func: Callable[..., _T ], *args: object, **kwargs: object ) -> _T:
-        """اجرای مجدد هوشمند در صورت خطای ‫429 Too Many Requests (پلن رایگان)"""
+        """اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests"""
+        timeout = get_settings().GROQ_TIMEOUT_SEC
         for attempt in range( _BaseLLMClient.MAX_RETRIES ):
             try:
-                return await asyncio.to_thread( func, *args, **kwargs )
+                return await asyncio.wait_for(
+                    asyncio.to_thread( func, *args, **kwargs ),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError as exc:
+                log_message( LG.LLM, f"⏱️ LLM timeout بعد از {timeout}s (تلاش {attempt + 1})", LogLevel.WARNING )
+                raise RuntimeError( f"LLM request timed out after {timeout}s" ) from exc
             except Exception as exc:
-                # ✅ اصلاح: تشخیص ایمن محدودیت نرخ با اولویت‌بندی ویژگی‌های رسمی خطا
                 is_rate_limit = ( isinstance( exc, groq.RateLimitError ) or getattr( exc, "status_code", None ) == 429
                                   or getattr( exc, "code", None ) == 429 )
                 if is_rate_limit and attempt < _BaseLLMClient.MAX_RETRIES - 1:
@@ -38,7 +44,10 @@ class _BaseLLMClient:
                     await asyncio.sleep( wait )
                     continue
                 raise
-        return await asyncio.to_thread( func, *args, **kwargs )
+        return await asyncio.wait_for(
+            asyncio.to_thread( func, *args, **kwargs ),
+            timeout=timeout,
+        )
 
 
 class GroqClient( _BaseLLMClient ):
