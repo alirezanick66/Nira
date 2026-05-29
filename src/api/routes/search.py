@@ -89,6 +89,8 @@ async def search_products(
         )
     finally:
         tokens = response.meta.get( "token_usage", {} ) if response and response.meta else {}
+        model_used = str( response.meta.get( "model_used", "unknown" ) ) if response and response.meta else "error"
+
         log_query(
             request_id=uuid.uuid4(),
             store_id=store_id,
@@ -106,7 +108,7 @@ async def search_products(
             prompt_tokens=tokens.get( "prompt_tokens", 0 ),          #type:ignore
             completion_tokens=tokens.get( "completion_tokens", 0 ),          #type:ignore
             total_tokens=tokens.get( "total_tokens", 0 ),          #type:ignore
-        )
+            model_used=model_used )
 
 
 #────────────────────────────────────────── Endpoint 2 ──────────────────────────────────────────
@@ -149,6 +151,7 @@ async def search_products_stream(
         result_count = 0
         applied_filters: dict | None = None
         tokens: dict = {}
+        model_used: str = "unknown"
         try:
             async for event in service.run_streaming(
                     query=query,
@@ -164,6 +167,7 @@ async def search_products_stream(
                     result_count = len( event.results )
                     applied_filters = dict( event.applied_filters ) if event.applied_filters else None
                     tokens = ( val if isinstance( val := ( event.meta or {} ).get( "token_usage" ), dict ) else {} )
+                    model_used = str( event.meta.get( "model_used", "unknown" ) ) if event.meta else "unknown"
                     yield _sse_event( "result", event.model_dump() )
 
         except Exception:
@@ -171,23 +175,22 @@ async def search_products_stream(
             yield _sse_event( "error", { "message": "خطای داخلی سرور. لطفاً دوباره تلاش کنید." } )
 
         finally:
-            log_query(
-                request_id=uuid.uuid4(),
-                store_id=store_id,
-                user_id=None,
-                session_id=active_session_id,
-                client_session_id=client_session_id,
-                query=query,
-                intent=result_intent,
-                domain="mobile",
-                applied_filters=applied_filters,
-                result_count=result_count,
-                response_status=response_status,
-                latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
-                prompt_tokens=tokens.get( "prompt_tokens", 0 ),
-                completion_tokens=tokens.get( "completion_tokens", 0 ),
-                total_tokens=tokens.get( "total_tokens", 0 ),
-            )
+            log_query( request_id=uuid.uuid4(),
+                       store_id=store_id,
+                       user_id=None,
+                       session_id=active_session_id,
+                       client_session_id=client_session_id,
+                       query=query,
+                       intent=result_intent,
+                       domain="mobile",
+                       applied_filters=applied_filters,
+                       result_count=result_count,
+                       response_status=response_status,
+                       latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+                       prompt_tokens=tokens.get( "prompt_tokens", 0 ),
+                       completion_tokens=tokens.get( "completion_tokens", 0 ),
+                       total_tokens=tokens.get( "total_tokens", 0 ),
+                       model_used=model_used )
 
     return StreamingResponse(
         _event_generator(),

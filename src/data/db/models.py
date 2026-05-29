@@ -87,6 +87,7 @@ class QueryLog( Base ):
     prompt_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
     completion_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
     total_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
+    model_used: Mapped[ str ] = mapped_column( String, nullable=False, default="groq" )
 
     created_at: Mapped[ datetime ] = mapped_column( TIMESTAMP( timezone=True ), server_default=func.now(), nullable=False )
 

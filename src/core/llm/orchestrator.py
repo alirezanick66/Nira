@@ -19,7 +19,7 @@ from src.core.llm.prompt_engine import PromptEngine
 from src.core.llm.schemas import LLMResponseSchema, LLMExtractSchema, IntentType, MetadataFilters
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.utils.normalizer import PersianNormalizer
-from services.semantic_cache_service import AsyncTTLCache
+from src.services.semantic_cache_service import AsyncTTLCache
 
 
 class LLMOrchestrator:
@@ -248,11 +248,14 @@ class LLMOrchestrator:
         try:
             log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
             raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
+            model_used = self._groq._model          #اضافه کردن مدل استفاده شده در لاگ
+
         except Exception as exc:
             log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
             try:
                 log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
                 raw_json, token_usage = await self._gemini.chat_json( cast( list, messages ) )
+                model_used = self._gemini._model          #اضافه کردن مدل استفاده شده در لاگ
             except Exception as gem_exc:
                 log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
                 return self._fallback_response( user_query, products )
@@ -276,7 +279,8 @@ class LLMOrchestrator:
             await self._memory.add_message( session_id, "assistant", validated.explanation, applied_filters=applied_filters or {} )
             result = validated.model_dump()
             result[ "meta" ] = {
-                "token_usage": token_usage
+                "token_usage": token_usage,
+                "model_used": model_used
             }          #‫ اضافه کردن آمار توکن‌ها برای ذخیره در سطح بالاتر(query_log_service)
             return result
         except Exception as exc:
