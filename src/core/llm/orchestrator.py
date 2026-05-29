@@ -19,7 +19,7 @@ from src.core.llm.prompt_engine import PromptEngine
 from src.core.llm.schemas import LLMResponseSchema, LLMExtractSchema, IntentType, MetadataFilters
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.utils.normalizer import PersianNormalizer
-from src.services.semantic_cache import AsyncTTLCache
+from services.semantic_cache_service import AsyncTTLCache
 
 
 class LLMOrchestrator:
