@@ -3,6 +3,7 @@
 """
 #──────────────────────────────────────────  Imports ──────────────────────────────────────────
 from __future__ import annotations
+import hashlib
 import json
 from pydantic import TypeAdapter
 from typing import cast
@@ -18,6 +19,7 @@ from src.core.llm.prompt_engine import PromptEngine
 from src.core.llm.schemas import LLMResponseSchema, LLMExtractSchema, IntentType, MetadataFilters
 from src.core.vector.qdrant_payload import QdrantProductPayload
 from src.utils.normalizer import PersianNormalizer
+from src.services.semantic_cache import AsyncTTLCache
 
 
 class LLMOrchestrator:
@@ -29,6 +31,7 @@ class LLMOrchestrator:
         gemini_client: GeminiClient | None = None,
         memory: ConversationMemory | None = None,
         normalizer: PersianNormalizer | None = None,
+        semantic_cache: AsyncTTLCache | None = None,
     ) -> None:
         """ارکستراتور اصلی LLM با پشتیبانی از تزریق وابستگی (DI) برای تست‌پذیری
 
@@ -38,6 +41,7 @@ class LLMOrchestrator:
             gemini_client: ‫کلاینت Gemini (اختیاری)
             memory: ‫سرویس حافظه مکالمه (اختیاری)
             normalizer: ‫نرمال‌ساز متن فارسی (اختیاری)
+            semantic_cache: ‫سرویس کش معنایی (اختیاری)
         """
         self._config = domain_config
         self._memory = memory or ConversationMemory( max_turns=3 )
@@ -47,7 +51,7 @@ class LLMOrchestrator:
         self._extract_validator = TypeAdapter( LLMExtractSchema )
         self._prompt_engine = PromptEngine( domain_config )
         self._normalizer = normalizer or PersianNormalizer()
-
+        self._semantic_cache = semantic_cache
         self._greeting_keywords = frozenset( self._config.intent_keywords.get( "greeting", {} ).get( "keywords_fast", [] ) )
         self._domain_schema_str = self._build_domain_schema()
         self._price_ceiling_multiplier: float = domain_config.price_ceiling_multiplier
@@ -90,6 +94,13 @@ class LLMOrchestrator:
             ValueError: ‫در صورت خروجی JSON نامعتبر
         """
         normalized = self._normalizer.normalize( query )
+
+        if self._semantic_cache:
+            cache_key = hashlib.sha256( f"extract:{self._config}:{normalized}".encode() ).hexdigest()
+            cached = await self._semantic_cache.get( cache_key )
+            if cached:
+                log_message( LG.LLM, "⚡ Extract Cache Hit | بدون فراخوانی LLM", LogLevel.DEBUG )
+                return LLMExtractSchema.model_validate( cached )
 
         # ‫۱. Fast-Path Greeting Check
         if self._is_greeting_fast( normalized ):
@@ -161,6 +172,11 @@ class LLMOrchestrator:
                     price_filter[ "<=" ] = int( float( floor ) * self._price_ceiling_multiplier )
 
                     log_message( LG.LLM, f"🔒 سقف قیمت هوشمند فعال شد: < {price_filter['<=']:,}", LogLevel.DEBUG )
+
+            # 💾 ذخیره در کش پس از موفقیت
+            if self._semantic_cache and not validated.needs_clarification and not validated.has_conflict:
+                await self._semantic_cache.set( cache_key, validated.model_dump() )
+                log_message( LG.LLM, f"💾 Extract Cache Set | Key: {cache_key[:8]}...", LogLevel.DEBUG )
 
             total_usage = token_usage.get( 'total_tokens', 0 )
             log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | TotalUsage: {total_usage}",

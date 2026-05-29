@@ -73,6 +73,9 @@ class Settings( BaseSettings ):
     #──────────────────────────────────────────  Domains ──────────────────────────────────────────
     DEFAULT_DOMAIN: str = Field( default="mobile", description="دامنه پیش‌فرض بارگذاری‌شده در استارت‌آپ" )
 
+    # ────────────────────────────────────────── Semantic Cache ──────────────────────────────────────────
+    SEMANTIC_CACHE_ENABLED: bool = True
+    SEMANTIC_CACHE_TTL: int = Field( default=7200, description="زمان انقضا کش  (ثانیه)" )
     # ────────────────────────────────────────── Computed Fields ──────────────────────────────────────────
     @computed_field
     @property
