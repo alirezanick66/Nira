@@ -11,16 +11,14 @@ async function _fetch(path, params = {}) {
 	return res.json()
 }
 
-export async function fetchStats() {
-	return _fetch("/stats")
+export async function fetchStats(days = 7) {
+	return _fetch("/stats", { days })
 }
 
-/**
- * دریافت لاگ‌ها به همراه total count واقعی برای pagination صحیح
- * @param {number} limit
- * @param {number} offset
- * @returns {Promise<{logs: Array, count: number, total: number}>}
- */
-export async function fetchLogs(limit = 20, offset = 0) {
-	return _fetch("/logs", { limit, offset })
+export async function fetchLogs(limit = 20, offset = 0, days = 7) {
+	return _fetch("/logs", { limit, offset, days })
+}
+
+export async function fetchChart(days = 1) {
+	return _fetch("/chart", { days })
 }

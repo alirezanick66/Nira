@@ -3,48 +3,109 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>پنل آنالیتیکس نیرا | B2B Dashboard</title>
+		<title>پنل آنالیتیکس نیرا</title>
 		<link rel="stylesheet" href="css/style.css" />
 		<link rel="stylesheet" href="css/04-admin.css" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap"
+			rel="stylesheet" />
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 	</head>
 	<body class="admin-mode">
 		<header class="admin-header">
-			<div class="admin-container header-inner">
-				<h1>📊 پنل شفافیت عملکرد</h1>
-				<div class="header-actions">
-					<button id="refresh-btn" class="admin-btn secondary">
-						🔄 بروزرسانی
+			<div class="adm-wrap header-inner">
+				<div class="header-brand">
+					<div class="brand-dot"></div>
+					<div>
+						<h1>پنل شفافیت عملکرد</h1>
+						<span>Nira Analytics</span>
+					</div>
+				</div>
+
+				<div class="time-filters">
+					<button class="time-filter-btn active" data-days="1">
+						امروز
+					</button>
+					<button class="time-filter-btn" data-days="7">۷ روز</button>
+					<button class="time-filter-btn" data-days="30">
+						۳۰ روز
 					</button>
 				</div>
+
+				<button id="refresh-btn" class="refresh-btn">
+					<i class="ti ti-refresh" aria-hidden="true"></i>
+					بروزرسانی
+				</button>
 			</div>
 		</header>
 
-		<main class="admin-container">
-			<section id="stats-grid" class="stats-grid"></section>
+		<main class="admin-main">
+			<div class="adm-wrap">
+				<!-- Stats -->
+				<div id="stats-grid" class="stats-grid"></div>
 
-			<section class="logs-section">
-				<div class="logs-header">
-					<h2>📜 لاگ کوئری‌ها</h2>
-					<div id="pagination" class="pagination-controls"></div>
+				<!-- Charts -->
+				<div class="charts-row">
+					<div class="chart-card">
+						<div class="chart-card-header">
+							<div>
+								<div class="chart-title">
+									کوئری‌ها به تفکیک ساعت
+								</div>
+								<div class="chart-sub">
+									توزیع زمانی درخواست‌ها
+								</div>
+							</div>
+						</div>
+						<div class="chart-wrap">
+							<canvas id="bar-chart"></canvas>
+						</div>
+					</div>
+
+					<div class="chart-card">
+						<div class="chart-card-header">
+							<div>
+								<div class="chart-title">توزیع نیت کاربران</div>
+								<div class="chart-sub">تفکیک intent</div>
+							</div>
+						</div>
+						<div class="chart-wrap">
+							<canvas id="pie-chart"></canvas>
+						</div>
+					</div>
 				</div>
-				<div class="table-wrapper">
-					<table id="logs-table">
-						<thead>
-							<tr>
-								<th>زمان</th>
-								<th>کوئری</th>
-								<th>نیت</th>
-								<th>مدل</th>
-								<th>توکن‌ها</th>
-								<th>تأخیر</th>
-								<th>وضعیت</th>
-								<th>فیلترها</th>
-							</tr>
-						</thead>
-						<tbody id="logs-body"></tbody>
-					</table>
+
+				<!-- Logs -->
+				<div class="logs-card">
+					<div class="logs-card-header">
+						<span class="logs-title">📜 لاگ کوئری‌ها</span>
+						<div id="pagination" class="pagination-controls"></div>
+					</div>
+					<div class="table-wrap">
+						<table>
+							<thead>
+								<tr>
+									<th>زمان</th>
+									<th>کوئری</th>
+									<th>نیت</th>
+									<th>مدل</th>
+									<th>توکن‌ها</th>
+									<th>تأخیر</th>
+									<th>وضعیت</th>
+									<th>Session</th>
+									<th>فیلترها</th>
+								</tr>
+							</thead>
+							<tbody id="logs-body"></tbody>
+						</table>
+					</div>
 				</div>
-			</section>
+			</div>
 		</main>
 
 		<script type="module" src="js/admin/admin.js"></script>

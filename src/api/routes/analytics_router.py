@@ -1,7 +1,7 @@
 """‫روتر آنالیتیکس و گزارش‌دهی B2B (فقط خواندنی)"""
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import AsyncGenerator
 from datetime import datetime, timedelta, timezone
@@ -31,9 +31,8 @@ async def get_dashboard_stats(
         session: AsyncSession = Depends( _get_async_session ),
 ):
     """‫محاسبه آمار کلی: میانگین تأخیر، مجموع توکن‌ها، تعداد کوئری‌ها و نرخ خطا"""
-
+    since = _date_filter( days )
     try:
-        since = _date_filter( days )
         agg_query = ( select(
             func.avg( QueryLog.latency_ms ).label( "avg_latency" ),
             func.sum( QueryLog.total_tokens ).label( "total_tokens" ),
@@ -104,6 +103,38 @@ async def get_query_logs(
     except Exception as exc:
         log_message( LG.API, f"خطا در بازیابی لاگ‌های کوئری: {exc}", LogLevel.ERROR )
         raise HTTPException( status_code=500, detail="خطا در بازیابی لاگ‌ها" )
+
+
+@router.get( "/chart", summary="داده‌های تجمیع‌شده ساعتی برای نمودار" )
+async def get_chart_data(
+        days: int = Query( default=1, ge=1, le=30, description="بازه زمانی به روز" ),
+        session: AsyncSession = Depends( _get_async_session ),
+):
+    """‫بازیابی تعداد کوئری‌ها به تفکیک ساعت برای رسم نمودار Bar Chart"""
+    try:
+        since = _date_filter( days )
+
+        hourly_stmt = ( select(
+            extract( "hour", QueryLog.created_at ).label( "hour" ),
+            func.count( QueryLog.id ).label( "count" ),
+        ).where( QueryLog.created_at >= since ).group_by( extract( "hour", QueryLog.created_at ) ).order_by(
+            extract( "hour", QueryLog.created_at ) ) )
+        result = await session.execute( hourly_stmt )
+        rows = result.mappings().all()
+
+        # ‫ساخت آرایه ۲۴ ساعته با مقدار صفر برای ساعت‌های بدون داده
+        hourly: dict[ int, int ] = { int( r[ "hour" ] ): int( r[ "count" ] ) for r in rows }
+        labels = [ f"{h:02d}:00" for h in range( 24 ) ]
+        counts = [ hourly.get( h, 0 ) for h in range( 24 ) ]
+
+        return {
+            "labels": labels,
+            "counts": counts,
+            "total": sum( counts ),
+        }
+    except Exception as exc:
+        log_message( LG.API, f"خطا در بازیابی داده‌های نمودار: {exc}", LogLevel.ERROR )
+        raise HTTPException( status_code=500, detail="خطا در بازیابی داده‌های نمودار" )
 
 
 #────────────────────────────────────────── Private Helpers ──────────────────────────────────────────
