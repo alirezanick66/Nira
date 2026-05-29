@@ -15,7 +15,7 @@ _PUBLIC_PATHS: frozenset[ str ] = frozenset( { "/", "/docs", "/openapi.json", "/
 
 #  افزودن پسوند فایل‌های استاتیک به لیست سفید
 _STATIC_EXTENSIONS: frozenset[ str ] = frozenset(
-    { ".css", ".js", ".ico", ".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".ttf", ".eot", ".map", ".json" } )
+    { ".css", ".js", ".ico", ".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".ttf", ".eot", ".map", ".json", ".html" } )
 
 
 class ApiKeyMiddleware( BaseHTTPMiddleware ):

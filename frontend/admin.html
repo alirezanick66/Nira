@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>پنل آنالیتیکس نیرا | B2B Dashboard</title>
+		<link rel="stylesheet" href="css/style.css" />
+		<link rel="stylesheet" href="css/04-admin.css" />
+	</head>
+	<body class="admin-mode">
+		<header class="admin-header">
+			<div class="admin-container header-inner">
+				<h1>📊 پنل شفافیت عملکرد</h1>
+				<div class="header-actions">
+					<button id="refresh-btn" class="admin-btn secondary">
+						🔄 بروزرسانی
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<main class="admin-container">
+			<section id="stats-grid" class="stats-grid"></section>
+
+			<section class="logs-section">
+				<div class="logs-header">
+					<h2>📜 لاگ کوئری‌ها</h2>
+					<div id="pagination" class="pagination-controls"></div>
+				</div>
+				<div class="table-wrapper">
+					<table id="logs-table">
+						<thead>
+							<tr>
+								<th>زمان</th>
+								<th>کوئری</th>
+								<th>نیت</th>
+								<th>مدل</th>
+								<th>توکن‌ها</th>
+								<th>تأخیر</th>
+								<th>وضعیت</th>
+								<th>فیلترها</th>
+							</tr>
+						</thead>
+						<tbody id="logs-body"></tbody>
+					</table>
+				</div>
+			</section>
+		</main>
+
+		<script type="module" src="js/admin/admin.js"></script>
+	</body>
+</html>

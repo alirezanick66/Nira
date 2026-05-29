@@ -35,6 +35,7 @@ def log_query(
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
     total_tokens: int = 0,
+    model_used: str = "unknown",
 ) -> None:
     """ثبت لاگ کوئری به‌صورت Fire & Forget در پس‌زمینه
     
@@ -56,6 +57,7 @@ def log_query(
         prompt_tokens: تعداد توکن‌های پرامپت
         completion_tokens: تعداد توکن‌های پاسخ
         total_tokens: تعداد کل توکن‌ها
+        model_used: مدل استفاده‌شده در پاسخ‌دهی
     """
     _init_log_infrastructure()
     entry = QueryLog(
@@ -75,6 +77,8 @@ def log_query(
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
+          #AI model
+        model_used=model_used,
     )
 
     try:

@@ -25,7 +25,8 @@ from src.api.routes.search import router as search_router
 from src.api.middleware.api_key_middleware import ApiKeyMiddleware
 from src.services.embedding_service import EmbeddingService
 from src.data.db.engine import DatabaseEngine
-from services.semantic_cache_service import AsyncTTLCache
+from src.services.semantic_cache_service import AsyncTTLCache
+from src.api.routes.analytics_router import router as analytics_router
 
 
 @asynccontextmanager
@@ -89,6 +90,7 @@ app.add_middleware(
 )
 
 app.include_router( search_router )
+app.include_router( analytics_router )
 
 
 @app.post( "/api/log-error" )
