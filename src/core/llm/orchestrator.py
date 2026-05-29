@@ -95,13 +95,6 @@ class LLMOrchestrator:
         """
         normalized = self._normalizer.normalize( query )
 
-        if self._semantic_cache:
-            cache_key = hashlib.sha256( f"extract:{self._config}:{normalized}".encode() ).hexdigest()
-            cached = await self._semantic_cache.get( cache_key )
-            if cached:
-                log_message( LG.LLM, "⚡ Extract Cache Hit | بدون فراخوانی LLM", LogLevel.DEBUG )
-                return LLMExtractSchema.model_validate( cached )
-
         # ‫۱. Fast-Path Greeting Check
         if self._is_greeting_fast( normalized ):
             log_message( LG.LLM, "👋 Greeting شناسایی شد (Fast-Path) | بدون فراخوانی LLM", LogLevel.DEBUG )
@@ -114,6 +107,16 @@ class LLMOrchestrator:
                 has_conflict=False,
                 conflict_reason=None,
             )
+
+        if self._semantic_cache:
+            cache_key = hashlib.sha256( f"extract:{self._config}:{normalized}".encode() ).hexdigest()
+            log_message( LG.LLM, f"🔑 [DEBUG] Cache Key: {cache_key[:16]}...", LogLevel.DEBUG )          # فقط ۱۶ کاراکتر اول
+            cached = await self._semantic_cache.get( cache_key )
+            if cached:
+                log_message( LG.LLM, "⚡ Extract Cache Hit | بدون فراخوانی LLM", LogLevel.DEBUG )
+                return LLMExtractSchema.model_validate( cached )
+            else:
+                log_message( LG.LLM, "❌ Cache Miss | ادامه با فراخوانی LLM", LogLevel.DEBUG )
 
         # ‫۲. ساخت Context پویا
         context_vars = {

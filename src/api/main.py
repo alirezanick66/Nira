@@ -42,18 +42,20 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
     embedder = EmbeddingService()
     db_engine = DatabaseEngine()
 
+    cache_instance = AsyncTTLCache( ttl_seconds=settings.SEMANTIC_CACHE_TTL ) if settings.SEMANTIC_CACHE_ENABLED else None
+
     app.state.db_engine = db_engine
     app.state.product_repo = ProductRepository( db_engine=db_engine )
     app.state.retriever = QdrantHybridRetriever( config, embedding_service=embedder )
     app.state.reranker = RerankerService()
-    app.state.llm = LLMOrchestrator( config )
+    app.state.llm = LLMOrchestrator( config, semantic_cache=cache_instance )
     app.state.search_service = SearchService(
         retriever=app.state.retriever,
         reranker=app.state.reranker,
         llm=app.state.llm,
         image_repo=app.state.product_repo,
     )
-    app.state.semantic_cache = AsyncTTLCache( ttl_seconds=settings.SEMANTIC_CACHE_TTL ) if settings.SEMANTIC_CACHE_ENABLED else None
+    app.state.semantic_cache = cache_instance
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield
