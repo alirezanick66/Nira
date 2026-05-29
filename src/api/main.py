@@ -25,6 +25,7 @@ from src.api.routes.search import router as search_router
 from src.api.middleware.api_key_middleware import ApiKeyMiddleware
 from src.services.embedding_service import EmbeddingService
 from src.data.db.engine import DatabaseEngine
+from src.services.semantic_cache import AsyncTTLCache
 
 
 @asynccontextmanager
@@ -52,6 +53,7 @@ async def lifespan( app: FastAPI ) -> AsyncGenerator[ None, None ]:
         llm=app.state.llm,
         image_repo=app.state.product_repo,
     )
+    app.state.semantic_cache = AsyncTTLCache( ttl_seconds=settings.SEMANTIC_CACHE_TTL ) if settings.SEMANTIC_CACHE_ENABLED else None
 
     log_message( LG.API, "✅ سرویس‌ها آمادهٔ پذیرش درخواست هستند", LogLevel.INFO )
     yield
