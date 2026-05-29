@@ -20,6 +20,16 @@ export function renderStats(stats, container) {
 			value: `${stats.error_rate_pct ?? "0.0"}%`,
 			sub: "پاسخ‌های ناموفق",
 		},
+		{
+			label: "🚫 نرخ صفر نتیجه",
+			value: `${stats.zero_results_rate_pct ?? "0.0"}%`,
+			sub: `${(stats.zero_results_count ?? 0).toLocaleString("fa-IR")} کوئری بدون نتیجه`,
+		},
+		{
+			label: "📦 میانگین نتایج",
+			value: stats.avg_result_count ?? 0,
+			sub: "محصول در هر جستجو",
+		},
 	]
 	container.innerHTML = items
 		.map(
@@ -68,23 +78,37 @@ export function renderLogs(logs, tbody) {
 		.join("")
 }
 
+/**
+ * رندر کنترل‌های pagination بر اساس total واقعی
+ * @param {number} total   - تعداد کل رکوردها از backend
+ * @param {number} limit   - تعداد رکورد در هر صفحه
+ * @param {number} offset  - offset فعلی
+ * @param {HTMLElement} container
+ * @param {function(number): void} onChange
+ */
 export function renderPagination(total, limit, offset, container, onChange) {
-	if (total < limit) {
+	const hasPrev = offset > 0
+	const hasNext = offset + limit < total
+
+	if (!hasPrev && !hasNext) {
 		container.innerHTML = ""
 		return
 	}
+
 	container.innerHTML = `
-		<button class="admin-btn ${offset > 0 ? "" : "disabled"}" ${offset <= 0 ? "disabled" : ""}>← قبلی</button>
-		<button class="admin-btn">بعدی →</button>
+		<button class="admin-btn" id="pg-prev" ${!hasPrev ? "disabled" : ""}>← قبلی</button>
+		<span style="font-size:0.8rem;color:var(--text-muted);padding:0 0.5rem">
+			${(offset + 1).toLocaleString("fa-IR")}–${Math.min(offset + limit, total).toLocaleString("fa-IR")} از ${total.toLocaleString("fa-IR")}
+		</span>
+		<button class="admin-btn" id="pg-next" ${!hasNext ? "disabled" : ""}>بعدی →</button>
 	`
-	container
-		.querySelectorAll("button")
-		.forEach(
-			(btn) =>
-				(btn.style.cursor = btn.disabled ? "not-allowed" : "pointer"),
-		)
-	container.querySelectorAll("button")[0].onclick = () =>
-		onChange(offset - limit)
-	container.querySelectorAll("button")[1].onclick = () =>
-		onChange(offset + limit)
+
+	if (hasPrev) {
+		container.querySelector("#pg-prev").onclick = () =>
+			onChange(offset - limit)
+	}
+	if (hasNext) {
+		container.querySelector("#pg-next").onclick = () =>
+			onChange(offset + limit)
+	}
 }

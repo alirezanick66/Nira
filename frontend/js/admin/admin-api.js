@@ -1,5 +1,5 @@
 const API_BASE = "/api/v1/admin"
-const DEMO_API_KEY = "abc12332424sdf5224" // کلید دمو مطابق api.js
+const DEMO_API_KEY = "abc12332424sdf5224"
 
 async function _fetch(path, params = {}) {
 	const url = new URL(`${API_BASE}${path}`, window.location.origin)
@@ -14,6 +14,13 @@ async function _fetch(path, params = {}) {
 export async function fetchStats() {
 	return _fetch("/stats")
 }
+
+/**
+ * دریافت لاگ‌ها به همراه total count واقعی برای pagination صحیح
+ * @param {number} limit
+ * @param {number} offset
+ * @returns {Promise<{logs: Array, count: number, total: number}>}
+ */
 export async function fetchLogs(limit = 20, offset = 0) {
 	return _fetch("/logs", { limit, offset })
 }
