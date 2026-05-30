@@ -308,7 +308,20 @@ export function renderPagination(total, limit, offset, container, onChange) {
 		container.querySelector("#pg-next").onclick = () =>
 			onChange(offset + limit)
 }
-
+/**
+ * نابودسازی نمونه‌های Chart.js برای جلوگیری از memory leak هنگام re-render
+ * باید قبل از هر بار رسم مجدد یا هنگام خطا فراخوانده شود.
+ */
+export function destroyCharts() {
+	if (_barChart) {
+		_barChart.destroy()
+		_barChart = null
+	}
+	if (_pieChart) {
+		_pieChart.destroy()
+		_pieChart = null
+	}
+}
 //────────────────────────────────────────── Private Methods ──────────────────────────────────────────
 
 function _statusBadgeClass(status) {

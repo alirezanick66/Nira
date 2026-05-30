@@ -6,7 +6,7 @@ from httpx import HTTPStatusError
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.fetchers.digikala_api import DigikalaAPIClient
 from src.data.repositories.product_repository import ProductRepository
-from data.sync.progress_tracker import ProgressTracker
+from src.data.sync.progress_tracker import ProgressTracker
 from src.data.db.engine import DatabaseEngine
 from src.config.settings import get_settings
 from src.config.logging_config import log_message, LogLevel, LG

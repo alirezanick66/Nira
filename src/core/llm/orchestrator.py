@@ -68,6 +68,20 @@ class LLMOrchestrator:
         """دریافت آخرین فیلترهای جستجوی موفق نشست"""
         return await self._memory.get_last_filters( session_id )
 
+    async def save_turn(
+        self,
+        session_id: str,
+        user_msg: str,
+        assistant_msg: str,
+    ) -> None:
+        """ثبت یک نوبت مکالمه (user + assistant) بدون فراخوانی LLM
+
+        برای intentهایی مثل greeting و clarification که مستقیم پاسخ می‌دهند
+        و generate() صدا نمی‌شود — تاریخچه مکالمه ناقص نماند.
+        """
+        await self._memory.add_message( session_id, "user", user_msg )
+        await self._memory.add_message( session_id, "assistant", assistant_msg )
+
     # ──────────────────────────────────────  فاز 1:متدهای جدید استخراج نیت/فیلتر + چک   ──────────────────────────────────────
     async def extract(
         self,
@@ -109,7 +123,7 @@ class LLMOrchestrator:
             )
 
         if self._semantic_cache:
-            cache_key = hashlib.sha256( f"extract:{self._config}:{normalized}".encode() ).hexdigest()
+            cache_key = hashlib.sha256( f"extract:{normalized}".encode() ).hexdigest()
             log_message( LG.LLM, f"🔑 [DEBUG] Cache Key: {cache_key[:16]}...", LogLevel.DEBUG )          # فقط ۱۶ کاراکتر اول
             cached = await self._semantic_cache.get( cache_key )
             if cached:
