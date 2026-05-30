@@ -352,7 +352,8 @@ thead tr {
 
 th {
 	padding: 0.7rem 0.9rem;
-	text-align: right;
+	text-align: center;
+	vertical-align: middle;
 	font-weight: 600;
 	font-size: 0.72rem;
 	color: var(--adm-muted);
@@ -363,10 +364,12 @@ th {
 }
 
 td {
-	padding: 0.65rem 0.9rem;
+	padding: 0.55rem 0.9rem;
 	border-bottom: 1px solid var(--adm-border);
 	vertical-align: middle;
 	color: var(--adm-text);
+	text-align: center;
+	vertical-align: middle;
 }
 
 tr:last-child td {
@@ -758,4 +761,10 @@ Auto-refresh toggle و indicator
 .filter-empty {
 	color: var(--adm-dim);
 	font-size: 0.8rem;
+}
+/* حذف پس‌زمینه و padding داخلی mono توی سلول‌های جدول */
+td .mono {
+	background: transparent;
+	padding: 0;
+	letter-spacing: normal;
 }
