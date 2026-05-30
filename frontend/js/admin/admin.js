@@ -7,6 +7,7 @@ import {
 	renderPagination,
 	renderBarChart,
 	renderPieChart,
+	destroyCharts,
 } from "./admin-ui.js"
 
 // ─── المان‌های DOM ────────────────────────────────────────────────
@@ -111,14 +112,7 @@ async function loadDashboard(offset = 0) {
 		statsEl.innerHTML = ""
 		logsEl.innerHTML = `<tr><td colspan="8" class="empty-state error-state">❌ ${err.message}</td></tr>`
 		pagEl.innerHTML = ""
-		if (_barChart) {
-			_barChart.destroy()
-			_barChart = null
-		}
-		if (_pieChart) {
-			_pieChart.destroy()
-			_pieChart = null
-		}
+		destroyCharts()
 	} finally {
 		_setLoading(false)
 	}

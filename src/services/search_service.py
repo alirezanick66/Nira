@@ -107,15 +107,29 @@ class SearchService:
 
         # ‫🔹 مدیریت Intentهای خاص قبل از ورود به پایپلاین جستجو
         if extract_result.intent == IntentType.GENERAL_CHAT:
-            yield self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
+            greeting_response = self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
+            await self._llm.save_turn(
+                session_id=session_id,
+                user_msg=query,
+                assistant_msg=greeting_response.message,
+            )
+            yield greeting_response
             return
 
         if extract_result.needs_clarification:
-            yield self._build_clarification( req_id=req_id,
-                                             session_id=session_id,
-                                             query=query,
-                                             question=extract_result.clarification_question,
-                                             t0=t0 )
+            clarification_response = self._build_clarification(
+                req_id=req_id,
+                session_id=session_id,
+                query=query,
+                question=extract_result.clarification_question,
+                t0=t0,
+            )
+            await self._llm.save_turn(
+                session_id=session_id,
+                user_msg=query,
+                assistant_msg=clarification_response.message,
+            )
+            yield clarification_response
             return
 
         if extract_result.has_conflict:
