@@ -14,7 +14,7 @@ let _timeoutId = null
 let _isSending = false
 
 /** مدت زمان timeout درخواست (میلی‌ثانیه) */
-const REQUEST_TIMEOUT_MS = 10_000
+const REQUEST_TIMEOUT_MS = 40_000
 
 // ─── نگاشت مراحل pipeline ────────────────────────────────────────
 

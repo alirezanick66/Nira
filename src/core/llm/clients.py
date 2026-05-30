@@ -30,8 +30,12 @@ class _BaseLLMClient:
             try:
                 async with asyncio.timeout( timeout ):
                     return await func( *args, **kwargs )
+
             except asyncio.TimeoutError as exc:
                 log_message( LG.LLM, f"⏱️ LLM timeout بعد از {timeout}s (تلاش {attempt + 1})", LogLevel.WARNING )
+                if attempt < _BaseLLMClient.MAX_RETRIES - 1:
+                    # Retry فوری بدون delay برای timeout (برای جلوگیری از client timeout)
+                    continue
                 raise RuntimeError( f"LLM request timed out after {timeout}s" ) from exc
             except Exception as exc:
                 is_rate_limit = ( isinstance( exc, groq.RateLimitError ) or getattr( exc, "status_code", None ) == 429
