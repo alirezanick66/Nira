@@ -262,8 +262,12 @@ export function renderLogs(logs, tbody) {
 	}
 	tbody.innerHTML = logs
 		.map((l) => {
-			const time = new Date(l.created_at).toLocaleString("fa-IR", {
+			const d = new Date(l.created_at)
+			const dateStr = d.toLocaleDateString("fa-IR")
+			const timeStr = d.toLocaleTimeString("fa-IR", {
 				hour12: false,
+				hour: "2-digit",
+				minute: "2-digit",
 			})
 			const statusClass = _statusBadgeClass(l.response_status)
 			const intentClass =
@@ -272,12 +276,12 @@ export function renderLogs(logs, tbody) {
 			const tokens = (l.prompt_tokens || 0) + (l.completion_tokens || 0)
 
 			return `<tr>
-			<td><span class="mono dim">${time}</span></td>
-			<td class="query-cell">${_esc(l.query.slice(0, 45))}${l.query.length > 45 ? "…" : ""}</td>
+			<td><span class="mono" dir="ltr">${dateStr} - ${timeStr}</span></td>
+			<td class="query-cell">${_esc((l.query ?? "").slice(0, 45))}${(l.query?.length ?? 0) > 45 ? "…" : ""}</td>
 			<td><span class="badge ${intentClass}">${l.intent}</span></td>
 			<td>${_formatModel(l.model_used)}</td>
-			<td><span class="mono">${tokens.toLocaleString("fa-IR")}</span></td>
-			<td><span class="latency${l.latency_ms > 3000 ? " latency--slow" : ""}">${l.latency_ms} ms</span></td>
+			<td><span class="mono">${tokens}</span></td>
+			<td><span class="latency${l.latency_ms > 3000 ? " latency--slow" : ""}" dir="ltr">${l.latency_ms} ms</span></td>
 			<td><span class="badge ${statusClass}">${l.response_status}</span></td>
 			<td class="filters-cell">${filters}</td>
 		</tr>`
@@ -424,6 +428,7 @@ function _formatFilterValue(val, meta) {
  * @returns {string} HTML badge
  */
 function _formatModel(model) {
+	if (!model || model === "unknown") return '<span class="mono dim">—</span>'
 	const MODEL_LABELS = {
 		fast_path: { label: "Fast Path", cls: "badge-success" },
 		"llama-3.3-70b-versatile": {
