@@ -735,3 +735,27 @@ Auto-refresh toggle و indicator
 		box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08);
 	}
 }
+/* ═══════════════════════════════════════════════════════════════
+تگ‌های فیلتر خوانا
+═══════════════════════════════════════════════════════════════ */
+.filters-cell {
+	max-width: 240px;
+}
+
+.filter-tag {
+	display: inline-block;
+	padding: 0.15rem 0.5rem;
+	margin: 0.1rem 0.15rem;
+	border-radius: 99px;
+	font-size: 0.67rem;
+	font-weight: 500;
+	background: var(--clr-info-lt);
+	color: #1d4ed8;
+	border: 1px solid rgba(59, 130, 246, 0.15);
+	white-space: nowrap;
+}
+
+.filter-empty {
+	color: var(--adm-dim);
+	font-size: 0.8rem;
+}
