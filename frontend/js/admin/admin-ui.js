@@ -1,6 +1,6 @@
 /**
  * لایه رندر داشبورد آنالیتیکس
- * مسئول: رندر stats، چارت‌ها، جدول لاگ‌ها و pagination
+ * مسئول: رندر stats، چارت‌ها، جدول لاگ‌ها، pagination و skeleton loaders
  */
 
 const INTENT_LABELS = {
@@ -19,6 +19,54 @@ let _barChart = null
 let _pieChart = null
 
 //────────────────────────────────────────── Public methods ──────────────────────────────────────────
+
+/**
+ * رندر skeleton placeholder برای stats cards
+ * @param {HTMLElement} container
+ * @param {number} count
+ */
+export function renderStatsSkeleton(container, count = 6) {
+	container.innerHTML = Array.from({ length: count })
+		.map(
+			() => `
+		<div class="stat-card-skeleton">
+			<span class="skeleton sk-icon"></span>
+			<div class="sk-body">
+				<span class="skeleton sk-label"></span>
+				<span class="skeleton sk-value"></span>
+				<span class="skeleton sk-sub"></span>
+			</div>
+		</div>`,
+		)
+		.join("")
+}
+
+/**
+ * رندر skeleton placeholder برای جدول لاگ‌ها
+ * @param {HTMLElement} tbody
+ * @param {number} rows
+ */
+export function renderLogsSkeleton(tbody, rows = 8) {
+	const widths = [
+		"w-md",
+		"w-lg",
+		"w-sm",
+		"w-md",
+		"w-xs",
+		"w-sm",
+		"w-sm",
+		"w-xs",
+		"w-md",
+	]
+	tbody.innerHTML = Array.from({ length: rows })
+		.map(
+			() => `
+		<tr class="sk-row">
+			${widths.map((w) => `<td><span class="skeleton sk-cell ${w}"></span></td>`).join("")}
+		</tr>`,
+		)
+		.join("")
+}
 
 export function renderStats(stats, container) {
 	const items = [
