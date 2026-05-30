@@ -55,7 +55,6 @@ export function renderLogsSkeleton(tbody, rows = 8) {
 		"w-xs",
 		"w-sm",
 		"w-sm",
-		"w-xs",
 		"w-md",
 	]
 	tbody.innerHTML = Array.from({ length: rows })
@@ -258,7 +257,7 @@ export function renderPieChart(breakdown, canvas) {
 
 export function renderLogs(logs, tbody) {
 	if (!logs?.length) {
-		tbody.innerHTML = `<tr><td colspan="9" class="empty-state">📭 هیچ داده‌ای در این بازه ثبت نشده است.</td></tr>`
+		tbody.innerHTML = `<tr><td colspan="8" class="empty-state">📭 هیچ داده‌ای در این بازه ثبت نشده است.</td></tr>`
 		return
 	}
 	tbody.innerHTML = logs
@@ -269,21 +268,18 @@ export function renderLogs(logs, tbody) {
 			const statusClass = _statusBadgeClass(l.response_status)
 			const intentClass =
 				l.intent === "general_chat" ? "badge-warm" : "badge-primary"
-			const filters = l.applied_filters
-				? JSON.stringify(l.applied_filters).slice(0, 35) + "…"
-				: "—"
+			const filters = _parseFilters(l.applied_filters)
 			const tokens = (l.prompt_tokens || 0) + (l.completion_tokens || 0)
-			const sessionShort = l.session_id ? l.session_id.slice(0, 8) : "—"
+
 			return `<tr>
 			<td><span class="mono dim">${time}</span></td>
 			<td class="query-cell">${_esc(l.query.slice(0, 45))}${l.query.length > 45 ? "…" : ""}</td>
 			<td><span class="badge ${intentClass}">${l.intent}</span></td>
-			<td><span class="mono">${l.model_used || "fast_path"}</span></td>
+			<td>${_formatModel(l.model_used)}</td>
 			<td><span class="mono">${tokens.toLocaleString("fa-IR")}</span></td>
 			<td><span class="latency${l.latency_ms > 3000 ? " latency--slow" : ""}">${l.latency_ms} ms</span></td>
 			<td><span class="badge ${statusClass}">${l.response_status}</span></td>
-			<td><span class="mono dim" title="${l.session_id || ""}">${sessionShort}</span></td>
-			<td><span class="mono dim" title='${_esc(JSON.stringify(l.applied_filters || {}))}'>${filters}</span></td>
+			<td class="filters-cell">${filters}</td>
 		</tr>`
 		})
 		.join("")
@@ -333,4 +329,117 @@ function _esc(str) {
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;")
+}
+
+/**
+ * فیلتر JSON خام را به تگ‌های فارسی خوانا تبدیل می‌کند.
+ * @param {Object|null} filters
+ * @returns {string} HTML تگ‌های فیلتر
+ */
+function _parseFilters(filters) {
+	if (!filters || !Object.keys(filters).length)
+		return "<span class='filter-empty'>—</span>"
+
+	// ─── نگاشت کلیدها به فارسی ───────────────────────────────────
+	const KEY_LABELS = {
+		price: { label: "قیمت", icon: "💰", unit: "M", isPrice: true },
+		ram_gb: { label: "رم", icon: "🔧", unit: "GB" },
+		storage_gb: { label: "حافظه", icon: "💾", unit: "GB" },
+		camera_mp: { label: "دوربین", icon: "📷", unit: "MP" },
+		battery_mah: { label: "باتری", icon: "🔋", unit: "mAh" },
+		brand: { label: "برند", icon: "🏷️", unit: "" },
+		brand_not: { label: "نه‌برند", icon: "🚫", unit: "" },
+		screen_size: { label: "صفحه", icon: "📱", unit: "اینچ" },
+		weight_g: { label: "وزن", icon: "⚖️", unit: "g" },
+	}
+
+	// ─── نگاشت اپراتورها به فارسی ────────────────────────────────
+	const OP_LABELS = {
+		"<=": "حداکثر",
+		">=": "حداقل",
+		"==": "",
+		in: "",
+		not_in: "نه",
+	}
+
+	const tags = []
+
+	for (const [key, value] of Object.entries(filters)) {
+		const meta = KEY_LABELS[key] || { label: key, icon: "🔹", unit: "" }
+
+		// مقدار ساده (string/number) — مثل brand: "samsung"
+		if (typeof value !== "object" || Array.isArray(value)) {
+			const displayVal = Array.isArray(value) ? value.join("، ") : value
+			tags.push(_makeFilterTag(meta, "", displayVal))
+			continue
+		}
+
+		// مقدار آبجکت با اپراتور — مثل price: {"<=": 30000000}
+		for (const [op, val] of Object.entries(value)) {
+			const opLabel = OP_LABELS[op] ?? op
+			const displayVal = _formatFilterValue(val, meta)
+			tags.push(_makeFilterTag(meta, opLabel, displayVal))
+		}
+	}
+
+	return tags.join("")
+}
+
+/**
+ * یک تگ فیلتر HTML می‌سازد.
+ * @param {{label:string, icon:string, unit:string}} meta
+ * @param {string} opLabel
+ * @param {string} displayVal
+ * @returns {string}
+ */
+function _makeFilterTag(meta, opLabel, displayVal) {
+	const text = opLabel
+		? `${meta.icon} ${meta.label} ${opLabel} ${displayVal}`
+		: `${meta.icon} ${meta.label}: ${displayVal}`
+	return `<span class="filter-tag">${_esc(text)}</span>`
+}
+
+/**
+ * مقدار فیلتر را با توجه به نوع کلید فرمت می‌کند.
+ * @param {*} val
+ * @param {{unit:string, isPrice?:boolean}} meta
+ * @returns {string}
+ */
+function _formatFilterValue(val, meta) {
+	if (meta.isPrice && typeof val === "number") {
+		const millions = val / 1_000_000
+		// اگر عدد صحیح بود بدون اعشار، وگرنه یه رقم اعشار
+		const formatted = Number.isInteger(millions)
+			? millions.toLocaleString("fa-IR")
+			: millions.toFixed(1)
+		return `${formatted}M تومان`
+	}
+	if (Array.isArray(val)) return val.join("، ")
+	if (meta.unit) return `${val} ${meta.unit}`
+	return String(val)
+}
+/**
+ * نام خام مدل را به برچسب خوانا تبدیل می‌کند.
+ * @param {string|null} model
+ * @returns {string} HTML badge
+ */
+function _formatModel(model) {
+	const MODEL_LABELS = {
+		fast_path: { label: "Fast Path", cls: "badge-success" },
+		"llama-3.3-70b-versatile": {
+			label: "Llama 3.3 70B",
+			cls: "badge-primary",
+		},
+		"llama-3.1-8b-instant": { label: "Llama 3.1 8B", cls: "badge-info" },
+		"gemini-2.0-flash": { label: "Gemini 2.0 Flash", cls: "badge-warn" },
+		"gemini-1.5-flash": { label: "Gemini 1.5 Flash", cls: "badge-warn" },
+		"gemini-2.5-flash-preview-05-20": {
+			label: "Gemini 2.5 Flash",
+			cls: "badge-warn",
+		},
+	}
+
+	const raw = model || "fast_path"
+	const meta = MODEL_LABELS[raw] ?? { label: raw, cls: "badge-neutral" }
+	return `<span class="badge ${meta.cls}">${meta.label}</span>`
 }
