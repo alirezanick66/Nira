@@ -159,7 +159,7 @@ async def search_products_stream(
                     top_k=top_k,
             ):
                 if isinstance( event, PipelineStatus ):
-                    yield _sse_event( "status", { "step": event.step, "message": event.message } )
+                    yield _sse_event( "status", { "step": event.step } )
 
                 elif isinstance( event, SearchResponse ):
                     response_status = event.status

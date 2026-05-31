@@ -36,4 +36,3 @@ class SearchResponse( BaseModel ):
 class PipelineStatus:
     """‫وضعیت لحظه‌ای یک مرحله از پایپلاین — مصرف SSE endpoint"""
     step: str
-    message: str

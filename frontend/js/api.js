@@ -14,15 +14,15 @@ let _timeoutId = null
 let _isSending = false
 
 /** مدت زمان timeout درخواست (میلی‌ثانیه) */
-const REQUEST_TIMEOUT_MS = 40_000
+const REQUEST_TIMEOUT_MS = 60_000
 
 // ─── نگاشت مراحل pipeline ────────────────────────────────────────
 
 /** @type {Record<string, string>} */
 const STEP_MESSAGES = {
-	nlu: "در حال پردازش پیام شما...",
-	searching: "در حال جستجو در محصولات...",
-	reranking: "در حال ارزیابی و رتبه‌بندی نتایج...",
+	extract: "در حال پردازش پیام شما...",
+	searching: "در حال جستجوی محصولات...",
+	reranking: "در حال ارزیابی محصولات...",
 	generating: "در حال آماده‌سازی پاسخ...",
 }
 
@@ -89,7 +89,7 @@ export function startSearch(query, sessionId, callbacks) {
 	es.addEventListener("status", (e) => {
 		try {
 			const { step, message } = JSON.parse(e.data)
-			onStatus(STEP_MESSAGES[step] ?? message)
+			onStatus(STEP_MESSAGES[step] ?? step)
 		} catch {
 			console.warn("Invalid status event:", e.data)
 		}
