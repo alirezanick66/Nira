@@ -1,0 +1,328 @@
+/* ═══════════════════════════════════════════════════════════════
+Stats Grid
+═══════════════════════════════════════════════════════════════ */
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.stat-card {
+	background: var(--adm-surface);
+	border: 1px solid var(--adm-border);
+	border-radius: var(--adm-radius);
+	padding: 1.1rem 1.2rem;
+	display: flex;
+	align-items: flex-start;
+	gap: 0.85rem;
+	box-shadow: var(--adm-shadow);
+	transition:
+		transform 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+.stat-card:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--adm-shadow-md);
+}
+
+.stat-card--alert {
+	border-color: var(--alert-clr, var(--clr-danger));
+	background: color-mix(
+		in srgb,
+		var(--alert-clr, var(--clr-danger)) 5%,
+		white
+	);
+}
+
+.stat-card--alert .stat-icon-wrap {
+	background: color-mix(
+		in srgb,
+		var(--alert-clr, var(--clr-danger)) 12%,
+		white
+	);
+	color: var(--alert-clr, var(--clr-danger));
+}
+
+.stat-icon-wrap {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	background: var(--clr-primary-lt);
+	color: var(--clr-primary);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.15rem;
+	flex-shrink: 0;
+}
+
+.stat-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.stat-label {
+	font-size: 0.74rem;
+	color: var(--adm-muted);
+	font-weight: 500;
+	margin-bottom: 0.25rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.stat-value {
+	font-size: 1.45rem;
+	font-weight: 700;
+	color: var(--adm-text);
+	line-height: 1.2;
+	margin-bottom: 0.2rem;
+}
+
+.stat-unit {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--adm-muted);
+	margin-right: 0.2rem;
+}
+
+.stat-sub {
+	font-size: 0.72rem;
+	color: var(--adm-dim);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ردیف چارت‌ها
+═══════════════════════════════════════════════════════════════ */
+.charts-row {
+	display: grid;
+	grid-template-columns: 2fr 1fr;
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+@media (max-width: 860px) {
+	.charts-row {
+		grid-template-columns: 1fr;
+	}
+}
+
+.chart-card {
+	background: var(--adm-surface);
+	border: 1px solid var(--adm-border);
+	border-radius: var(--adm-radius);
+	padding: 1.2rem 1.4rem;
+	box-shadow: var(--adm-shadow);
+}
+
+.chart-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 1rem;
+}
+
+.chart-title {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--adm-text);
+}
+
+.chart-sub {
+	font-size: 0.72rem;
+	color: var(--adm-muted);
+	margin-top: 0.1rem;
+}
+
+.chart-wrap {
+	position: relative;
+	height: 220px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+بخش لاگ‌ها
+═══════════════════════════════════════════════════════════════ */
+.logs-card {
+	background: var(--adm-surface);
+	border: 1px solid var(--adm-border);
+	border-radius: var(--adm-radius);
+	box-shadow: var(--adm-shadow);
+	overflow: hidden;
+}
+
+.logs-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 1.4rem;
+	border-bottom: 1px solid var(--adm-border);
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.logs-title {
+	font-size: 0.88rem;
+	font-weight: 600;
+	color: var(--adm-text);
+}
+
+/* ─── جدول ─── */
+.table-wrap {
+	overflow-x: auto;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.8rem;
+	min-width: 860px;
+}
+
+thead tr {
+	background: var(--adm-bg);
+}
+
+th {
+	padding: 0.7rem 0.9rem;
+	text-align: center;
+	vertical-align: middle;
+	font-weight: 600;
+	font-size: 0.72rem;
+	color: var(--adm-muted);
+	border-bottom: 1px solid var(--adm-border);
+	white-space: nowrap;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+td {
+	padding: 0.55rem 0.9rem;
+	border-bottom: 1px solid var(--adm-border);
+	vertical-align: middle;
+	color: var(--adm-text);
+	text-align: center;
+	vertical-align: middle;
+}
+
+tr:last-child td {
+	border-bottom: none;
+}
+
+tbody tr {
+	transition: background 0.12s;
+}
+tbody tr:hover td {
+	background: var(--adm-bg);
+}
+
+.query-cell {
+	max-width: 200px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.mono {
+	font-family: ui-monospace, "SF Mono", monospace;
+	font-size: 0.72rem;
+	background: var(--adm-bg);
+	padding: 0.18rem 0.45rem;
+	border-radius: 5px;
+	letter-spacing: -0.2px;
+}
+
+.mono.dim {
+	color: var(--adm-muted);
+}
+
+.latency {
+	font-size: 0.78rem;
+	color: var(--adm-text);
+	font-weight: 500;
+}
+.latency--slow {
+	color: var(--clr-danger);
+}
+
+/* ─── badge ─── */
+.badge {
+	display: inline-block;
+	padding: 0.18rem 0.55rem;
+	border-radius: 99px;
+	font-size: 0.68rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.badge-success {
+	background: var(--clr-success-lt);
+	color: #15803d;
+}
+.badge-danger {
+	background: var(--clr-danger-lt);
+	color: #b91c1c;
+}
+.badge-warn {
+	background: var(--clr-warn-lt);
+	color: #b45309;
+}
+.badge-info {
+	background: var(--clr-info-lt);
+	color: #1d4ed8;
+}
+.badge-primary {
+	background: var(--clr-primary-lt);
+	color: #b45309;
+}
+.badge-warm {
+	background: #fef3c7;
+	color: #92400e;
+}
+.badge-neutral {
+	background: var(--adm-bg);
+	color: var(--adm-muted);
+}
+
+/* ─── empty / error states ─── */
+.empty-state {
+	text-align: center;
+	padding: 2.5rem;
+	color: var(--adm-muted);
+	font-size: 0.85rem;
+}
+
+.error-state {
+	color: var(--clr-danger);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+تگ‌های فیلتر خوانا
+═══════════════════════════════════════════════════════════════ */
+.filters-cell {
+	max-width: 240px;
+}
+
+.filter-tag {
+	display: inline-block;
+	padding: 0.15rem 0.5rem;
+	margin: 0.1rem 0.15rem;
+	border-radius: 99px;
+	font-size: 0.67rem;
+	font-weight: 500;
+	background: var(--clr-info-lt);
+	color: #1d4ed8;
+	border: 1px solid rgba(59, 130, 246, 0.15);
+	white-space: nowrap;
+}
+
+.filter-empty {
+	color: var(--adm-dim);
+	font-size: 0.8rem;
+}
+/* حذف پس‌زمینه و padding داخلی mono توی سلول‌های جدول */
+td .mono {
+	background: transparent;
+	padding: 0;
+	letter-spacing: normal;
+}
