@@ -179,7 +179,16 @@ class QdrantHybridRetriever:
         must_conditions: list[ Condition ] = []
 
         must_not_conditions: list[ Condition ] = []
-        op_map = { "<": "lt", "<=": "lte", ">": "gt", ">=": "gte" }
+        op_map = {
+            "<": "lt",
+            "<=": "lte",
+            ">": "gt",
+            ">=": "gte",
+            "gt": "gt",
+            "gte": "gte",
+            "lt": "lt",
+            "lte": "lte",
+        }
 
         for key, value in filters.items():
             if key.endswith( "_not" ):

@@ -112,8 +112,7 @@ class GeminiClient( _BaseLLMClient ):
                 response_mime_type="application/json",
                 system_instruction=system_text,
             )
-            models_api = cast( Any, self._client.models )
-            response = await models_api.generate_content_async(
+            response = await self._client.aio.models.generate_content(
                 model=self._model,
                 contents=user_contents[ 0 ] if len( user_contents ) == 1 else user_contents,
                 config=config,

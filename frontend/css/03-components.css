@@ -82,21 +82,32 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	font-size: 0.78rem;
-	color: var(--color-text-muted);
+	font-size: 0.8rem; /* کمی بزرگتر */
+	font-weight: 500; /* ← جدید */
+	color: var(--color-text); /* تیره‌تر از قبل */
 	margin-bottom: 0.75rem;
-	padding: 0.45rem 0.8rem;
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
+	padding: 0.55rem 1rem; /* کمی بیشتر */
+	background: linear-gradient(
+		/* ← جدید: gradient ملایم */ 135deg,
+		var(--color-surface) 0%,
+		rgba(245, 166, 35, 0.06) 100%
+	);
+	border: 1px solid rgba(245, 166, 35, 0.25); /* ← نارنجی ملایم */
 	border-radius: var(--radius-md);
 	width: fit-content;
-	margin-left: auto; /* چپ‌چین برای status (زیر پاسخ AI) */
+	margin-left: auto;
 	opacity: 0;
 	transform: translateY(4px);
 	pointer-events: none;
 	transition:
 		opacity 0.22s ease,
 		transform 0.22s ease;
+	box-shadow: 0 2px 12px rgba(245, 166, 35, 0.08); /* ← جدید */
+}
+
+.status.active {
+	opacity: 1;
+	transform: translateY(0);
 }
 
 .status.active {

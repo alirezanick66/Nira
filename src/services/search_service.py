@@ -10,7 +10,7 @@ import uuid
 import json
 import random
 from typing import AsyncGenerator
-
+from enum import StrEnum
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.core.schemas import PipelineStatus, SearchResponse, SearchResultItem
 from src.core.llm.orchestrator import LLMOrchestrator
@@ -30,12 +30,11 @@ class SearchService:
     ‫- SSE endpoint وضعیت مراحل را نیز yield می‌کند.
     """
 
-    _STEP_MESSAGES: dict[ str, str ] = {
-        "extract": "در حال پردازش پیام شما...",
-        "searching": "در حال جستجو در محصولات...",
-        "reranking": "در حال ارزیابی و رتبه‌بندی نتایج...",
-        "generating": "در حال آماده‌سازی پاسخ...",
-    }
+    class PipelineStep( StrEnum ):
+        EXTRACT = "extract"
+        SEARCHING = "searching"
+        RERANKING = "reranking"
+        GENERATING = "generating"
 
     def __init__(
         self,
@@ -93,7 +92,7 @@ class SearchService:
         req_id = str( uuid.uuid4() )
 
         # ── مرحله ۱: استخراج نیت و فیلتر (LLM Extract + Fast Greeting) ─────
-        yield PipelineStatus( step="extract", message=self._STEP_MESSAGES[ "extract" ] )
+        yield PipelineStatus( step=self.PipelineStep.EXTRACT )
 
         last_filters = await self._llm.get_session_last_filters( session_id )
         history = await self._llm.get_session_history( session_id )
@@ -139,7 +138,7 @@ class SearchService:
                      LogLevel.DEBUG )
 
         # ── مرحله ۲: جستجو ────────────────────────────────────────────────
-        yield PipelineStatus( step="searching", message=self._STEP_MESSAGES[ "searching" ] )
+        yield PipelineStatus( step=self.PipelineStep.SEARCHING )
         candidates, fallback_steps = await self._resolve_candidates(
             semantic_query=extract_result.semantic_query,
             filters=extract_result.metadata_filters,
@@ -151,7 +150,7 @@ class SearchService:
             return
 
         # ── مرحله ۳: رتبه‌بندی ───────────────────────────────────────────────
-        yield PipelineStatus( step="reranking", message=self._STEP_MESSAGES[ "reranking" ] )
+        yield PipelineStatus( step=self.PipelineStep.RERANKING )
         final_products = await asyncio.to_thread( self._reranker.rerank, query=query, payloads=candidates, top_k=top_k )
         await self._enrich_products( final_products )
         # 🔧 ۲. مرتب‌سازی بر اساس نزدیکی به قیمت (Price Proximity Sort)
@@ -163,7 +162,7 @@ class SearchService:
             log_message( LG.LLM, "📉 مرتب‌سازی بر اساس نزدیکی به کف قیمت انجام شد.", LogLevel.DEBUG )
 
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
-        yield PipelineStatus( step="generating", message=self._STEP_MESSAGES[ "generating" ] )
+        yield PipelineStatus( step=self.PipelineStep.GENERATING )
 
         user_budget = extract_result.metadata_filters.get( "price", {} ).get( "<=" )          # type: ignore
         min_price = min( ( p.price for p in final_products ), default=0 )

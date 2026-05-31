@@ -51,7 +51,7 @@ qualitative_mappings:
     battery_quality:
         #کیفیت باتری
         poor: [باتری ضعیف]
-        excellent: [باتری قوی, باتری بزرگ]
+        excellent: [باتری قوی]
         good: [باتری خوب]
     camera_quality:
         #کیفیت دوربین
@@ -59,11 +59,10 @@ qualitative_mappings:
         excellent: [دوربین قوی, دوربین عالی, دوربین حرفه‌ای]
 
 use_case_rules:
-    گیمینگ: { ram_gb: { gte: 8 }, tags: [gaming] }
-    گیم: { ram_gb: { gte: 8 }, tags: [gaming] }
-    بازی: { ram_gb: { gte: 8 }, tags: [gaming] }
+    گیمینگ: { ram_gb: { ">=": 8 }, tags: [gaming] }
+    گیم: { ram_gb: { ">=": 8 }, tags: [gaming] }
+    بازی: { ram_gb: { ">=": 8 }, tags: [gaming] }
     عکاسی: { camera_quality: excellent, tags: [photography] }
-    عکس: { camera_quality: good, tags: [photography] }
     فیلمبرداری: { camera_quality: excellent, tags: [photography] }
     دانشجویی: { price_range: budget }
     حرفه‌ای: { price_range: premium }

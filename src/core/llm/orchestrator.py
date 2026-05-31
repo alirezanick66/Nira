@@ -346,6 +346,16 @@ class LLMOrchestrator:
             parts.append( "\n🔗 Qualitative Mappings:" )
             for k, v in qual.items():
                 if isinstance( v, dict ):
-                    parts.append( f"- {k}: {list(v.keys())}" )
+                    parts.append( f"- {k}:" )
+                    for value, terms in v.items():
+                        if isinstance( terms, list ):
+                            fa_terms = "، ".join( terms )
+                            parts.append( f"  - {fa_terms} → {value}" )
+
+        use_cases = self._config.use_case_rules
+        if use_cases:
+            parts.append( "\n🎯 Use-Case Rules (وقتی کاربر این کلمات را گفت، این فیلترها را اعمال کن):" )
+            for use_case, rules in use_cases.items():
+                parts.append( f"- '{use_case}' → {rules}" )
 
         return "\n".join( parts )
