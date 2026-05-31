@@ -1,0 +1,230 @@
+/* ═══════════════════════════════════════════════════════════════
+توکن‌های اختصاصی داشبورد
+═══════════════════════════════════════════════════════════════ */
+:root {
+	--adm-bg: #f8f9fb;
+	--adm-surface: #ffffff;
+	--adm-border: rgba(0, 0, 0, 0.07);
+	--adm-border-md: rgba(0, 0, 0, 0.11);
+	--adm-text: #0f172a;
+	--adm-muted: #64748b;
+	--adm-dim: #94a3b8;
+	--adm-radius: 14px;
+	--adm-radius-sm: 8px;
+	--adm-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+	--adm-shadow-md:
+		0 2px 8px rgba(0, 0, 0, 0.08), 0 8px 32px rgba(0, 0, 0, 0.06);
+
+	--clr-primary: #f5a623;
+	--clr-primary-lt: #fff8ed;
+	--clr-success: #22c55e;
+	--clr-success-lt: #f0fdf4;
+	--clr-danger: #ef4444;
+	--clr-danger-lt: #fef2f2;
+	--clr-warn: #f59e0b;
+	--clr-warn-lt: #fffbeb;
+	--clr-info: #3b82f6;
+	--clr-info-lt: #eff6ff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+Layout پایه
+═══════════════════════════════════════════════════════════════ */
+body.admin-mode {
+	background: var(--adm-bg);
+	font-family: "Vazirmatn", system-ui, sans-serif;
+	color: var(--adm-text);
+	min-height: 100vh;
+}
+
+.adm-wrap {
+	max-width: 1320px;
+	margin: 0 auto;
+	padding: 0 1.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+هدر
+═══════════════════════════════════════════════════════════════ */
+.admin-header {
+	background: var(--adm-surface);
+	border-bottom: 1px solid var(--adm-border);
+	padding: 0.9rem 0;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	backdrop-filter: blur(10px);
+}
+
+.header-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.header-brand {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.header-brand .brand-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--clr-primary);
+	box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.2);
+}
+
+.header-brand h1 {
+	font-size: 1rem;
+	font-weight: 700;
+	margin: 0;
+	color: var(--adm-text);
+}
+
+.header-brand span {
+	font-size: 0.75rem;
+	color: var(--adm-muted);
+	font-weight: 400;
+}
+
+/* ─── فیلتر زمانی ─── */
+.time-filters {
+	display: flex;
+	gap: 0.3rem;
+	background: var(--adm-bg);
+	padding: 0.25rem;
+	border-radius: 10px;
+	border: 1px solid var(--adm-border);
+}
+
+.time-filter-btn {
+	padding: 0.35rem 0.85rem;
+	border-radius: 7px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 0.8rem;
+	color: var(--adm-muted);
+	transition: all 0.18s ease;
+	font-weight: 500;
+}
+
+.time-filter-btn:hover {
+	color: var(--adm-text);
+	background: var(--adm-surface);
+}
+.time-filter-btn.active {
+	background: var(--adm-surface);
+	color: var(--clr-primary);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── دکمه refresh ─── */
+.refresh-btn {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.9rem;
+	border-radius: var(--adm-radius-sm);
+	border: 1px solid var(--adm-border-md);
+	background: var(--adm-surface);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 0.8rem;
+	color: var(--adm-muted);
+	transition: all 0.18s ease;
+}
+
+.refresh-btn:hover {
+	border-color: var(--clr-primary);
+	color: var(--clr-primary);
+}
+.refresh-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.refresh-btn.loading i {
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+محتوای اصلی
+═══════════════════════════════════════════════════════════════ */
+.admin-main {
+	padding: 2rem 0 3rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+Stagger Animation
+═══════════════════════════════════════════════════════════════ */
+@keyframes fadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.stat-card {
+	opacity: 0;
+	animation: fadeUp 0.35s ease forwards;
+}
+
+.stat-card:nth-child(1) {
+	animation-delay: 0.04s;
+}
+.stat-card:nth-child(2) {
+	animation-delay: 0.09s;
+}
+.stat-card:nth-child(3) {
+	animation-delay: 0.14s;
+}
+.stat-card:nth-child(4) {
+	animation-delay: 0.19s;
+}
+.stat-card:nth-child(5) {
+	animation-delay: 0.24s;
+}
+.stat-card:nth-child(6) {
+	animation-delay: 0.29s;
+}
+
+.chart-card {
+	opacity: 0;
+	animation: fadeUp 0.35s ease forwards;
+}
+
+.charts-row .chart-card:nth-child(1) {
+	animation-delay: 0.32s;
+}
+.charts-row .chart-card:nth-child(2) {
+	animation-delay: 0.4s;
+}
+
+.logs-card {
+	opacity: 0;
+	animation: fadeUp 0.35s ease forwards;
+	animation-delay: 0.46s;
+}
+
+/* هنگام re-render، انیمیشن ری‌ست بشه */
+.stat-card.no-anim,
+.chart-card.no-anim,
+.logs-card.no-anim {
+	opacity: 1;
+	animation: none;
+}
