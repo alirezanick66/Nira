@@ -9,9 +9,6 @@ body.welcome-mode {
 body.welcome-mode .chat-container {
 	display: none;
 }
-body.welcome-mode .site-header {
-	display: none;
-}
 
 body.welcome-mode .input-area {
 	position: static;
@@ -27,7 +24,6 @@ body.welcome-mode .input-area {
 .welcome-heading {
 	text-align: center;
 	margin-bottom: 2rem;
-	animation: fadeUp 0.5s ease both;
 }
 
 .welcome-heading h1 {
@@ -43,7 +39,7 @@ body.welcome-mode .input-area {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-حالت Chat — هدر + چت + input پایین
+‫حالت Chat — هدر + چت + input پایین
 ═══════════════════════════════════════════════════════════════════ */
 body.chat-mode {
 	flex-direction: column;
@@ -51,37 +47,6 @@ body.chat-mode {
 
 body.chat-mode .welcome-heading {
 	display: none;
-}
-
-/* ─── هدر ─── */
-.site-header {
-	position: sticky;
-	top: 0;
-	z-index: 100;
-	padding: 0.7rem 1.5rem;
-	background: rgba(255, 255, 255, 0.85);
-	backdrop-filter: var(--blur-glass);
-	-webkit-backdrop-filter: var(--blur-glass);
-	border-bottom: 1px solid var(--color-border);
-}
-
-.header-inner {
-	max-width: 740px;
-	margin: 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-}
-
-.brand-name {
-	font-size: 1rem;
-	font-weight: 700;
-	color: var(--color-text);
-}
-
-.brand-tagline {
-	font-size: 0.68rem;
-	color: var(--color-text-muted);
 }
 
 /* ─── ناحیه چت ─── */
@@ -108,7 +73,7 @@ body.chat-mode .welcome-heading {
 	border-radius: 99px;
 }
 
-/* ─── ناحیه ورودی (پایین در chat-mode) ─── */
+/*‫ ─── ناحیه ورودی (پایین در chat-mode) ─── */
 body.chat-mode .input-area {
 	position: sticky;
 	bottom: 0;
@@ -129,16 +94,16 @@ body.chat-mode .input-area {
 
 #query-input {
 	width: min(100%, 680px);
-	padding: 0.9rem 1.2rem;
-	border-radius: var(--radius-lg); /* ← از pill به rounded برای textarea */
+	padding: 1rem 1.4rem;
+	border-radius: var(--radius-lg);
 	border: 1px solid var(--color-border-strong);
 	background: var(--color-surface);
 	color: var(--color-text);
 	font-family: inherit;
-	font-size: 0.9rem;
+	font-size: 0.95rem;
 	outline: none;
-	resize: none; /* ← کاربر نمیتونه دستی resize کنه */
-	min-height: 52px;
+	resize: none;
+	min-height: 56px;
 	max-height: 180px;
 	overflow-y: auto;
 	line-height: 1.6;
@@ -148,12 +113,12 @@ body.chat-mode .input-area {
 	margin: 0 auto;
 }
 
-#query-input::placeholder {
-	color: var(--color-text-dim);
-}
-
 #query-input:focus {
 	border-color: var(--color-primary);
 	box-shadow: var(--shadow-input);
-	background: #fff;
+	background: #ffffff;
+}
+
+#query-input::placeholder {
+	color: var(--color-text-dim);
 }
