@@ -37,7 +37,7 @@
 	font-size: 0.92rem;
 }
 
-/* پیام کاربر — شیک و با فونت خوانا */
+/* ‫پیام کاربر — شیک و با فونت خوانا */
 .message.user .bubble {
 	padding: 0.85rem 1.2rem;
 	background: var(--color-user-bubble);
@@ -48,7 +48,7 @@
 	box-shadow: 0 2px 12px rgba(14, 165, 233, 0.04);
 }
 
-/* پاسخ AI — فوق‌العاده تمیز و روان */
+/* ‫پاسخ AI — فوق‌العاده تمیز و روان */
 .message.ai .bubble {
 	padding: 0.5rem 0;
 	background: transparent;
@@ -60,7 +60,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-fade-in برای پاسخ AI (جایگزین typewriter کند)
+‫fade-in برای پاسخ AI (جایگزین typewriter کند)
 ═══════════════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
 	from {
@@ -78,41 +78,42 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-نوار وضعیت زنده
+نوار وضعیت زنده — بدون شِیپ و کاملاً مینیمال ✨
 ═══════════════════════════════════════════════════════════════════ */
-/* نوار وضعیت زنده — مینیمال‌تر و پالس ملایم */
 .status {
 	display: flex;
 	align-items: center;
-	gap: 0.6rem;
-	font-size: 0.8rem;
-	font-weight: 600;
-	color: var(--color-primary);
-	margin-bottom: 1rem;
-	padding: 0.5rem 1rem;
-	background: #ffffff;
-	border: 1px solid var(--color-border-strong);
-	border-radius: 99px; /* کاملاً گرد */
+	gap: 0.5rem;
+	font-size: 0.82rem;
+	font-weight: 500;
+	color: var(--color-primary); /* استفاده از رنگ ایندیگو برای ظرافت */
+	margin-bottom: 1.2rem;
+	padding: 0.2rem 0; /* ❌ حذف پدینگ‌های اضافه باکس */
+	background: transparent; /* ❌ حذف کامل پس‌زمینه کپسولی */
+	border: none; /* ❌ حذف کامل بوردر تدافعی */
+	border-radius: 0; /* ❌ حذف شعاع گوشه */
 	width: fit-content;
-	margin-left: auto;
-	box-shadow: var(--shadow-card);
+	margin-left: auto; /* حفظ موقعیت راست‌چین */
+	box-shadow: none; /* ❌ حذف سایه باکس */
+	opacity: 0;
+	transform: translateY(4px);
+	pointer-events: none;
+	transition:
+		opacity 0.22s ease,
+		transform 0.22s ease;
 }
 
 .status.active {
-	opacity: 1;
+	opacity: 0.85; /* کمی شفافیت ملایم برای حس مدرن‌تر */
 	transform: translateY(0);
 }
 
-.status.active {
-	opacity: 1;
-	transform: translateY(0);
-}
-
+/* پالس نئونی بسیار ظریف بدون تغییر در منطق انیمیشن */
 .status::before {
 	content: "";
 	display: inline-block;
-	width: 8px;
-	height: 8px;
+	width: 6px;
+	height: 6px;
 	background: var(--color-primary);
 	border-radius: 50%;
 	animation: pulseGlow 1.5s ease-in-out infinite;
@@ -211,11 +212,11 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 
 .product-img {
 	width: 100%;
-	height: 200px;
-	object-fit: cover; /* تغییر از contain به cover برای پر کردن شیک‌تر فضا (بسته به نوع محصول) */
+	height: 180px;
+	object-fit: contain;
 	background: #ffffff;
-	padding: 0; /* حذف پدینگ اضافی برای ظاهر مدرن‌تر در لبه‌ها */
-	transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+	padding: 6px; /* حذف پدینگ اضافی برای ظاهر مدرن‌تر در لبه‌ها */
+	transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .product-card:hover .product-img {
@@ -243,12 +244,6 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 	font-weight: 700;
 	color: var(--color-primary-hover);
 	margin-bottom: 0.35rem;
-}
-
-.product-meta {
-	font-size: 0.73rem;
-	color: var(--color-text-muted);
-	margin-bottom: 0.6rem;
 }
 
 .tags {
@@ -309,19 +304,23 @@ fade-in برای پاسخ AI (جایگزین typewriter کند)
 پیشنهاد هوشمند (Context Tip)
 ═══════════════════════════════════════════════════════════════════ */
 .context-tip {
-	margin-top: 0.75rem;
-	padding: 0.6rem 0.9rem;
-	background: var(--color-surface);
-	border: 1px dashed var(--color-border-strong);
-	border-radius: var(--radius-md);
-	font-size: 0.82rem;
+	margin-top: 1.2rem; /* کمی فاصله بیشتر از محصولات برای تنفس */
+	padding: 0.4rem 0.8rem; /* پدینگ ظریف‌تر */
+	background: transparent; /* ❌ حذف پس‌زمینه جداگانه برای یکی شدن با صفحه */
+	border: none; /* ❌ حذف بوردر خط‌چین که عامل اصلی جدایی بصری بود */
+	border-right: 2px solid var(--color-primary); /* 💡 اتصال بصری با یک خط عمودی مدرن و همرنگ تم */
+	border-radius: 0; /* حذف شعاع گوشه برای خط عمودی */
+	font-size: 0.8rem;
 	color: var(--color-text-muted);
-	line-height: 1.6;
+	line-height: 1.7;
 	direction: rtl;
 	animation: fadeIn 0.4s ease both;
 	animation-delay: 0.2s;
 }
+
 .context-tip span {
-	font-weight: 500;
-	color: var(--color-text);
+	font-weight: 600;
+	color: var(
+		--color-primary
+	); /* تغییر رنگ متن شاخص به رنگ اصلی برای جلب توجه مثبت */
 }
