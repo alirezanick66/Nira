@@ -9,17 +9,14 @@ body.welcome-mode {
 body.welcome-mode .chat-container {
 	display: none;
 }
-
-body.welcome-mode .input-area {
-	position: static;
-	background: transparent;
-	border-top: none;
-	backdrop-filter: none;
-	padding: 0;
+.input-wrapper {
+	max-width: 740px;
+	margin: 0 auto;
 	width: 100%;
-	max-width: 680px;
+	position: sticky; /* شناور ماندن در پایین */
+	bottom: 1.5rem; /* فاصله شیک از لبه پایین صفحه */
+	z-index: 50;
 }
-
 /* ─── عنوان خوش‌آمدگویی ─── */
 .welcome-heading {
 	text-align: center;
@@ -53,7 +50,7 @@ body.chat-mode .welcome-heading {
 .chat-container {
 	flex: 1;
 	overflow-y: visible;
-	padding: 2rem 1rem 1.5rem;
+	padding: 2rem 1rem 5rem;
 	max-width: 740px;
 	width: 100%;
 	margin: 0 auto;
@@ -71,18 +68,6 @@ body.chat-mode .welcome-heading {
 .chat-container::-webkit-scrollbar-thumb {
 	background: var(--color-border-strong);
 	border-radius: 99px;
-}
-
-/*‫ ─── ناحیه ورودی (پایین در chat-mode) ─── */
-body.chat-mode .input-area {
-	position: sticky;
-	bottom: 0;
-	background: rgba(255, 255, 255, 0.9);
-	backdrop-filter: var(--blur-glass);
-	-webkit-backdrop-filter: var(--blur-glass);
-	border-top: none;
-	padding: 0.85rem 1rem 1rem;
-	z-index: 50;
 }
 
 /* ─── input wrapper مشترک ─── */

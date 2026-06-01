@@ -111,7 +111,6 @@ export function renderProducts(products) {
         <div class="product-info">
           <div class="product-title">${title}</div>
           <div class="product-price">${price} تومان</div>
-          <div class="product-meta">${priceRange} | دوربین: ${camera}</div>
           <div class="tags">${tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
         </div>
       </div>`
