@@ -1,12 +1,14 @@
-/* ─── pagination ─── */
+/* ═══════════════════════════════════════════════════════════════
+کنترل‌های صفحه‌بندی مدرن
+═══════════════════════════════════════════════════════════════ */
 .pagination-controls {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.4rem;
 }
 
 .pg-btn {
-	padding: 0.3rem 0.75rem;
+	padding: 0.4rem 0.85rem;
 	border-radius: var(--adm-radius-sm);
 	border: 1px solid var(--adm-border-md);
 	background: var(--adm-surface);
@@ -14,50 +16,49 @@
 	font-family: inherit;
 	font-size: 0.78rem;
 	color: var(--adm-muted);
-	transition: all 0.15s ease;
+	font-weight: 500;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pg-btn:hover:not(:disabled) {
 	border-color: var(--clr-primary);
 	color: var(--clr-primary);
+	background: var(--clr-primary-lt);
 }
+
 .pg-btn:disabled {
-	opacity: 0.4;
+	opacity: 0.35;
 	cursor: not-allowed;
 }
 
 .pg-info {
 	font-size: 0.75rem;
 	color: var(--adm-muted);
-	padding: 0 0.25rem;
+	font-weight: 500;
+	padding: 0 0.4rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-Skeleton / Shimmer
+اسکلتون ملایم و طبیعی (Shimmer Effect Reengineered)
 ═══════════════════════════════════════════════════════════════ */
 @keyframes shimmer {
 	0% {
-		background-position: -600px 0;
+		background-position: -200% 0;
 	}
 	100% {
-		background-position: 600px 0;
+		background-position: 200% 0;
 	}
 }
 
 .skeleton {
-	background: linear-gradient(
-		90deg,
-		var(--adm-border) 25%,
-		rgba(0, 0, 0, 0.04) 50%,
-		var(--adm-border) 75%
-	);
-	background-size: 600px 100%;
-	animation: shimmer 1.4s ease-in-out infinite;
+	background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+	background-size: 200% 100%;
+	animation: shimmer 1.4s ease infinite;
 	border-radius: 6px;
 	display: block;
 }
 
-/* skeleton stat card */
+/* ساختار اسکلتون کارت‌ها */
 .stat-card-skeleton {
 	background: var(--adm-surface);
 	border: 1px solid var(--adm-border);
@@ -79,62 +80,68 @@ Skeleton / Shimmer
 .stat-card-skeleton .sk-body {
 	flex: 1;
 }
+
 .stat-card-skeleton .sk-label {
 	height: 10px;
-	width: 55%;
-	margin-bottom: 0.55rem;
-}
-.stat-card-skeleton .sk-value {
-	height: 22px;
-	width: 70%;
-	margin-bottom: 0.4rem;
-}
-.stat-card-skeleton .sk-sub {
-	height: 9px;
-	width: 40%;
+	width: 50%;
+	margin-bottom: 0.6rem;
 }
 
-/* skeleton جدول */
-.sk-row td {
-	padding: 0.7rem 0.9rem;
+.stat-card-skeleton .sk-value {
+	height: 20px;
+	width: 65%;
+	margin-bottom: 0.5rem;
 }
+
+.stat-card-skeleton .sk-sub {
+	height: 9px;
+	width: 35%;
+}
+
+/* اسکلتون تیبل لاگ‌ها */
+.sk-row td {
+	padding: 0.8rem 0.9rem;
+}
+
 .sk-row .sk-cell {
-	height: 14px;
-	border-radius: 5px;
+	height: 12px;
+	border-radius: 4px;
+}
+
+.sk-row .sk-cell.w-xs {
+	width: 35px;
 }
 .sk-row .sk-cell.w-sm {
-	width: 60px;
+	width: 55px;
 }
 .sk-row .sk-cell.w-md {
-	width: 120px;
+	width: 110px;
 }
 .sk-row .sk-cell.w-lg {
-	width: 180px;
-}
-.sk-row .sk-cell.w-xs {
-	width: 40px;
+	width: 160px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-Auto-refresh toggle و indicator
+سوئیچ اتو رفرش و اندیکاتور نبض
 ═══════════════════════════════════════════════════════════════ */
 .auto-refresh-wrap {
 	display: flex;
 	align-items: center;
-	gap: 0.55rem;
+	gap: 0.6rem;
 }
 
 .auto-refresh-label {
 	font-size: 0.75rem;
 	color: var(--adm-muted);
+	font-weight: 500;
 	user-select: none;
 }
 
-/* toggle switch */
+/* اصلاح دقیق هندسه دکمه Toggle سوئیتور */
 .toggle-switch {
 	position: relative;
-	width: 36px;
-	height: 20px;
+	width: 34px;
+	height: 18px;
 	flex-shrink: 0;
 }
 
@@ -149,63 +156,65 @@ Auto-refresh toggle و indicator
 	position: absolute;
 	inset: 0;
 	border-radius: 99px;
-	background: var(--adm-border-md);
+	background: #cbd5e1; /* خاکستری استاندارد غیرفعال در حالت فلت */
 	cursor: pointer;
-	transition: background 0.2s ease;
+	transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-track::after {
 	content: "";
 	position: absolute;
-	top: 3px;
-	right: 3px;
+	top: 2px;
+	right: 2px;
 	width: 14px;
 	height: 14px;
 	border-radius: 50%;
-	background: #fff;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-	transition: transform 0.2s ease;
+	background: #ffffff;
+	box-sizing: border-box;
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-switch input:checked + .toggle-track {
 	background: var(--clr-primary);
 }
 
+/* تغییر مسیر جابه‌جایی بر اساس جهت RTL لایه شما */
 .toggle-switch input:checked + .toggle-track::after {
 	transform: translateX(-16px);
 }
 
-/* indicator نبض سبز */
+/* اندیکاتور پولسه زنده (Live Indicator Pulse) */
 .refresh-indicator {
 	display: flex;
 	align-items: center;
-	gap: 0.35rem;
+	gap: 0.4rem;
 	font-size: 0.72rem;
 	color: var(--adm-muted);
 	min-width: 60px;
 }
 
 .refresh-dot {
-	width: 7px;
-	height: 7px;
+	width: 6px;
+	height: 6px;
 	border-radius: 50%;
 	background: var(--adm-dim);
-	transition: background 0.3s;
+	transition: background 0.3s ease;
 	flex-shrink: 0;
 }
 
 .refresh-dot.active {
 	background: var(--clr-success);
-	box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
-	animation: pulse-dot 2s ease-in-out infinite;
+	box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+	animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes pulse-dot {
 	0%,
 	100% {
-		box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 	}
 	50% {
-		box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08);
+		box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.05);
 	}
 }
