@@ -1,8 +1,18 @@
 /* ═══════════════════════════════════════════════════════════════════
+FONTS
+═══════════════════════════════════════════════════════════════════ */
+/* ثبت نسخه Regular برای متون معمولی */
+@font-face {
+	font-family: "Mikhak";
+	src: url("../fonts/Mikhak-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+}
+/* ═══════════════════════════════════════════════════════════════════
 ‫توکن‌های طراحی — Premium Light Theme (Minimal & Clean)
 ═══════════════════════════════════════════════════════════════════ */
 :root {
-	--font-main: "Vazirmatn", system-ui, sans-serif;
+	--font-main: "Mikhak", system-ui, sans-serif;
 
 	/* پلت رنگی مدرن و لوکس (Sophisticated Indigo & Zinc) */
 	--color-primary: #6366f1; /* ایندیگوی زنده اما کمی سافت‌تر برای خستگی کمتر چشم */

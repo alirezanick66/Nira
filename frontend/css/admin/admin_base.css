@@ -42,8 +42,13 @@
 Layout پایه
 ═══════════════════════════════════════════════════════════════ */
 body.admin-mode {
-	background: var(--adm-bg);
-	font-family: "Vazirmatn", system-ui, sans-serif;
+	background-color: var(--adm-bg);
+	background-image: radial-gradient(
+		ellipse at 75% -10%,
+		rgba(79, 70, 229, 0.05) 0%,
+		transparent 52%
+	);
+	font-family: var(--font-main);
 	color: var(--adm-text);
 	min-height: 100vh;
 	-webkit-font-smoothing: antialiased;
@@ -60,14 +65,12 @@ body.admin-mode {
 هدر لوکس و گلس‌مورفیسم ملایم
 ═══════════════════════════════════════════════════════════════ */
 .admin-header {
-	background: rgba(255, 255, 255, 0.75);
+	background: var(--adm-bg);
 	border-bottom: 1px solid var(--adm-border);
 	padding: 1rem 0;
 	position: sticky;
 	top: 0;
 	z-index: 100;
-	backdrop-filter: blur(20px) saturate(180%);
-	-webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 .header-inner {
@@ -77,7 +80,11 @@ body.admin-mode {
 	gap: 1.5rem;
 	flex-wrap: wrap;
 }
-
+.header-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
 .header-brand {
 	display: flex;
 	align-items: center;
@@ -139,38 +146,6 @@ body.admin-mode {
 	color: var(--clr-primary);
 	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 	font-weight: 600;
-}
-
-/* ─── دکمه رفرش بهینه شده ─── */
-.refresh-btn {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.45rem 1rem;
-	border-radius: var(--adm-radius-sm);
-	border: 1px solid var(--adm-border-md);
-	background: var(--adm-surface);
-	cursor: pointer;
-	font-family: inherit;
-	font-size: 0.78rem;
-	color: var(--adm-muted);
-	font-weight: 500;
-	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.refresh-btn:hover:not(:disabled) {
-	border-color: var(--clr-primary);
-	color: var(--clr-primary);
-	background: var(--clr-primary-lt);
-}
-
-.refresh-btn:disabled {
-	opacity: 0.4;
-	cursor: not-allowed;
-}
-
-.refresh-btn.loading i {
-	animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
