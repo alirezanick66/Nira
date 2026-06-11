@@ -63,9 +63,10 @@
 	background: var(--adm-surface);
 	border: 1px solid var(--adm-border);
 	border-radius: var(--adm-radius);
-	padding: 1.1rem 1.2rem;
+	padding: 1rem 0.75rem;
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
+	flex-direction: column;
 	gap: 0.85rem;
 	box-shadow: var(--adm-shadow);
 }

@@ -5,11 +5,6 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>پنل آنالیتیکس نیرا</title>
 		<link rel="stylesheet" href="css/style.css" />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link
-			href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap"
-			rel="stylesheet" />
 		<link
 			rel="stylesheet"
 			href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
@@ -18,33 +13,18 @@
 	<body class="admin-mode">
 		<header class="admin-header">
 			<div class="adm-wrap header-inner">
-				<div class="time-filters">
-					<button class="time-filter-btn active" data-days="1">
-						امروز
-					</button>
-					<button class="time-filter-btn" data-days="7">۷ روز</button>
-					<button class="time-filter-btn" data-days="30">
-						۳۰ روز
-					</button>
-				</div>
-
-				<button id="refresh-btn" class="refresh-btn">
-					<i class="ti ti-refresh" aria-hidden="true"></i>
-					بروزرسانی
-				</button>
-
-				<div class="auto-refresh-wrap">
-					<div class="refresh-indicator">
-						<span class="refresh-dot" id="refresh-dot"></span>
-						<span id="refresh-timer"></span>
+				<div class="header-controls">
+					<div class="time-filters">
+						<button class="time-filter-btn active" data-days="1">
+							امروز
+						</button>
+						<button class="time-filter-btn" data-days="7">
+							۷ روز
+						</button>
+						<button class="time-filter-btn" data-days="30">
+							۳۰ روز
+						</button>
 					</div>
-					<label
-						class="toggle-switch"
-						title="بروزرسانی خودکار هر ۶۰ ثانیه">
-						<input type="checkbox" id="auto-refresh-toggle" />
-						<span class="toggle-track"></span>
-					</label>
-					<span class="auto-refresh-label">auto</span>
 				</div>
 			</div>
 		</header>

@@ -15,10 +15,13 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 	background: var(--adm-surface);
 	border: 1px solid var(--adm-border);
 	border-radius: var(--adm-radius);
-	padding: 1.25rem;
+	padding: 1rem 0.75rem; /* افزایش پدینگ عمودی برای تعادل */
 	display: flex;
-	align-items: flex-start;
-	gap: 1rem;
+	flex-direction: column; /* چیدمان ستونی */
+	align-items: center; /* وسط‌چین کردن افقی المان‌ها */
+	justify-content: center;
+	gap: 0.85rem;
+	text-align: center; /* وسط‌چین کردن متون داخل کارت */
 	box-shadow: var(--adm-shadow);
 	transition:
 		transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -26,10 +29,65 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 		border-color 0.2s ease;
 }
 
+/* تراز کردن باکس متون (تولید شده در admin-ui.js) */
+.stat-card .sk-body,
+.stat-card .stat-body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.15rem;
+}
+
 .stat-card:hover {
 	transform: translateY(-3px);
 	box-shadow: var(--adm-shadow-md);
 	border-color: var(--adm-border-md);
+}
+
+/* ─── Accent border بالای هر کارت بر اساس موقعیت ─── */
+.stats-grid .stat-card:nth-child(1) {
+	border-top: 3px solid var(--clr-primary);
+}
+.stats-grid .stat-card:nth-child(2) {
+	border-top: 3px solid var(--clr-success);
+}
+.stats-grid .stat-card:nth-child(3) {
+	border-top: 3px solid var(--clr-warn);
+}
+.stats-grid .stat-card:nth-child(4) {
+	border-top: 3px solid var(--clr-danger);
+}
+.stats-grid .stat-card:nth-child(5) {
+	border-top: 3px solid var(--clr-info);
+}
+.stats-grid .stat-card:nth-child(6) {
+	border-top: 3px solid #8b5cf6;
+}
+
+/* ─── هماهنگی رنگ آیکون با accent هر کارت ─── */
+.stats-grid .stat-card:nth-child(1) .stat-icon-wrap {
+	background: var(--clr-primary-lt);
+	color: var(--clr-primary);
+}
+.stats-grid .stat-card:nth-child(2) .stat-icon-wrap {
+	background: var(--clr-success-lt);
+	color: var(--clr-success);
+}
+.stats-grid .stat-card:nth-child(3) .stat-icon-wrap {
+	background: var(--clr-warn-lt);
+	color: var(--clr-warn);
+}
+.stats-grid .stat-card:nth-child(4) .stat-icon-wrap {
+	background: var(--clr-danger-lt);
+	color: var(--clr-danger);
+}
+.stats-grid .stat-card:nth-child(5) .stat-icon-wrap {
+	background: var(--clr-info-lt);
+	color: var(--clr-info);
+}
+.stats-grid .stat-card:nth-child(6) .stat-icon-wrap {
+	background: #f5f3ff;
+	color: #8b5cf6;
 }
 
 /* کارت‌های وضعیت متمایز یا خطادار */
@@ -143,7 +201,9 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-bottom: 1rem;
 	margin-bottom: 1.25rem;
+	border-bottom: 1px solid var(--adm-border-md);
 }
 
 .chart-title {
@@ -242,6 +302,11 @@ tbody tr {
 	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ─── Zebra striping برای خوانایی بالاتر جدول ─── */
+tbody tr:nth-child(even) td {
+	background: #f8fafc;
+}
+
 tbody tr:hover td {
 	background: #f1f5f9; /* هاور نرم‌تر ردیف‌ها */
 }
@@ -257,7 +322,7 @@ tbody tr:hover td {
 
 /* ساختار متن‌های مونو اسنپ و سیستمی */
 .mono {
-	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-family: var(--font-main) !important;
 	font-size: 0.72rem;
 	background: #f1f5f9;
 	padding: 0.2rem 0.5rem;

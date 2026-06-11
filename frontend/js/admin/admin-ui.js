@@ -14,7 +14,11 @@ const INTENT_COLORS = {
 	greeting_unrelated: "#94a3b8",
 	clarification: "#fb923c",
 }
-
+// ─── تنظیم فونت پیش‌فرض برای تمام چارت‌ها ───
+if (typeof Chart !== "undefined") {
+	Chart.defaults.font.family = "Mikhak"
+	Chart.defaults.font.size = 12 // در صورت نیاز به تنظیم سایز استاندارد چارت‌ها
+}
 let _barChart = null
 let _pieChart = null
 
@@ -25,7 +29,7 @@ let _pieChart = null
  * @param {HTMLElement} container
  * @param {number} count
  */
-export function renderStatsSkeleton(container, count = 6) {
+export function renderStatsSkeleton(container, count = 5) {
 	container.innerHTML = Array.from({ length: count })
 		.map(
 			() => `
@@ -78,7 +82,7 @@ export function renderStats(stats, container) {
 		},
 		{
 			label: "میانگین تأخیر",
-			value: `${stats.avg_latency_ms ?? 0}<span class="stat-unit">ms</span>`,
+			value: _formatLatency(stats.avg_latency_ms ?? 0),
 			sub: "زمان پاسخ‌دهی",
 			icon: "ti-clock",
 			accent: false,
@@ -105,13 +109,6 @@ export function renderStats(stats, container) {
 			icon: "ti-search-off",
 			accent: parseFloat(stats.zero_results_rate_pct) > 10,
 			accentColor: "#f59e0b",
-		},
-		{
-			label: "میانگین نتایج",
-			value: stats.avg_result_count ?? 0,
-			sub: "محصول در هر جستجو",
-			icon: "ti-package",
-			accent: false,
 		},
 	]
 
@@ -323,7 +320,11 @@ export function destroyCharts() {
 	}
 }
 //────────────────────────────────────────── Private Methods ──────────────────────────────────────────
-
+function _formatLatency(ms) {
+	if (ms >= 1000)
+		return `${(ms / 1000).toFixed(1)}<span class="stat-unit">s</span>`
+	return `${Math.round(ms)}<span class="stat-unit">ms</span>`
+}
 function _statusBadgeClass(status) {
 	const map = {
 		success: "badge-success",
