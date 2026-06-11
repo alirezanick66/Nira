@@ -31,7 +31,6 @@ body.welcome-mode .chat-container {
 }
 
 .welcome-heading h1 span {
-	font-family: "Vazirmatn", sans-serif;
 	color: var(--color-text);
 }
 

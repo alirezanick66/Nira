@@ -166,7 +166,6 @@ export function renderBarChart(data, canvas) {
 				legend: { display: false },
 				tooltip: {
 					rtl: true,
-					bodyFont: { family: "Vazirmatn" },
 					callbacks: {
 						label: (ctx) =>
 							` ${ctx.parsed.y.toLocaleString("fa-IR")} کوئری`,
@@ -178,7 +177,6 @@ export function renderBarChart(data, canvas) {
 					grid: { color: gridColor },
 					ticks: {
 						color: textColor,
-						font: { family: "Vazirmatn", size: 11 },
 						maxTicksLimit: 12,
 					},
 				},
@@ -186,7 +184,6 @@ export function renderBarChart(data, canvas) {
 					grid: { color: gridColor },
 					ticks: {
 						color: textColor,
-						font: { family: "Vazirmatn", size: 11 },
 						precision: 0,
 					},
 					beginAtZero: true,
@@ -230,7 +227,6 @@ export function renderPieChart(breakdown, canvas) {
 					position: "bottom",
 					rtl: true,
 					labels: {
-						font: { family: "Vazirmatn", size: 12 },
 						color: "#64748b",
 						padding: 14,
 						usePointStyle: true,
@@ -239,7 +235,6 @@ export function renderPieChart(breakdown, canvas) {
 				},
 				tooltip: {
 					rtl: true,
-					bodyFont: { family: "Vazirmatn" },
 					callbacks: {
 						label: (ctx) => {
 							const pct = ((ctx.parsed / total) * 100).toFixed(1)
@@ -376,49 +371,55 @@ function _parseFilters(filters) {
 
 	// ─── نگاشت کلیدها به فارسی ───────────────────────────────────
 	const KEY_LABELS = {
-		price: { label: "قیمت", icon: "💰", unit: "M", isPrice: true },
-		ram_gb: { label: "رم", icon: "🔧", unit: "GB" },
-		storage_gb: { label: "حافظه", icon: "💾", unit: "GB" },
-		camera_mp: { label: "دوربین", icon: "📷", unit: "MP" },
-		battery_mah: { label: "باتری", icon: "🔋", unit: "mAh" },
-		brand: { label: "برند", icon: "🏷️", unit: "" },
-		brand_not: { label: "نه‌برند", icon: "🚫", unit: "" },
-		screen_size: { label: "صفحه", icon: "📱", unit: "اینچ" },
-		weight_g: { label: "وزن", icon: "⚖️", unit: "g" },
-		camera_quality: { label: "کیفیت دوربین", icon: "📷", unit: "" },
-		category: { label: "دسته‌بندی", icon: "📂", unit: "" },
-	}
-
-	// ─── نگاشت اپراتورها به فارسی ────────────────────────────────
-	const OP_LABELS = {
-		"<=": "حداکثر",
-		">=": "حداقل",
-		"==": "",
-		in: "",
-		not_in: "نه",
+		price: { label: "قیمت", unit: "M", isPrice: true },
+		ram_gb: { label: "رم", unit: "GB" },
+		storage_gb: { label: "حافظه", unit: "GB" },
+		camera_mp: { label: "دوربین", unit: "MP" },
+		battery_mah: { label: "باتری", unit: "mAh" },
+		brand: { label: "برند", unit: "" },
+		brand_not: { label: "نه‌برند", unit: "" },
+		screen_size: { label: "صفحه", unit: "اینچ" },
+		weight_g: { label: "وزن", unit: "g" },
+		camera_quality: { label: "کیفیت دوربین", unit: "" },
+		category: { label: "دسته‌بندی", unit: "" },
 	}
 
 	const tags = []
 
 	for (const [key, value] of Object.entries(filters)) {
-		const meta = KEY_LABELS[key] || { label: key, icon: "🔹", unit: "" }
+		const meta = KEY_LABELS[key] || { label: key, unit: "" }
 
-		// مقدار ساده (string/number) — مثل brand: "samsung"
+		// مقدار ساده (string/number/array) — مثل brand: "samsung"
 		if (typeof value !== "object" || Array.isArray(value)) {
 			const displayVal = Array.isArray(value) ? value.join("، ") : value
-			tags.push(_makeFilterTag(meta, "", displayVal))
+			tags.push(_makeFilterTag(meta, displayVal))
 			continue
 		}
 
-		// مقدار آبجکت با اپراتور — مثل price: {"<=": 30000000}
-		for (const [op, val] of Object.entries(value)) {
-			const opLabel = OP_LABELS[op] ?? op
-			const displayVal = _formatFilterValue(val, meta)
-			tags.push(_makeFilterTag(meta, opLabel, displayVal))
+		// مقدار آبجکت با اپراتور — تجمیع min/max
+		const ops = Object.keys(value)
+		const hasMin = ops.includes(">=")
+		const hasMax = ops.includes("<=")
+
+		if (hasMin && hasMax) {
+			const minVal = _formatFilterValue(value[">="], meta)
+			const maxVal = _formatFilterValue(value["<="], meta)
+			tags.push(_makeFilterTag(meta, `${minVal} – ${maxVal}`))
+		} else if (hasMin) {
+			const minVal = _formatFilterValue(value[">="], meta)
+			tags.push(_makeFilterTag(meta, `از ${minVal}`))
+		} else if (hasMax) {
+			const maxVal = _formatFilterValue(value["<="], meta)
+			tags.push(_makeFilterTag(meta, `تا ${maxVal}`))
+		} else {
+			for (const [op, val] of Object.entries(value)) {
+				const displayVal = _formatFilterValue(val, meta)
+				tags.push(_makeFilterTag(meta, displayVal))
+			}
 		}
 	}
 
-	return tags.join("")
+	return `<div class="filter-tags-wrap">${tags.join("")}</div>`
 }
 
 /**
@@ -428,11 +429,8 @@ function _parseFilters(filters) {
  * @param {string} displayVal
  * @returns {string}
  */
-function _makeFilterTag(meta, opLabel, displayVal) {
-	const text = opLabel
-		? `${meta.icon} ${meta.label}: ${opLabel} ${displayVal}`
-		: `${meta.icon} ${meta.label}: ${displayVal}`
-	return `<span class="filter-tag">${_esc(text)}</span>`
+function _makeFilterTag(meta, displayVal) {
+	return `<span class="filter-tag">${_esc(meta.label)}: ${_esc(displayVal)}</span>`
 }
 
 /**
