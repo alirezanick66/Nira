@@ -85,34 +85,6 @@ body.admin-mode {
 	align-items: center;
 	gap: 0.5rem;
 }
-.header-brand {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-}
-
-.header-brand .brand-dot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--clr-primary);
-	box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
-	position: relative;
-}
-
-.header-brand h1 {
-	font-size: 0.95rem;
-	font-weight: 700;
-	margin: 0;
-	color: var(--adm-text);
-	letter-spacing: -0.02em;
-}
-
-.header-brand span {
-	font-size: 0.75rem;
-	color: var(--adm-dim);
-	font-weight: 400;
-}
 
 /* ─── فیلتر زمانی مدرن ─── */
 .time-filters {
@@ -196,9 +168,6 @@ body.admin-mode {
 }
 .stat-card:nth-child(5) {
 	animation-delay: 0.15s;
-}
-.stat-card:nth-child(6) {
-	animation-delay: 0.18s;
 }
 
 .charts-row .chart-card:nth-child(1) {

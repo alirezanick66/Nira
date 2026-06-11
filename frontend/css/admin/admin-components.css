@@ -60,9 +60,6 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 .stats-grid .stat-card:nth-child(5) {
 	border-top: 3px solid var(--clr-info);
 }
-.stats-grid .stat-card:nth-child(6) {
-	border-top: 3px solid #8b5cf6;
-}
 
 /* ─── هماهنگی رنگ آیکون با accent هر کارت ─── */
 .stats-grid .stat-card:nth-child(1) .stat-icon-wrap {
@@ -84,10 +81,6 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 .stats-grid .stat-card:nth-child(5) .stat-icon-wrap {
 	background: var(--clr-info-lt);
 	color: var(--clr-info);
-}
-.stats-grid .stat-card:nth-child(6) .stat-icon-wrap {
-	background: #f5f3ff;
-	color: #8b5cf6;
 }
 
 /* کارت‌های وضعیت متمایز یا خطادار */
@@ -302,24 +295,65 @@ tbody tr {
 	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ─── Zebra striping برای خوانایی بالاتر جدول ─── */
-tbody tr:nth-child(even) td {
-	background: #f8fafc;
-}
-
 tbody tr:hover td {
 	background: #f1f5f9; /* هاور نرم‌تر ردیف‌ها */
 }
 
-/* سلول‌های دیتای کوئری */
-.query-cell {
-	max-width: 220px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	font-weight: 500;
+/* ─── Tooltip فقط برای کوئری‌های بلند ─── */
+.query-text {
+	position: relative;
 }
 
+.query-text::after {
+	content: attr(data-full);
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%) scale(0.95);
+	background: var(--adm-text);
+	color: #fff;
+	padding: 0.6rem 0.9rem;
+	border-radius: var(--adm-radius-sm);
+	font-size: 0.78rem;
+	font-weight: 500;
+	line-height: 1.5;
+	white-space: normal;
+	max-width: 320px;
+	width: max-content;
+	text-align: right;
+	box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	pointer-events: none;
+	z-index: 50;
+}
+
+.query-text:hover::after {
+	opacity: 1;
+	visibility: visible;
+	transform: translateX(-50%) scale(1);
+}
+
+.query-text::before {
+	content: "";
+	position: absolute;
+	bottom: calc(100% + 2px);
+	left: 50%;
+	transform: translateX(-50%) rotate(45deg);
+	width: 8px;
+	height: 8px;
+	background: var(--adm-text);
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	z-index: 51;
+}
+
+.query-text:hover::before {
+	opacity: 1;
+	visibility: visible;
+}
 /* ساختار متن‌های مونو اسنپ و سیستمی */
 .mono {
 	font-family: var(--font-main) !important;
@@ -340,7 +374,6 @@ tbody tr:hover td {
 .latency {
 	font-size: 0.78rem;
 	color: var(--adm-text);
-	font-weight: 600;
 }
 
 .latency--slow {

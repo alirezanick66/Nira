@@ -274,18 +274,26 @@ export function renderLogs(logs, tbody) {
 
 			return `<tr>
 			<td><span class="mono" dir="ltr">${dateStr} - ${timeStr}</span></td>
-			<td class="query-cell">${_esc((l.query ?? "").slice(0, 45))}${(l.query?.length ?? 0) > 45 ? "…" : ""}</td>
-			<td><span class="badge ${intentClass}">${l.intent}</span></td>
+			<td class="query-cell">${(l.query?.length ?? 0) > 45 ? `<span class="query-text" data-full="${_esc(l.query ?? "")}">${_esc((l.query ?? "").slice(0, 45))}…</span>` : _esc(l.query ?? "")}</td>
+			<td><span class="badge ${intentClass}">${_formatIntent(l.intent)}</span></td>
 			<td>${_formatModel(l.model_used)}</td>
 			<td><span class="mono">${tokens}</span></td>
-			<td><span class="latency${l.latency_ms > 3000 ? " latency--slow" : ""}" dir="ltr">${l.latency_ms} ms</span></td>
-			<td><span class="badge ${statusClass}">${l.response_status}</span></td>
+			<td><span class="latency" dir="ltr">${_formatLatency(l.latency_ms ?? 0)}</span></td>
+			<td><span class="badge ${statusClass}">${_statusLabel(l.response_status)}</span></td>
 			<td class="filters-cell">${filters}</td>
 		</tr>`
 		})
 		.join("")
 }
-
+function _formatIntent(intent) {
+	const map = {
+		search_refine: "جستجو / اصلاح",
+		greeting_unrelated: "احوال‌پرسی",
+		clarification: "نیاز به شفاف‌سازی",
+		general_chat: "گفتگوی عمومی",
+	}
+	return map[intent] || intent
+}
 export function renderPagination(total, limit, offset, container, onChange) {
 	const hasPrev = offset > 0
 	const hasNext = offset + limit < total
@@ -321,9 +329,17 @@ export function destroyCharts() {
 }
 //────────────────────────────────────────── Private Methods ──────────────────────────────────────────
 function _formatLatency(ms) {
-	if (ms >= 1000)
-		return `${(ms / 1000).toFixed(1)}<span class="stat-unit">s</span>`
-	return `${Math.round(ms)}<span class="stat-unit">ms</span>`
+	if (ms >= 1000) return `${(ms / 1000).toFixed(1)}`
+	return `${Math.round(ms)}`
+}
+function _statusLabel(status) {
+	const map = {
+		success: "موفق",
+		error: "خطا",
+		empty: "خالی",
+		clarification: "نیاز به شفاف‌سازی",
+	}
+	return map[status] || status
 }
 function _statusBadgeClass(status) {
 	const map = {
@@ -369,6 +385,8 @@ function _parseFilters(filters) {
 		brand_not: { label: "نه‌برند", icon: "🚫", unit: "" },
 		screen_size: { label: "صفحه", icon: "📱", unit: "اینچ" },
 		weight_g: { label: "وزن", icon: "⚖️", unit: "g" },
+		camera_quality: { label: "کیفیت دوربین", icon: "📷", unit: "" },
+		category: { label: "دسته‌بندی", icon: "📂", unit: "" },
 	}
 
 	// ─── نگاشت اپراتورها به فارسی ────────────────────────────────
@@ -412,7 +430,7 @@ function _parseFilters(filters) {
  */
 function _makeFilterTag(meta, opLabel, displayVal) {
 	const text = opLabel
-		? `${meta.icon} ${meta.label} ${opLabel} ${displayVal}`
+		? `${meta.icon} ${meta.label}: ${opLabel} ${displayVal}`
 		: `${meta.icon} ${meta.label}: ${displayVal}`
 	return `<span class="filter-tag">${_esc(text)}</span>`
 }
@@ -442,7 +460,8 @@ function _formatFilterValue(val, meta) {
  * @returns {string} HTML badge
  */
 function _formatModel(model) {
-	if (!model || model === "unknown") return '<span class="mono dim">—</span>'
+	if (!model || model === "unknown")
+		return '<span class="mono dim" style="background:transparent; padding:0;">—</span>'
 	const MODEL_LABELS = {
 		fast_path: { label: "Fast Path", cls: "badge-success" },
 		"llama-3.3-70b-versatile": {
