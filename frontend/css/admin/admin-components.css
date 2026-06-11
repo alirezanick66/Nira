@@ -447,13 +447,17 @@ tbody tr:hover td {
 .filters-cell {
 	max-width: 260px;
 }
-
+.filter-tags-wrap {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	align-items: center;
+}
 .filter-tag {
 	display: inline-block;
-	padding: 0.18rem 0.55rem;
-	margin: 0.12rem 0.18rem;
+	padding: 0.12rem 0.4rem;
 	border-radius: 6px;
-	font-size: 0.67rem;
+	font-size: 0.64rem;
 	font-weight: 600;
 	background: var(--clr-info-lt);
 	color: #0e7490;
