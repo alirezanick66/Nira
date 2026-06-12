@@ -52,7 +52,7 @@ class SearchService:
     # رابط عمومی
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def run( self, *, query: str, session_id: str, top_k: int = 2 ) -> tuple[ SearchResponse, int ]:
+    async def run( self, *, query: str, session_id: str, top_k: int = 2 ) -> tuple[ SearchResponse, float ]:
         """‫اجرای کامل پایپلاین و بازگشت پاسخ نهایی (برای POST endpoint)"""
         result: SearchResponse | None = None
         async for event in self._run_pipeline( query=query, session_id=session_id, top_k=top_k ):
@@ -62,7 +62,7 @@ class SearchService:
         if result is None:
             raise RuntimeError( "pipeline باید حداقل یک SearchResponse تولید کند" )
 
-        latency_ms = int( float( result.meta.get( "latency_ms", 0 ) ) )          # type: ignore
+        latency_ms = float( result.meta.get( "latency_ms", 0 ) )          # type: ignore
         return result, latency_ms
 
     async def run_streaming(
@@ -105,8 +105,14 @@ class SearchService:
         )
 
         # ‫🔹 مدیریت Intentهای خاص قبل از ورود به پایپلاین جستجو
-        if extract_result.intent == IntentType.GENERAL_CHAT:
-            greeting_response = self._build_greeting( req_id=req_id, session_id=session_id, query=query, t0=t0 )
+        if extract_result.intent in ( IntentType.GREETING, IntentType.GENERAL_CHAT ):
+            greeting_response = self._build_greeting(
+                req_id=req_id,
+                session_id=session_id,
+                query=query,
+                intent=extract_result.intent.value,
+                t0=t0,
+            )
             await self._llm.save_turn(
                 session_id=session_id,
                 user_msg=query,
@@ -266,14 +272,14 @@ class SearchService:
             },
         )
 
-    def _build_greeting( self, *, req_id: str, session_id: str, query: str, t0: float ) -> SearchResponse:
+    def _build_greeting( self, *, req_id: str, session_id: str, intent: str, query: str, t0: float ) -> SearchResponse:
         """‫ساخت پاسخ احوال‌پرسی سریع (بدون LLM)"""
         fallback_greetings = [ "سلام! چطور می‌تونم کمکتون کنم؟", "درود، چه کمکی از دستم برمیاد؟", "سلام، در خدمتم!" ]
         return SearchResponse(
             status="success",
             request_id=req_id,
             session_id=session_id,
-            intent=IntentType.GENERAL_CHAT.value,
+            intent=intent,
             semantic_query=query,
             applied_filters={},
             results=[],

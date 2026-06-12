@@ -5,13 +5,15 @@
 
 const INTENT_LABELS = {
 	search_refine: "جستجو / اصلاح",
-	greeting_unrelated: "احوال‌پرسی",
+	greeting_count: "احوال‌پرسی",
+	general_chat_count: "گفتگوی عمومی",
 	clarification: "نیاز به شفاف‌سازی",
 }
 
 const INTENT_COLORS = {
 	search_refine: "#f5a623",
-	greeting_unrelated: "#94a3b8",
+	greeting_count: "#94a3b8",
+	general_chat_count: "#8b5cf6",
 	clarification: "#fb923c",
 }
 // ─── تنظیم فونت پیش‌فرض برای تمام چارت‌ها ───
@@ -292,7 +294,7 @@ function _formatIntent(intent) {
 		refine: "اصلاح نتایج",
 		search_refine: "جستجو / اصلاح",
 		general_chat: "گفتگوی عمومی",
-		greeting_unrelated: "احوال‌پرسی",
+		greeting: "احوال‌پرسی",
 		clarification: "نیاز به شفاف‌سازی",
 	}
 	return map[intent] || intent
@@ -332,8 +334,12 @@ export function destroyCharts() {
 }
 //────────────────────────────────────────── Private Methods ──────────────────────────────────────────
 function _formatLatency(ms) {
-	if (ms >= 1000) return `${(ms / 1000).toFixed(1)}`
-	return `${Math.round(ms)}`
+	if (ms >= 1000) {
+		return (ms / 1000).toFixed(1)
+	}
+	const sec = (ms / 1000).toFixed(1)
+	// اگر مقدار آنقدر کم بود که 0.0 شد، آن را به 0 ساده تبدیل کن
+	return sec === "0.0" ? "0" : sec
 }
 function _statusLabel(status) {
 	const map = {

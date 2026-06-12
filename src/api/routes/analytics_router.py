@@ -38,7 +38,8 @@ async def get_dashboard_stats(
             func.sum( QueryLog.total_tokens ).label( "total_tokens" ),
             func.count( QueryLog.id ).label( "total_queries" ),
             func.count( QueryLog.id ).filter( QueryLog.response_status == "error" ).label( "error_count" ),
-            func.count( QueryLog.id ).filter( QueryLog.intent == "general_chat" ).label( "greeting_unrelated" ),
+            func.count( QueryLog.id ).filter( QueryLog.intent == "greeting" ).label( "greeting_count" ),
+            func.count( QueryLog.id ).filter( QueryLog.intent == "general_chat" ).label( "general_chat_count" ),
             func.count( QueryLog.id ).filter( QueryLog.response_status == "clarification" ).label( "clarification" ),
             func.count( QueryLog.id ).filter( QueryLog.response_status == "empty" ).label( "zero_results" ),
             func.avg( QueryLog.result_count ).label( "avg_result_count" ),
@@ -49,10 +50,14 @@ async def get_dashboard_stats(
         if stats is None:
             return _empty_stats()
 
-        total = max( stats[ "total_queries" ] or 0, 1 )
+        total = stats[ "total_queries" ] or 0
+        if total == 0:
+            return _empty_stats()
+
         search_refine = max(
             0,
-            total - ( stats[ "greeting_unrelated" ] or 0 ) - ( stats[ "clarification" ] or 0 ) - ( stats[ "error_count" ] or 0 ),
+            total - ( stats[ "greeting_count" ] or 0 ) - ( stats[ "general_chat_count" ] or 0 ) - ( stats[ "clarification" ] or 0 ) -
+            ( stats[ "error_count" ] or 0 ),
         )
 
         return {
@@ -64,7 +69,8 @@ async def get_dashboard_stats(
             "zero_results_rate_pct": f"{((stats['zero_results'] or 0) / total) * 100:.1f}",
             "avg_result_count": round( stats[ "avg_result_count" ] or 0, 1 ),
             "intent_breakdown": {
-                "greeting_unrelated": stats[ "greeting_unrelated" ] or 0,
+                "greeting_count": stats[ "greeting_count" ] or 0,
+                "general_chat_count": stats[ "general_chat_count" ] or 0,
                 "clarification": stats[ "clarification" ] or 0,
                 "search_refine": search_refine,
             },
@@ -151,7 +157,8 @@ def _empty_stats() -> dict:
         "zero_results_rate_pct": "0.0",
         "avg_result_count": 0,
         "intent_breakdown": {
-            "greeting_unrelated": 0,
+            "greeting_count": 0,
+            "general_chat_count": 0,
             "clarification": 0,
             "search_refine": 0,
         },

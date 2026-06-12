@@ -25,7 +25,7 @@ def log_query(
     session_id: str,
     query: str,
     intent: str,
-    latency_ms: int,
+    latency_ms: float,
     llm_explanation: str | None = None,
     response_status: str,
     domain: str = "mobile",

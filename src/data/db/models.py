@@ -3,7 +3,7 @@
 """
 #────────────────────────────────────────── imports ──────────────────────────────────────────
 from __future__ import annotations
-from sqlalchemy import Integer, DateTime, func
+from sqlalchemy import Float, Integer, DateTime, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import UUID
@@ -83,7 +83,7 @@ class QueryLog( Base ):
     applied_filters: Mapped[ dict[ str, object ] | None ] = mapped_column( JSONB, nullable=True )
     result_count: Mapped[ int ] = mapped_column( Integer, nullable=False, default=0 )
     response_status: Mapped[ str ] = mapped_column( String( 20 ), nullable=False )
-    latency_ms: Mapped[ int ] = mapped_column( Integer, nullable=False )
+    latency_ms: Mapped[ float ] = mapped_column( Float, nullable=False )
     llm_explanation: Mapped[ str | None ] = mapped_column( Text, nullable=True, default=None )
     #Token Usage
     prompt_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )

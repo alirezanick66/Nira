@@ -24,7 +24,8 @@ class IntentType( StrEnum ):
     SEARCH = "search"          # جستجوی جدید
     REFINE = "refine"          # فیلتر کردن/تغییر نتایج قبلی
     COMPARE = "compare"          # مقایسه دو یا چند محصول
-    GENERAL_CHAT = "general_chat"          # احوال‌پرسی یا سوال نامرتبط
+    GREETING = "greeting"          # سلام و احوال‌پرسی
+    GENERAL_CHAT = "general_chat"          # احوال‌پرسی های خودمونی یا سوال نامرتبط
 
 
 #────────────────────────────────────────── Extraction Schema (LLM Call 1)  ──────────────────────────────────────────
