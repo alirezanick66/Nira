@@ -66,6 +66,7 @@ class QueryLog( Base ):
         result_count: تعداد نتایج بازگشتی.
         response_status: ‫وضعیت پاسخ (success/partial/empty/error).
         latency_ms: تأخیر پردازش به میلی‌ثانیه.
+        llm_explanation: پاسخ مدل زبانی   .
         created_at: زمان ثبت رکورد.
     """
     __tablename__ = "query_logs"
@@ -83,6 +84,7 @@ class QueryLog( Base ):
     result_count: Mapped[ int ] = mapped_column( Integer, nullable=False, default=0 )
     response_status: Mapped[ str ] = mapped_column( String( 20 ), nullable=False )
     latency_ms: Mapped[ int ] = mapped_column( Integer, nullable=False )
+    llm_explanation: Mapped[ str | None ] = mapped_column( Text, nullable=True, default=None )
     #Token Usage
     prompt_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )
     completion_tokens: Mapped[ int | None ] = mapped_column( Integer, nullable=True, default=0 )

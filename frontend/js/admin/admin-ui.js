@@ -266,10 +266,16 @@ export function renderLogs(logs, tbody) {
 				l.intent === "general_chat" ? "badge-warm" : "badge-primary"
 			const filters = _parseFilters(l.applied_filters)
 			const tokens = (l.prompt_tokens || 0) + (l.completion_tokens || 0)
-
+			// ✅ منطق کوتاه‌کردن و Tooltip برای پاسخ LLM
+			const expText = l.llm_explanation || "—"
+			const expDisplay =
+				expText.length > 50
+					? `<span class="query-text" data-full="${_esc(expText)}">${_esc(expText.slice(0, 50))}…</span>`
+					: _esc(expText)
 			return `<tr>
 			<td><span class="mono" dir="ltr">${dateStr} - ${timeStr}</span></td>
 			<td class="query-cell">${(l.query?.length ?? 0) > 45 ? `<span class="query-text" data-full="${_esc(l.query ?? "")}">${_esc((l.query ?? "").slice(0, 45))}…</span>` : _esc(l.query ?? "")}</td>
+			<td class="filters-cell">${expDisplay}</td> <!-- ✅ رندر ستون جدید -->
 			<td><span class="badge ${intentClass}">${_formatIntent(l.intent)}</span></td>
 			<td>${_formatModel(l.model_used)}</td>
 			<td><span class="mono">${tokens}</span></td>
@@ -282,10 +288,12 @@ export function renderLogs(logs, tbody) {
 }
 function _formatIntent(intent) {
 	const map = {
+		search: "جستجو",
+		refine: "اصلاح نتایج",
 		search_refine: "جستجو / اصلاح",
+		general_chat: "گفتگوی عمومی",
 		greeting_unrelated: "احوال‌پرسی",
 		clarification: "نیاز به شفاف‌سازی",
-		general_chat: "گفتگوی عمومی",
 	}
 	return map[intent] || intent
 }
@@ -333,6 +341,7 @@ function _statusLabel(status) {
 		error: "خطا",
 		empty: "خالی",
 		clarification: "نیاز به شفاف‌سازی",
+		partial: " نسبی",
 	}
 	return map[status] || status
 }
@@ -342,6 +351,7 @@ function _statusBadgeClass(status) {
 		error: "badge-danger",
 		empty: "badge-warn",
 		clarification: "badge-info",
+		partial: "badge-warn",
 	}
 	return map[status] || "badge-neutral"
 }

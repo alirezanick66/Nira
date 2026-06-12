@@ -26,6 +26,7 @@ def log_query(
     query: str,
     intent: str,
     latency_ms: int,
+    llm_explanation: str | None = None,
     response_status: str,
     domain: str = "mobile",
     user_id: str | None = None,
@@ -49,6 +50,7 @@ def log_query(
         intent: نیت تشخیص‌داده‌شده
         latency_ms: تأخیر پردازش به میلی‌ثانیه
         response_status: وضعیت پاسخ نهایی
+        llm_explanation: پاسخ مدل زبانی (اختیاری)
         domain: حوزهٔ درخواستی (پیش‌فرض: mobile)
         user_id: شناسهٔ کاربر (اختیاری)
         client_session_id: نشست سمت کلاینت (اختیاری)
@@ -73,6 +75,7 @@ def log_query(
         result_count=result_count,
         response_status=response_status,
         latency_ms=latency_ms,
+        llm_explanation=llm_explanation,
           #tokens
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
