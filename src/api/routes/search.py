@@ -90,6 +90,7 @@ async def search_products(
     finally:
         tokens = response.meta.get( "token_usage", {} ) if response and response.meta else {}
         model_used = str( response.meta.get( "model_used", "unknown" ) ) if response and response.meta else "error"
+        llm_exp = response.llm_explanation if response and hasattr( response, 'llm_explanation' ) else None
 
         log_query(
             request_id=uuid.uuid4(),
@@ -104,6 +105,7 @@ async def search_products(
             result_count=len( response.results ) if response else 0,
             response_status=response_status,
             latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+            llm_explanation=llm_exp,
           #tokens
             prompt_tokens=tokens.get( "prompt_tokens", 0 ),          #type:ignore
             completion_tokens=tokens.get( "completion_tokens", 0 ),          #type:ignore
@@ -167,6 +169,7 @@ async def search_products_stream(
                     result_count = len( event.results )
                     applied_filters = dict( event.applied_filters ) if event.applied_filters else None
                     tokens = ( val if isinstance( val := ( event.meta or {} ).get( "token_usage" ), dict ) else {} )
+                    llm_exp = event.llm_explanation if hasattr( event, 'llm_explanation' ) else None
                     model_used = str( event.meta.get( "model_used", "unknown" ) ) if event.meta else "unknown"
                     yield _sse_event( "result", event.model_dump() )
 
@@ -187,6 +190,7 @@ async def search_products_stream(
                        result_count=result_count,
                        response_status=response_status,
                        latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+                       llm_explanation=llm_exp,
                        prompt_tokens=tokens.get( "prompt_tokens", 0 ),
                        completion_tokens=tokens.get( "completion_tokens", 0 ),
                        total_tokens=tokens.get( "total_tokens", 0 ),
