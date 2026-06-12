@@ -104,7 +104,7 @@ async def search_products(
             applied_filters=response.applied_filters if response else None,
             result_count=len( response.results ) if response else 0,
             response_status=response_status,
-            latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+            latency_ms=round( ( time.perf_counter() - t0 ) * 1000, 2 ),
             llm_explanation=llm_exp,
           #tokens
             prompt_tokens=tokens.get( "prompt_tokens", 0 ),          #type:ignore
@@ -189,7 +189,7 @@ async def search_products_stream(
                        applied_filters=applied_filters,
                        result_count=result_count,
                        response_status=response_status,
-                       latency_ms=int( ( time.perf_counter() - t0 ) * 1000 ),
+                       latency_ms=round( ( time.perf_counter() - t0 ) * 1000, 2 ),
                        llm_explanation=llm_exp,
                        prompt_tokens=tokens.get( "prompt_tokens", 0 ),
                        completion_tokens=tokens.get( "completion_tokens", 0 ),

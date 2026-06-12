@@ -113,7 +113,7 @@ class LLMOrchestrator:
         if self._is_greeting_fast( normalized ):
             log_message( LG.LLM, "👋 Greeting شناسایی شد (Fast-Path) | بدون فراخوانی LLM", LogLevel.DEBUG )
             return LLMExtractSchema(
-                intent=IntentType.GENERAL_CHAT,
+                intent=IntentType.GREETING,
                 semantic_query="",
                 metadata_filters={},
                 needs_clarification=False,
