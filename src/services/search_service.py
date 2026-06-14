@@ -228,6 +228,58 @@ class SearchService:
             summary = [ f"{p.title[:40]}... | {p.price:,.0f} تومان" for p in products[ :2 ] ]
             log_message( LG.LLM, f"📦 محصولات نهایی: {summary}", LogLevel.DEBUG )
 
+    @staticmethod
+    def _select_llm_products(
+        final_products: list[ QdrantProductPayload ],
+        llm_out: dict,
+    ) -> list[ QdrantProductPayload ]:
+        """‫انتخاب محصولات نهایی برای نمایش بر اساس product_ids تأییدشدهٔ LLM
+
+        ‫منطق ایمن (Fail-Safe):
+        ‫- ترتیب انتخاب LLM حفظ می‌شود (ممکن است معنادار باشد).
+        ‫- اگر product_ids خالی/ناموجود باشد یا هیچ‌کدام با محصولات منطبق نشوند،
+        ‫  به رفتار قبلی (همهٔ محصولات reranked) بازمی‌گردیم تا پاسخ هرگز بی‌دلیل خالی نشود.
+
+        Args:
+            final_products: محصولات نهایی پس از reranking
+            llm_out: خروجی اعتبارسنجی‌شدهٔ LLM (شامل product_ids)
+
+        Returns:
+            لیست محصولات منتخب برای ساخت results
+        """
+        raw_ids = llm_out.get( "product_ids" )
+        if not isinstance( raw_ids, list ) or not raw_ids:
+            return final_products
+
+        # ‫نرمال‌سازی شناسه‌ها به int و حذف موارد نامعتبر/تکراری با حفظ ترتیب
+        seen: set[ int ] = set()
+        allowed_ids: list[ int ] = []
+        for rid in raw_ids:
+            try:
+                pid = int( rid )
+            except ( TypeError, ValueError ):
+                continue
+            if pid not in seen:
+                seen.add( pid )
+                allowed_ids.append( pid )
+
+        if not allowed_ids:
+            return final_products
+
+        by_id = { p.product_id: p for p in final_products }
+        selected = [ by_id[ pid ] for pid in allowed_ids if pid in by_id ]
+
+        if not selected:
+            log_message(
+                LG.LLM,
+                f"⚠️ هیچ‌یک از product_ids منتخب LLM در محصولات نهایی یافت نشد ({allowed_ids}) | بازگشت به همهٔ کاندیداها",
+                LogLevel.WARNING,
+            )
+            return final_products
+
+        log_message( LG.LLM, f"🎯 محصولات منتخب LLM برای نمایش: {[p.product_id for p in selected]}", LogLevel.DEBUG )
+        return selected
+
     def _build_final_response(
         self,
         req_id: str,
@@ -241,6 +293,12 @@ class SearchService:
     ) -> SearchResponse:
         """‫ساخت SearchResponse نهایی از خروجی تمام مراحل پایپلاین"""
         fallback_steps: int = self._retriever._last_fallback_steps
+
+        # 🎯 منبع حقیقت برای نمایش = انتخاب نهایی LLM (product_ids)
+        # ‫LLM از بین محصولات reranked فقط مواردِ منطبق با نیاز کاربر را انتخاب می‌کند؛
+        # ‫بنابراین results باید دقیقاً همان‌ها باشد، نه همهٔ کاندیداها.
+        selected_products = self._select_llm_products( final_products, llm_out )
+
         results = [
             SearchResultItem(
                 product_id=p.product_id,
@@ -251,7 +309,7 @@ class SearchService:
                 tags=p.tags or [],
                 image_url=p.image_url,
                 relevance_score=getattr( p, "rerank_score", 0.0 ),
-            ) for p in final_products
+            ) for p in selected_products
         ]
         return SearchResponse(
             status="partial" if fallback_steps > 0 else "success",
