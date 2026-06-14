@@ -344,7 +344,7 @@ class SearchService:
 
     def _build_greeting( self, *, req_id: str, session_id: str, intent: str, query: str, t0: float ) -> SearchResponse:
         """‫ساخت پاسخ احوال‌پرسی سریع (بدون LLM)"""
-        fallback_greetings = [ "سلام! چطور می‌تونم کمکتون کنم؟", "درود، چه کمکی از دستم برمیاد؟", "سلام، در خدمتم!" ]
+        message = self._llm.get_non_search_response( IntentType( intent ) )
         return SearchResponse(
             status="success",
             request_id=req_id,
@@ -353,7 +353,7 @@ class SearchService:
             semantic_query=query,
             applied_filters={},
             results=[],
-            message=random.choice( fallback_greetings ),
+            message=message,
             llm_explanation="",
             next_suggestion="نیازتان را بنویسید.",
             meta={ "latency_ms": round( ( time.perf_counter() - t0 ) * 1000, 1 ) },

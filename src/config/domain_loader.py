@@ -1,8 +1,8 @@
 """‫فراخوانی کانفیگ پایه و کانفیگ دامنه و ادغام آن در یک دیکشنری واحد برای مصرف توسط  NLU Pipeline"""
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
 from pathlib import Path
-from typing import cast
-from pydantic import BaseModel, Field, computed_field, ConfigDict as PydanticConfig
+from typing import cast, Self
+from pydantic import BaseModel, Field, computed_field, model_validator, ConfigDict as PydanticConfig
 import yaml
 
 #────────────────────────────────────────── Local  Imports  ──────────────────────────────────────────
@@ -16,7 +16,11 @@ class DomainConfig( BaseModel ):
 
     #base.yaml Config
     price_ceiling_multiplier: float = Field( default=1.8, description="ضریب سقف هوشمند قیمت نسبت به کف" )
+    #intent
     intent_keywords: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
+    greeting_responses: list[ str ] = Field( default_factory=list )
+    general_chat_responses: list[ str ] = Field( default_factory=list )
+
     qualitative_mappings: dict[ str, dict[ str, list[ str ] ] ] = Field( default_factory=dict )
     slot_definitions: dict[ str, dict[ str, object ] ] = Field( default_factory=dict )
     prompts: dict[ str, object ] = Field( default_factory=dict )
@@ -49,6 +53,15 @@ class DomainConfig( BaseModel ):
                     if isinstance( term, str ):
                         flat[ term ] = { filter_key: value }
         return flat
+
+    @model_validator( mode="after" )
+    def _extract_response_lists( self ) -> Self:
+        """استخراج خودکار لیست پاسخ‌ها از intent_keywords به فیلدهای typed"""
+        if not self.greeting_responses:
+            self.greeting_responses = self.intent_keywords.get( "greeting", {} ).get( "greeting_responses", [] )
+        if not self.general_chat_responses:
+            self.general_chat_responses = self.intent_keywords.get( "general_chat", {} ).get( "responses", [] )
+        return self
 
 
 class DomainConfigLoader:

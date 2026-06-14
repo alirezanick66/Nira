@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from typing import cast
 from string import Template
 from groq.types.chat import ChatCompletionMessageParam
-
+import random
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.domain_loader import DomainConfig
 from src.config.logging_config import log_message, LogLevel, LG
@@ -52,13 +52,22 @@ class LLMOrchestrator:
         self._prompt_engine = PromptEngine( domain_config )
         self._normalizer = normalizer or PersianNormalizer()
         self._semantic_cache = semantic_cache
+        #intent
         self._greeting_keywords = frozenset( self._config.intent_keywords.get( "greeting", {} ).get( "keywords_fast", [] ) )
+        self._greeting_responses: list[ str ] = self._config.greeting_responses
+        self._general_chat_responses: list[ str ] = self._config.general_chat_responses
+
         self._domain_schema_str = self._build_domain_schema()
         self._price_ceiling_multiplier: float = domain_config.price_ceiling_multiplier
 
         log_message( LG.LLM, "سرویس LLMOrchestrator آماده پذیرش درخواست است", LogLevel.INFO )
 
     #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    def get_non_search_response( self, intent: IntentType ) -> str:
+        """‫انتخاب تصادفی پاسخ از YAML برای intentهای غیرجستجو (بدون فراخوانی LLM)"""
+        if intent == IntentType.GENERAL_CHAT:
+            return random.choice( self._general_chat_responses )
+        return random.choice( self._greeting_responses )
 
     async def get_session_history( self, session_id: str ) -> list[ dict[ str, str ] ]:
         """دریافت تاریخچه مکالمه نشست فعال"""
