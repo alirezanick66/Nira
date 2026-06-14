@@ -98,8 +98,9 @@ export function renderProducts(products, allowedIds = []) {
 	wrapper.className = "products"
 
 	// 🎯 فیلتر کردن محصولات بر اساس لیست تایید شده LLM (در صورت عدم وجود، همان ۲ تای اول)
+	// نکته: فیلد شناسه در پاسخ بک‌اند product_id است (نه id).
 	const filteredProducts = allowedIds?.length
-		? products.filter((p) => allowedIds.includes(Number(p.id) || p.id))
+		? products.filter((p) => allowedIds.includes(Number(p.product_id)))
 		: products.slice(0, 2)
 
 	filteredProducts.forEach((p) => {
