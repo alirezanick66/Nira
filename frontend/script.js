@@ -58,7 +58,8 @@ function handleSend(overrideQuery) {
 			aiTextEl.textContent =
 				data.llm_explanation || data.message || "پاسخی دریافت نشد."
 
-			if (data.results?.length) renderProducts(data.results)
+			if (data.results?.length)
+				renderProducts(data.results, data.product_ids ?? [])
 
 			// ─── نمایش هوشمند next_suggestion ─────────────────────────────────────
 			const suggestion = data.next_suggestion?.trim()

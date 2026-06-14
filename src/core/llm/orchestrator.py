@@ -123,7 +123,8 @@ class LLMOrchestrator:
             )
 
         if self._semantic_cache:
-            cache_key = hashlib.sha256( f"extract:{normalized}".encode() ).hexdigest()
+            cache_key = hashlib.sha256(
+                f"extract:{normalized}:{json.dumps(last_filters or {}, sort_keys=True)}".encode() ).hexdigest()
             log_message( LG.LLM, f"🔑 [DEBUG] Cache Key: {cache_key[:16]}...", LogLevel.DEBUG )          # فقط ۱۶ کاراکتر اول
             cached = await self._semantic_cache.get( cache_key )
             if cached:
