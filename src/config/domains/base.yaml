@@ -127,13 +127,18 @@ prompts:
                     مثال: brand_not: "سامسونگ"  یا  brand_not: ["سامسونگ", "اپل"]
                     ⛔️ هرگز از عملگر "!=" استفاده نکن.
 
-            ۴. اگر کوئری مبهم است یا اطلاعات کلیدی کم است، `needs_clarification` را true کن و در `clarification_question` یک سوال کوتاه بپرس.
-            ۵. اگر نیت `general_chat` تشخیص داده شد: `needs_clarification` را false، `semantic_query` را خالی ("") و `clarification_question` را null بگذار.
+            ۴. استخراج مرتب‌سازی (sort_order):
+               - اگر کاربر به صراحت "ارزان‌ترین"، "ارزونترین"، "اقتصادی‌ترین" را خواست، مقدار را "price_asc" بگذار.
+               - اگر کلماتی مثل "گران‌ترین"، "گرونترین"، "لوکس‌ترین"، "بهترین" (در کانتکست قیمت/پرچمدار) را به کار برد، مقدار را "price_desc" بگذار.
+               - در غیر این صورت مقدار را null بگذار.
+            ۵. اگر کوئری مبهم است یا اطلاعات کلیدی کم است، `needs_clarification` را true کن و در `clarification_question` یک سوال کوتاه بپرس.
+            ۶. اگر نیت `general_chat` تشخیص داده شد: `needs_clarification` را false، `semantic_query` را خالی ("") و `clarification_question` را null بگذار.
             📌 نمونه انتزاعی برای نیت مقایسه (Compare):
             ورودی کاربر: "بین [محصول الف] و [محصول ب] کدوم [ویژگی ایکس] بهتری داره؟"
             خروجی مجاز:
             {
               "intent": "compare",
+              "sort_order": null,
               "semantic_query": "مقایسه [ویژگی ایکس] [محصول الف] و [محصول ب]",
               "metadata_filters": {},
               "needs_clarification": false,
@@ -141,11 +146,12 @@ prompts:
               "has_conflict": false,
               "conflict_reason": null
             }
-            ۶. خروجی تو باید فقط یک JSON معتبر مطابق ساختار زیر باشد. هیچ متن اضافی تولید نکن.
+            ۷. خروجی تو باید فقط یک JSON معتبر مطابق ساختار زیر باشد. هیچ متن اضافی تولید نکن.
 
             📐 ساختار خروجی (دقیقاً همین JSON را برگردان):
             {
               "intent": "string",
+              "sort_order": "price_asc | price_desc | null",
               "semantic_query": "string",
               "metadata_filters": {},
               "needs_clarification": false,

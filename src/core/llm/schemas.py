@@ -28,12 +28,21 @@ class IntentType( StrEnum ):
     GENERAL_CHAT = "general_chat"          # احوال‌پرسی های خودمونی یا سوال نامرتبط
 
 
+class SortOrder( StrEnum ):
+    """
+    نحوه مرتب‌سازی درخواست‌شده توسط کاربر.
+    """
+    PRICE_ASC = "price_asc"          # ارزان‌ترین / اقتصادی‌ترین
+    PRICE_DESC = "price_desc"          # گران‌ترین / لوکس‌ترین / پرچمدارترین
+
+
 #────────────────────────────────────────── Extraction Schema (LLM Call 1)  ──────────────────────────────────────────
 class LLMExtractSchema( BaseModel ):
     """
    ‫ ساختار خروجی مرحلهٔ اول LLM (استخراج نیت و فیلترها)
     """
     intent: IntentType = Field( description="نیت تشخیص‌داده‌شده" )
+    sort_order: SortOrder | None = Field( default=None, description="نوع مرتب‌سازی درخواستی کاربر" )
     semantic_query: str = Field( description="عبارت بهینه‌شده و تمیز برای جستجوی برداری/کلیدواژه‌ای" )
     metadata_filters: MetadataFilters = Field( default_factory=dict, description="فیلترهای ساختاریافته سازگار با Qdrant" )
     needs_clarification: bool = Field( default=False, description="آیا کوئری مبهم است و نیاز به پرسش تکمیلی دارد؟" )

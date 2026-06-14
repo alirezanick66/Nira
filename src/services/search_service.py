@@ -157,15 +157,27 @@ class SearchService:
 
         # ── مرحله ۳: رتبه‌بندی ───────────────────────────────────────────────
         yield PipelineStatus( step=self.PipelineStep.RERANKING )
-        final_products = await asyncio.to_thread( self._reranker.rerank, query=query, payloads=candidates, top_k=top_k )
+        # جلوگیری از برش زودهنگام توسط Reranker برای اعمال صحیح مرتب‌سازی
+        print( top_k )
+        final_products = await asyncio.to_thread( self._reranker.rerank, query=query, payloads=candidates, top_k=len( candidates ) )
         await self._enrich_products( final_products )
-        # 🔧 ۲. مرتب‌سازی بر اساس نزدیکی به قیمت (Price Proximity Sort)
-        # تضمین می‌کنه محصولاتی که به بودجه کاربر نزدیک‌ترن، اولویت بالاتری داشته باشن.
+
+        # 🔧 ۲. تشخیص نیت‌های ترتیبی (گرون‌ترین/ارزون‌ترین) و مرتب‌سازی
         filters = extract_result.metadata_filters
         floor_price = filters.get( "price", {} ).get( ">" ) or filters.get( "price", {} ).get( ">=" )          # type: ignore
-        if floor_price:
+
+        if extract_result.sort_order == "price_desc":
+            final_products.sort( key=lambda p: p.price, reverse=True )
+            log_message( LG.LLM, "📉 مرتب‌سازی نزولی بر اساس قیمت (گران‌ترین/لوکس‌ترین) اعمال شد.", LogLevel.DEBUG )
+        elif extract_result.sort_order == "price_asc":
+            final_products.sort( key=lambda p: p.price )
+            log_message( LG.LLM, "📉 مرتب‌سازی صعودی بر اساس قیمت (ارزان‌ترین) اعمال شد.", LogLevel.DEBUG )
+        elif floor_price:
             final_products.sort( key=lambda p: abs( p.price - floor_price ) )
             log_message( LG.LLM, "📉 مرتب‌سازی بر اساس نزدیکی به کف قیمت انجام شد.", LogLevel.DEBUG )
+
+        # محدودسازی نهایی برای ارسال به LLM
+        final_products = final_products[ :top_k ]
 
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step=self.PipelineStep.GENERATING )
