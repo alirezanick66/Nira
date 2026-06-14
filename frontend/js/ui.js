@@ -88,15 +88,21 @@ export function addMessage(role, content = "") {
 // ─── رندر کارت‌های محصول ─────────────────────────────────────────
 
 /**
- * حداکثر ۲ کارت محصول را رندر می‌کند.
+ * کارت‌های محصول تایید شده توسط LLM را رندر می‌کند.
  * @param {Array<Object>} products
+ * @param {Array<number>} [allowedIds=[]] - آی‌دی‌های تایید شده توسط مدل زبانی
  */
-export function renderProducts(products) {
+export function renderProducts(products, allowedIds = []) {
 	if (!products?.length) return
 	const wrapper = document.createElement("div")
 	wrapper.className = "products"
 
-	products.slice(0, 2).forEach((p) => {
+	// 🎯 فیلتر کردن محصولات بر اساس لیست تایید شده LLM (در صورت عدم وجود، همان ۲ تای اول)
+	const filteredProducts = allowedIds?.length
+		? products.filter((p) => allowedIds.includes(Number(p.id) || p.id))
+		: products.slice(0, 2)
+
+	filteredProducts.forEach((p) => {
 		const title = p.title || "بدون عنوان"
 		const imageUrl =
 			p.image_url || "https://placehold.co/300x300?text=No+Image"
@@ -117,7 +123,6 @@ export function renderProducts(products) {
 	})
 
 	chatEl.appendChild(wrapper)
-	// دو rAF تو در تو: اول layout، بعد scroll — برای کارت‌هایی که با animation-delay رندر می‌شن
 	requestAnimationFrame(() => {
 		requestAnimationFrame(() => {
 			chatEl.scrollTop = chatEl.scrollHeight

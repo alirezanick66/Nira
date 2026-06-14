@@ -484,3 +484,18 @@ td .mono {
 	letter-spacing: normal;
 	font-weight: inherit;
 }
+/* محدود کردن عرض ستون‌های کم‌اهمیت‌تر */
+th:nth-child(4), td:nth-child(4), /* مدل */
+th:nth-child(5), td:nth-child(5)  /* توکن‌ها */ {
+	max-width: 80px;
+	font-size: 0.7rem;
+}
+
+/* مدیریت هوشمند ستون پاسخ LLM و فیلترها */
+.filters-cell {
+	max-width: 180px; /* کاهش عرض */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: help; /* نشانگر ماوس را تغییر بده تا کاربر بفهمد قابل کلیک/هاور است */
+}

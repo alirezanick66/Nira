@@ -17,8 +17,6 @@ from src.config.logging_config import log_message, LogLevel, LG
 
 class _BaseLLMClient:
     """ ‫کلاس پایه مشترک برای مدیریت Retry و لاگ‌گذاری کلاینت‌های LLM"""
-    MAX_RETRIES: int = 2
-    BACKOFF_FACTOR: float = 1.5
 
     _T = TypeVar( "_T" )
 
@@ -26,22 +24,25 @@ class _BaseLLMClient:
     async def _retry_on_rate_limit( func: Callable[..., Awaitable[ _T ] ], *args: object, **kwargs: Any ) -> _T:
         """اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests"""
         timeout = get_settings().GROQ_TIMEOUT_SEC
-        for attempt in range( _BaseLLMClient.MAX_RETRIES ):
+        MAX_RETRIES: int = get_settings().MAX_RETRIES
+        BACKOFF_FACTOR: float = get_settings().LLM_BACKOFF_FACTOR
+
+        for attempt in range( MAX_RETRIES ):
             try:
                 async with asyncio.timeout( timeout ):
                     return await func( *args, **kwargs )
 
             except asyncio.TimeoutError as exc:
                 log_message( LG.LLM, f"⏱️ LLM timeout بعد از {timeout}s (تلاش {attempt + 1})", LogLevel.WARNING )
-                if attempt < _BaseLLMClient.MAX_RETRIES - 1:
+                if attempt < MAX_RETRIES - 1:
                     # Retry فوری بدون delay برای timeout (برای جلوگیری از client timeout)
                     continue
                 raise RuntimeError( f"LLM request timed out after {timeout}s" ) from exc
             except Exception as exc:
                 is_rate_limit = ( isinstance( exc, groq.RateLimitError ) or getattr( exc, "status_code", None ) == 429
                                   or getattr( exc, "code", None ) == 429 )
-                if is_rate_limit and attempt < _BaseLLMClient.MAX_RETRIES - 1:
-                    wait: float = _BaseLLMClient.BACKOFF_FACTOR ** attempt
+                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                    wait: float = BACKOFF_FACTOR ** attempt
                     log_message( LG.LLM, f"⏳ محدودیت نرخ API. تلاش مجدد پس از {wait:.1f}s...", LogLevel.WARNING )
                     await asyncio.sleep( wait )
                     continue
