@@ -208,6 +208,8 @@ class LLMOrchestrator:
             total_usage = token_usage.get( 'total_tokens', 0 )
             log_message( LG.LLM, f"📥 Extract کوئری: '{query[:80]}' | Intent: {validated.intent.value} | TotalUsage: {total_usage}",
                          LogLevel.DEBUG )
+            log_message( LG.LLM, f"📥 Extract | User: '{query[:40]}' | Semantic: '{validated.semantic_query}'", LogLevel.DEBUG )
+
             return validated
 
         except Exception as exc:
