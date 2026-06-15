@@ -37,7 +37,7 @@ class PromptEngine:
     def _format_products( products: list[ QdrantProductPayload ] ) -> str:
         """فرمت‌بندی لیست محصولات برای تزریق به پرامپت"""
         parts: list[ str ] = []
-        for p in products[ :2 ]:
+        for p in products:
             tags_str = ", ".join( p.tags ) if p.tags else "بدون تگ"
 
             # 🔧 تبدیل مقادیر کیفی به فارسی قبل از تزریق به پرامپت

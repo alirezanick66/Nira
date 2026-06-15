@@ -250,7 +250,7 @@ class SearchService:
                 p.image_url = url_map.get( p.product_id )
 
         if products:
-            summary = [ f"{p.title[:40]}... | {p.price:,.0f} تومان" for p in products[ :2 ] ]
+            summary = [ f"{p.title[:40]}... | {p.price:,.0f} تومان" for p in products ]
             log_message( LG.LLM, f"📦 محصولات نهایی: {summary}", LogLevel.DEBUG )
 
     @staticmethod
