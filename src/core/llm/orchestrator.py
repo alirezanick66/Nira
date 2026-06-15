@@ -11,6 +11,7 @@ from string import Template
 from groq.types.chat import ChatCompletionMessageParam
 import random
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
+from src.config.settings import get_settings
 from src.config.domain_loader import DomainConfig
 from src.config.logging_config import log_message, LogLevel, LG
 from src.core.llm.clients import GroqClient, GeminiClient
@@ -44,6 +45,7 @@ class LLMOrchestrator:
             semantic_cache: ‫سرویس کش معنایی (اختیاری)
         """
         self._config = domain_config
+        self._settings = get_settings()
         self._memory = memory or ConversationMemory( max_turns=3 )
         self._groq = groq_client or GroqClient()
         self._gemini = gemini_client or GeminiClient()
@@ -172,15 +174,26 @@ class LLMOrchestrator:
 
         # ‫۳. فراخوانی LLM (Groq → Gemini Fallback)
         raw_json = ""
-        try:
-            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
-        except Exception as exc:
-            log_message( LG.LLM, f"⚠️ Groq failed in extract: {exc} | Switching to Gemini...", LogLevel.WARNING )
+        token_usage = {}
+
+        if self._settings.LLM_PRIMARY_PROVIDER.lower() == "gemini":          # 🔧 تعیین ترتیب ارائه‌دهندگان بر اساس تنظیمات
+            providers = [ ( "gemini", self._gemini ), ( "groq", self._groq ) ]
+        else:
+            providers = [ ( "groq", self._groq ), ( "gemini", self._gemini ) ]
+
+        for provider_name, provider_client in providers:
             try:
-                raw_json, token_usage = await self._gemini.chat_json( cast( list, messages ) )
-            except Exception as gem_exc:
-                log_message( LG.LLM, f"❌ هر دو سرویس LLM در extract ناموفق بودند: {gem_exc}", LogLevel.ERROR )
-                raise RuntimeError( "سرویس استخراج LLM در دسترس نیست" ) from gem_exc
+                log_message( LG.LLM, f"📡 ارسال درخواست به {provider_name.capitalize()}...", LogLevel.DEBUG )
+                raw_json, token_usage = await provider_client.chat_json( cast( list, messages ) )
+                log_message( LG.LLM,
+                             f"✅ پاسخ از {provider_name.capitalize()} دریافت شد | TotalUsage: {token_usage.get('total_tokens', 0)}",
+                             LogLevel.DEBUG )
+                break
+            except Exception as exc:
+                log_message( LG.LLM, f"⚠️ {provider_name.capitalize()} ناموفق: {exc}", LogLevel.WARNING )
+        else:
+            log_message( LG.LLM, "❌ هر دو سرویس LLM ناموفق بودند", LogLevel.ERROR )
+            raise RuntimeError( "هر دو سرویس LLM ناموفق بودند" )
 
         # ‫ ۴. پارس و اعتبارسنجی سخت‌گیرانه Pydantic
         try:
@@ -271,20 +284,29 @@ class LLMOrchestrator:
 
         # ‫۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
-        try:
-            log_message( LG.LLM, "📡 ارسال درخواست به Groq...", LogLevel.DEBUG )
-            raw_json, token_usage = await self._groq.chat_json( cast( list, messages ) )
-            model_used = self._groq._model          #اضافه کردن مدل استفاده شده در لاگ
+        token_usage = {}
+        model_used = "unknown"
 
-        except Exception as exc:
-            log_message( LG.LLM, f"⚠️ Groq ناموفق: {exc}. انتقال به Gemini...", LogLevel.WARNING )
+        # 🔧 تعیین ترتیب ارائه‌دهندگان بر اساس تنظیمات
+        if self._settings.LLM_PRIMARY_PROVIDER.lower() == "gemini":
+            providers = [ ( "gemini", self._gemini ), ( "groq", self._groq ) ]
+        else:
+            providers = [ ( "groq", self._groq ), ( "gemini", self._gemini ) ]
+
+        for provider_name, client in providers:
             try:
-                log_message( LG.LLM, "📡 ارسال درخواست به Gemini...", LogLevel.DEBUG )
-                raw_json, token_usage = await self._gemini.chat_json( cast( list, messages ) )
-                model_used = self._gemini._model          #اضافه کردن مدل استفاده شده در لاگ
-            except Exception as gem_exc:
-                log_message( LG.LLM, f"❌ هر دو سرویس LLM ناموفق بودند: {gem_exc}", LogLevel.ERROR )
-                return self._fallback_response( user_query, products )
+                log_message( LG.LLM, f"📡 ارسال درخواست Generate به {provider_name.capitalize()}...", LogLevel.DEBUG )
+                raw_json, token_usage = await client.chat_json( cast( list, messages ) )
+                model_used = client._model
+                break          # موفقیت‌آمیز بود، از حلقه خارج شو
+
+            except Exception as exc:
+                log_message( LG.LLM, f"⚠️ {provider_name.capitalize()} در generate ناموفق بود: {exc} | انتقال به فال‌بک...",
+                             LogLevel.WARNING )
+        else:
+            # اگر حلقه بدون break تمام شد، یعنی هر دو شکست خوردند
+            log_message( LG.LLM, "❌ هر دو سرویس LLM در generate ناموفق بودند", LogLevel.ERROR )
+            return self._fallback_response( user_query, products )
 
         # ‫۴. اعتبارسنجی JSON و ثبت پاسخ در حافظه
         try:

@@ -52,6 +52,8 @@ class Settings( BaseSettings ):
     RERANKER_TOP_K: int = Field( default=3, ge=1, le=20, description="تعداد محصولات Top-k نهایی پس از Reranking" )
 
     #────────────────────────────────────────── LLM ──────────────────────────────────────────
+    LLM_PRIMARY_PROVIDER: str = Field( default="groq", description="مدل اصلی برای فراخوانی LLM (groq یا gemini)" )
+
     #Api Keys
     GROQ_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Groq" )
     GEMINI_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Gemini" )
