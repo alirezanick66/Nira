@@ -58,7 +58,7 @@ class Settings( BaseSettings ):
     GROQ_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Groq" )
     GEMINI_API_KEY: str = Field( default="", description=" ‫کلید API برای دسترسی به سرویس Gemini" )
     #Model Names
-    GROQ_MODEL: str = Field( default="llama-3.3-70b-versatile", description=" ‫مدل Groq برای تولید پاسخ" )
+    GROQ_MODEL: str = Field( default="openai/gpt-oss-120b", description=" ‫مدل Groq برای تولید پاسخ" )
     GEMINI_MODEL: str = Field( default="gemini-2.5-flash", description=" ‫مدل Gemini برای تولید پاسخ " )
 
     LLM_TEMPERATURE: float = Field( default=0.3, ge=0.0, le=1.0 )

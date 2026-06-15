@@ -444,9 +444,6 @@ tbody tr:hover td {
 /* ═══════════════════════════════════════════════════════════════
 تگ‌های فیلتر پیشرفته (Filter Tags)
 ═══════════════════════════════════════════════════════════════ */
-.filters-cell {
-	max-width: 260px;
-}
 .filter-tags-wrap {
 	display: flex;
 	flex-wrap: wrap;

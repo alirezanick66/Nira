@@ -402,7 +402,7 @@ class SearchService:
             status="clarification",
             request_id=req_id,
             session_id=session_id,
-            intent=IntentType.SEARCH.value,
+            intent=IntentType.CLARIFICATION.value,
             semantic_query=query,
             applied_filters={},
             results=[],

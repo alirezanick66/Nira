@@ -8,6 +8,7 @@ const INTENT_LABELS = {
 	greeting_count: "احوال‌پرسی",
 	general_chat_count: "گفتگوی عمومی",
 	clarification: "نیاز به شفاف‌سازی",
+	compare: "مقایسه",
 }
 
 const INTENT_COLORS = {
@@ -15,6 +16,7 @@ const INTENT_COLORS = {
 	greeting_count: "#94a3b8",
 	general_chat_count: "#8b5cf6",
 	clarification: "#fb923c",
+	compare: "#10b981",
 }
 // ─── تنظیم فونت پیش‌فرض برای تمام چارت‌ها ───
 if (typeof Chart !== "undefined") {
@@ -296,6 +298,7 @@ function _formatIntent(intent) {
 		general_chat: "گفتگوی عمومی",
 		greeting: "احوال‌پرسی",
 		clarification: "نیاز به شفاف‌سازی",
+		compare: "مقایسه",
 	}
 	return map[intent] || intent
 }
@@ -369,6 +372,9 @@ function _formatTokens(n) {
 }
 
 function _esc(str) {
+	if (typeof str !== "string") {
+		str = String(str ?? "")
+	}
 	return str
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")

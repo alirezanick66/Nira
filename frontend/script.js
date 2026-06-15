@@ -63,7 +63,6 @@ function handleSend(overrideQuery) {
 
 			// ─── نمایش هوشمند next_suggestion ─────────────────────────────────────
 			const suggestion = data.next_suggestion?.trim()
-			console.log("📦 [DEBUG] next_suggestion:", suggestion) // ← کنسول مرورگر رو چک کن
 
 			if (
 				suggestion &&
@@ -77,7 +76,9 @@ function handleSend(overrideQuery) {
 			}
 
 			// ‫callback برای دکمه‌های اکشن — query رو مستقیم به handleSend میده
-			if (data.intent !== "greeting") {
+			console.log("🔍 [DEBUG] intent value:", JSON.stringify(data.intent))
+			const SEARCH_INTENTS = ["search", "refine", "compare"]
+			if (SEARCH_INTENTS.includes(data.intent)) {
 				renderQuickActions((q) => handleSend(q), data.results ?? [])
 			}
 

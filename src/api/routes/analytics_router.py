@@ -42,6 +42,7 @@ async def get_dashboard_stats(
             func.count( QueryLog.id ).filter( QueryLog.intent == "general_chat" ).label( "general_chat_count" ),
             func.count( QueryLog.id ).filter( QueryLog.response_status == "clarification" ).label( "clarification" ),
             func.count( QueryLog.id ).filter( QueryLog.response_status == "empty" ).label( "zero_results" ),
+            func.count( QueryLog.id ).filter( QueryLog.intent == "compare" ).label( "compare_count" ),
             func.avg( QueryLog.result_count ).label( "avg_result_count" ),
         ).where( QueryLog.created_at >= since ) )
         res = await session.execute( agg_query )
@@ -57,7 +58,7 @@ async def get_dashboard_stats(
         search_refine = max(
             0,
             total - ( stats[ "greeting_count" ] or 0 ) - ( stats[ "general_chat_count" ] or 0 ) - ( stats[ "clarification" ] or 0 ) -
-            ( stats[ "error_count" ] or 0 ),
+            -( stats[ "compare_count" ] or 0 ) - ( stats[ "error_count" ] or 0 ),
         )
 
         return {
@@ -73,6 +74,7 @@ async def get_dashboard_stats(
                 "general_chat_count": stats[ "general_chat_count" ] or 0,
                 "clarification": stats[ "clarification" ] or 0,
                 "search_refine": search_refine,
+                "compare_count": stats[ "compare_count" ] or 0,
             },
         }
     except Exception as exc:
@@ -161,6 +163,7 @@ def _empty_stats() -> dict:
             "general_chat_count": 0,
             "clarification": 0,
             "search_refine": 0,
+            "compare": 0
         },
     }
 

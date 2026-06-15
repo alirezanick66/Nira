@@ -26,6 +26,7 @@ class IntentType( StrEnum ):
     COMPARE = "compare"          # مقایسه دو یا چند محصول
     GREETING = "greeting"          # سلام و احوال‌پرسی
     GENERAL_CHAT = "general_chat"          # احوال‌پرسی های خودمونی یا سوال نامرتبط
+    CLARIFICATION = "clarification"          # پاسخ به سوال شفاف‌ساز (clarification question)
 
 
 class SortOrder( StrEnum ):
