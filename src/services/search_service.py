@@ -8,7 +8,6 @@ import asyncio
 import time
 import uuid
 import json
-import random
 from typing import AsyncGenerator
 from enum import StrEnum
 #────────────────────────────────────────── Local Imports ──────────────────────────────────────────
@@ -158,8 +157,17 @@ class SearchService:
         # ── مرحله ۳: رتبه‌بندی ───────────────────────────────────────────────
         yield PipelineStatus( step=self.PipelineStep.RERANKING )
         # جلوگیری از برش زودهنگام توسط Reranker برای اعمال صحیح مرتب‌سازی
-        print( top_k )
-        final_products = await asyncio.to_thread( self._reranker.rerank, query=query, payloads=candidates, top_k=len( candidates ) )
+
+        is_compare = extract_result.intent == IntentType.COMPARE
+        rerank_min_score = 0.02 if is_compare else None          # ‫🔧 برای compare
+
+        final_products = await asyncio.to_thread(
+            self._reranker.rerank,
+            query=query,
+            payloads=candidates,
+            top_k=len( candidates ),
+            min_score=rerank_min_score,
+        )
         await self._enrich_products( final_products )
 
         # 🔧 ۲. تشخیص نیت‌های ترتیبی (گرون‌ترین/ارزون‌ترین) و مرتب‌سازی
@@ -176,8 +184,13 @@ class SearchService:
             final_products.sort( key=lambda p: abs( p.price - floor_price ) )
             log_message( LG.LLM, "📉 مرتب‌سازی بر اساس نزدیکی به کف قیمت انجام شد.", LogLevel.DEBUG )
 
-        # محدودسازی نهایی برای ارسال به LLM
-        final_products = final_products[ :top_k ]
+        # ‫محدودسازی نهایی برای ارسال به LLM
+        #‫اگه حالت compare بود همه نتایج رو میفرستیم برای llm چون خود reranker این کار رو خوب انجام نمیده در غیر اینصورت همون 2 تا محصول میره برای llm
+        effective_top_k = len( final_products ) if is_compare else top_k
+        final_products = final_products[ :effective_top_k ]
+        log_message( LG.RETRIEVAL,
+                     f"🔬 ALL reranked products before    generate LLM: {[(p.product_id, p.title[:30]) for p in final_products]}",
+                     LogLevel.DEBUG )
 
         # ── مرحله ۴: تولید پاسخ LLM ─────────────────────────────────────────
         yield PipelineStatus( step=self.PipelineStep.GENERATING )

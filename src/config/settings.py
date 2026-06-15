@@ -48,7 +48,7 @@ class Settings( BaseSettings ):
     RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_BATCH_SIZE: int = 8
     # ‫MVP Refinement: آستانه فیلتر نتایج کم‌ربط بعد اضافه شدن دیتا های ساختاریافته محاسبه میشود
-    RERANKER_MIN_SCORE: float = Field( default=0.15, ge=0.0, le=1.0, description="حداقل امتیاز Sigmoid برای پذیرش یک نتیجه در Top-k" )
+    RERANKER_MIN_SCORE: float = Field( default=0.2, ge=0.0, le=1.0, description="حداقل امتیاز Sigmoid برای پذیرش یک نتیجه در Top-k" )
     RERANKER_TOP_K: int = Field( default=3, ge=1, le=20, description="تعداد محصولات Top-k نهایی پس از Reranking" )
 
     #────────────────────────────────────────── LLM ──────────────────────────────────────────

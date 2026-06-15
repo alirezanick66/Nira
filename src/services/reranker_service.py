@@ -57,6 +57,9 @@ class RerankerService:
         if not scored:
             return []
 
+        for product, score in scored:
+            log_message( LG.RETRIEVAL, f"📊 Reranker score: {score:.4f} | {product.title[:40]}", LogLevel.DEBUG )
+
         threshold = self._min_score if min_score is None else min_score
         if threshold > 0.0:
             filtered = [ ( p, s ) for p, s in scored if s >= threshold ]
