@@ -148,13 +148,6 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 	letter-spacing: -0.01em;
 }
 
-.stat-unit {
-	font-size: 0.75rem;
-	font-weight: 600;
-	color: var(--adm-muted);
-	margin-right: 0.25rem;
-}
-
 .stat-sub {
 	font-size: 0.72rem;
 	color: var(--adm-dim);
@@ -222,18 +215,24 @@ Stats Grid — شبکه کارت‌های وضعیت مدرن
 بخش لاگ‌ها و جدول داده‌ها (Logs & Tables)
 ═══════════════════════════════════════════════════════════════ */
 .logs-card {
+	width: 100%;
 	background: var(--adm-surface);
 	border: 1px solid var(--adm-border);
 	border-radius: var(--adm-radius);
 	box-shadow: var(--adm-shadow);
-	overflow: hidden;
+	overflow-x: auto !important;
 	transition: border-color 0.2s ease;
+	-webkit-overflow-scrolling: touch;
 }
 
 .logs-card:hover {
 	border-color: var(--adm-border-md);
 }
-
+.logs-card table {
+	width: 100%;
+	min-width: 1050px; /* تضمین می‌کند ستون‌ها همیشه فضای استاندارد دارند */
+	border-collapse: collapse;
+}
 .logs-card-header {
 	display: flex;
 	align-items: center;
@@ -299,12 +298,27 @@ tbody tr:hover td {
 	background: #f1f5f9; /* هاور نرم‌تر ردیف‌ها */
 }
 
-/* ─── Tooltip فقط برای کوئری‌های بلند ─── */
-.query-text {
+/* ۱. المان ریشه تولتیپ — کاملاً آزاد برای بیرون زدن محتوا */
+.query-tooltip-anchor {
 	position: relative;
+	display: inline-block;
+	max-width: 100%;
 }
 
-.query-text::after {
+/* ۲. المان داخلی متن — مسئول انحصاری کوتاه‌سازی و سه‌نقطه */
+.query-text-ellipsis {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.query-cell {
+	overflow: visible !important;
+	position: relative;
+}
+/* ۳. انتقال شبه‌المان‌های تولتیپ روی کلاس ریشه جدید */
+.query-tooltip-anchor::after {
 	content: attr(data-full);
 	position: absolute;
 	bottom: calc(100% + 8px);
@@ -318,24 +332,25 @@ tbody tr:hover td {
 	font-weight: 500;
 	line-height: 1.5;
 	white-space: normal;
-	max-width: 320px;
+	max-width: 280px;
 	width: max-content;
+	word-break: break-word;
 	text-align: right;
 	box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
 	opacity: 0;
 	visibility: hidden;
 	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 	pointer-events: none;
-	z-index: 50;
+	z-index: 9999;
 }
 
-.query-text:hover::after {
+.query-tooltip-anchor:hover::after {
 	opacity: 1;
 	visibility: visible;
 	transform: translateX(-50%) scale(1);
 }
 
-.query-text::before {
+.query-tooltip-anchor::before {
 	content: "";
 	position: absolute;
 	bottom: calc(100% + 2px);
@@ -350,7 +365,7 @@ tbody tr:hover td {
 	z-index: 51;
 }
 
-.query-text:hover::before {
+.query-tooltip-anchor:hover::before {
 	opacity: 1;
 	visibility: visible;
 }
@@ -365,20 +380,10 @@ tbody tr:hover td {
 	font-weight: 500;
 }
 
-.mono.dim {
-	color: var(--adm-muted);
-	background: #f8fafc;
-}
-
 /* کنترل نمایش وضعیت لیتنسی */
 .latency {
 	font-size: 0.78rem;
 	color: var(--adm-text);
-}
-
-.latency--slow {
-	color: var(--clr-danger);
-	font-weight: 700;
 }
 
 /* ─── بدج‌های مدرن و سافت (Premium Badges) ─── */
@@ -494,5 +499,50 @@ th:nth-child(5), td:nth-child(5)  /* توکن‌ها */ {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	cursor: help; /* نشانگر ماوس را تغییر بده تا کاربر بفهمد قابل کلیک/هاور است */
+}
+.llm-response-cell {
+	max-width: 200px;
+	min-width: 150px;
+	overflow: visible;
+	white-space: nowrap;
+	position: relative; /* الزامی برای پوزیشن مطلق تولتیپ فرزند */
+}
+.llm-response-cell .query-text {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.logs-card th:nth-child(1),
+.logs-card td:nth-child(1) {
+	width: 130px;
+} /* زمان */
+.logs-card th:nth-child(4),
+.logs-card td:nth-child(4) {
+	width: 100px;
+} /* نیت */
+.logs-card th:nth-child(5),
+.logs-card td:nth-child(5) {
+	width: 75px;
+} /* توکن */
+.logs-card th:nth-child(6),
+.logs-card td:nth-child(6) {
+	width: 85px;
+} /* Latency */
+.logs-card th:nth-child(7),
+.logs-card td:nth-child(7) {
+	width: 85px;
+} /* وضعیت */
+/* ─── حل مشکل کات شدن تولتیپ در ردیف‌های ابتدایی جدول ─── */
+
+/* ۱. تغییر جهت باکس تولتیپ به سمت پایین برای دو ردیف اول */
+tbody tr:nth-child(-n + 2) .query-tooltip-anchor::after {
+	bottom: auto;
+	top: calc(100% + 8px);
+}
+
+/* ۲. تغییر موقعیت فلش (Arrow) تولتیپ به سمت بالا */
+tbody tr:nth-child(-n + 2) .query-tooltip-anchor::before {
+	bottom: auto;
+	top: calc(100% + 4px);
 }

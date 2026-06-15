@@ -8,15 +8,15 @@ const INTENT_LABELS = {
 	greeting_count: "احوال‌پرسی",
 	general_chat_count: "گفتگوی عمومی",
 	clarification: "نیاز به شفاف‌سازی",
-	compare: "مقایسه",
+	compare_count: "مقایسه",
 }
 
 const INTENT_COLORS = {
-	search_refine: "#f5a623",
-	greeting_count: "#94a3b8",
-	general_chat_count: "#8b5cf6",
-	clarification: "#fb923c",
-	compare: "#10b981",
+	search_refine: "#0d9488", // سبز-آبی تیره (Teal)
+	compare_count: "#059669", // سبز جنگلی ملایم
+	clarification: "#ea580c", // نارنجی آجری کدر
+	general_chat_count: "#6d28d9", // بنفش دارک
+	greeting_count: "#94a3b8", // خاکستری روشن ملایم
 }
 // ─── تنظیم فونت پیش‌فرض برای تمام چارت‌ها ───
 if (typeof Chart !== "undefined") {
@@ -272,21 +272,29 @@ export function renderLogs(logs, tbody) {
 			const tokens = (l.prompt_tokens || 0) + (l.completion_tokens || 0)
 			// ✅ منطق کوتاه‌کردن و Tooltip برای پاسخ LLM
 			const expText = l.llm_explanation || "—"
-			const expDisplay =
-				expText.length > 50
-					? `<span class="query-text" data-full="${_esc(expText)}">${_esc(expText.slice(0, 50))}…</span>`
-					: _esc(expText)
+
 			return `<tr>
-			<td><span class="mono" dir="ltr">${dateStr} - ${timeStr}</span></td>
-			<td class="query-cell">${(l.query?.length ?? 0) > 45 ? `<span class="query-text" data-full="${_esc(l.query ?? "")}">${_esc((l.query ?? "").slice(0, 45))}…</span>` : _esc(l.query ?? "")}</td>
-			<td class="filters-cell">${expDisplay}</td> <!-- ✅ رندر ستون جدید -->
-			<td><span class="badge ${intentClass}">${_formatIntent(l.intent)}</span></td>
-			<td>${_formatModel(l.model_used)}</td>
-			<td><span class="mono">${tokens}</span></td>
-			<td><span class="latency" dir="ltr">${_formatLatency(l.latency_ms ?? 0)}</span></td>
-			<td><span class="badge ${statusClass}">${_statusLabel(l.response_status)}</span></td>
-			<td class="filters-cell">${filters}</td>
-		</tr>`
+    <td><span class="mono" dir="ltr">${dateStr} - ${timeStr}</span></td>
+    <td class="query-cell">
+        ${
+			(l.query?.length ?? 0) > 45
+				? `<span class="query-tooltip-anchor" data-full="${_esc(l.query ?? "")}"><span class="query-text-ellipsis">${_esc((l.query ?? "").slice(0, 45))}…</span></span>`
+				: _esc(l.query ?? "")
+		}
+    </td>
+    <td class="llm-response-cell">
+        ${
+			expText.length > 45
+				? `<span class="query-tooltip-anchor" data-full="${_esc(expText)}"><span class="query-text-ellipsis">${_esc(expText.slice(0, 45))}…</span></span>`
+				: _esc(expText)
+		}
+    </td>
+    <td><span class="badge ${intentClass}">${_formatIntent(l.intent)}</span></td>
+    <td><span class="mono">${tokens}</span></td>
+    <td><span class="latency" dir="ltr">${_formatLatency(l.latency_ms ?? 0)}</span></td>
+    <td><span class="badge ${statusClass}">${_statusLabel(l.response_status)}</span></td>
+    <td class="filters-cell">${filters}</td>
+</tr>`
 		})
 		.join("")
 }
@@ -473,31 +481,4 @@ function _formatFilterValue(val, meta) {
 	if (Array.isArray(val)) return val.join("، ")
 	if (meta.unit) return `${val} ${meta.unit}`
 	return String(val)
-}
-/**
- * نام خام مدل را به برچسب خوانا تبدیل می‌کند.
- * @param {string|null} model
- * @returns {string} HTML badge
- */
-function _formatModel(model) {
-	if (!model || model === "unknown")
-		return '<span class="mono dim" style="background:transparent; padding:0;">—</span>'
-	const MODEL_LABELS = {
-		fast_path: { label: "Fast Path", cls: "badge-success" },
-		"llama-3.3-70b-versatile": {
-			label: "Llama 3.3 70B",
-			cls: "badge-primary",
-		},
-		"llama-3.1-8b-instant": { label: "Llama 3.1 8B", cls: "badge-info" },
-		"gemini-2.0-flash": { label: "Gemini 2.0 Flash", cls: "badge-warn" },
-		"gemini-1.5-flash": { label: "Gemini 1.5 Flash", cls: "badge-warn" },
-		"gemini-2.5-flash-preview-05-20": {
-			label: "Gemini 2.5 Flash",
-			cls: "badge-warn",
-		},
-	}
-
-	const raw = model || "fast_path"
-	const meta = MODEL_LABELS[raw] ?? { label: raw, cls: "badge-neutral" }
-	return `<span class="badge ${meta.cls}">${meta.label}</span>`
 }

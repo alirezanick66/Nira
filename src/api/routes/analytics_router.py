@@ -120,13 +120,16 @@ async def get_chart_data(
 ):
     """‫بازیابی تعداد کوئری‌ها به تفکیک ساعت برای رسم نمودار Bar Chart"""
     try:
+        # تبدیل تایم‌استمپ UTC به وقت محلی تهران قبل از استخراج ساعت
         since = _date_filter( days )
+        local_time_expr = func.timezone( 'Asia/Tehran', QueryLog.created_at )
+        local_hour_expr = extract( "hour", local_time_expr )
 
         hourly_stmt = ( select(
-            extract( "hour", QueryLog.created_at ).label( "hour" ),
+            local_hour_expr.label( "hour" ),
             func.count( QueryLog.id ).label( "count" ),
-        ).where( QueryLog.created_at >= since ).group_by( extract( "hour", QueryLog.created_at ) ).order_by(
-            extract( "hour", QueryLog.created_at ) ) )
+        ).where( QueryLog.created_at >= since ).group_by( local_hour_expr ).order_by( local_hour_expr ) )
+
         result = await session.execute( hourly_stmt )
         rows = result.mappings().all()
 
