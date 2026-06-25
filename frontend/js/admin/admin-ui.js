@@ -12,11 +12,11 @@ const INTENT_LABELS = {
 }
 
 const INTENT_COLORS = {
-	search_refine: "#0d9488", // سبز-آبی تیره (Teal)
-	compare_count: "#059669", // سبز جنگلی ملایم
-	clarification: "#ea580c", // نارنجی آجری کدر
-	general_chat_count: "#6d28d9", // بنفش دارک
-	greeting_count: "#94a3b8", // خاکستری روشن ملایم
+	search_refine: "#3b82f6", // آبی هوشمند (اصلی‌ترین و پرکاربردترین اکشن سیستم)
+	compare_count: "#10b981", // سبز زمردی (برای تحلیل و مقایسه کالاها)
+	clarification: "#f59e0b", // زرد آمبر (نیاز به شفاف‌سازی و لبه وضعیت تفکر)
+	general_chat_count: "#8b5cf6", // بنفش مدرن (گفتگوی متفرقه با هوش مصنوعی)
+	greeting_count: "#64748b", // خاکستری اسلیت (احوال‌پرسی - دیتای کم‌اهمیت و نویز)
 }
 // ─── تنظیم فونت پیش‌فرض برای تمام چارت‌ها ───
 if (typeof Chart !== "undefined") {
