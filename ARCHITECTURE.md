@@ -190,7 +190,24 @@ User: "کاربر به دنبال محصولی با این ویژگی‌هاست
 ```
 
 ---
+## 🏗️ معماری استقرار (Deployment Architecture)
 
+> برای جزئیات کامل مدل همکاری و استراتژی بیزینسی، به [PRODUCT.md](PRODUCT.md#🤝-مدل-همکاری-و-تجاری‌سازی-partnership-model) مراجعه کنید.
+
+### 📍 فاز MVP: ایزوله‌سازی فیزیکی
+- هر فروشگاه → VPS اختصاصی (Qdrant + PostgreSQL + Redis + ONNX Models)
+- **تأثیر فنی**: عدم نیاز به Multi-Tenancy Logic در کد، اما افزایش هزینه زیرساخت
+
+### ⚡ تأثیر بر جریان درخواست (Request Flow)
+- **Lazy Loading قیمت**: در مرحله `Post-Retrieval Enrichment`، به جای واکشی از PostgreSQL، باید API فروشگاه فراخوانی شود
+- **Cache Layer**: Redis با TTL پویا (1-2 دقیقه برای موبایل، 15-30 دقیقه برای لوازم خانگی)
+- **Rate Limiting**: در `ApiKeyMiddleware`، شمارنده Redis بر اساس `client_session_id` یا `IP`
+
+### 🔮 چشم‌انداز فنی (Post-MVP)
+- **Remote Model Service**: استخراج ONNX Models از VPSها → سرور مرکزی (کاهش 60% RAM)
+- **Multi-Tenant**: مهاجرت به Collection-based Isolation در Qdrant
+
+---
 ## 🔮 الگوهای معماری برای مقیاس‌پذیری (Post-MVP Patterns)
 
 این بخش الگوهای پیشنهادی برای فیچرهای آینده را بدون تعهد به زمان‌بندی مشخص می‌کند:
@@ -250,4 +267,4 @@ User: "کاربر به دنبال محصولی با این ویژگی‌هاست
 - 🔹 **`validate_quantization_drift.py`** برای پایش دوره‌ای افت دقت مدل‌های ONNX
 
 ---
-**نسخه:** 2.3.0 | **آخرین به‌روزرسانی:** 2026/06/25
+**نسخه:** 2.4.0 | **آخرین به‌روزرسانی:** 2026/06/26
