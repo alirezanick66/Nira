@@ -85,5 +85,21 @@ http://localhost:8000/docs
 برای ماتریس دقیق پیشرفت، فازهای تکمیل‌شده و نقشه راه، به [ROADMAP.md]( ROADMAP) مراجعه کنید.
 
 ---
+## 📄 License
 
-**نسخه:** 2.1.0  **آخرین به‌روزرسانی:** 2026/05/29
+This project is licensed under the MIT License.
+
+⚠️ Attribution is required. Any usage must credit the original author and link to this repository.
+
+---
+## ⚠️ Disclaimer
+
+This project is for educational and informational purposes only.
+
+It does NOT provide legal advice and should not be used as a substitute for professional legal consultation.
+
+The author assumes no responsibility for any decisions made based on the system’s outputs.
+
+---
+
+**نسخه:** 2.1.0  **آخرین به‌روزرسانی:** 2026/08/22
