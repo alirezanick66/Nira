@@ -250,7 +250,8 @@ class LLMOrchestrator:
             filters_str: نمایش رشته‌ای فیلترهای اعمال‌شده برای تزریق به پرامپت
             products: لیست محصولات بازیابی‌شده
             applied_filters: فیلترهای متادیتای اعمال‌شده (برای ذخیره در حافظه)
-            
+            user_budget: بودجه کاربر
+            min_price: حداقل قیمت
         Returns:
             دیکشنری پاسخ اعتبارسنجی‌شده
         """
@@ -275,13 +276,6 @@ class LLMOrchestrator:
             for msg in history[ :-1 ]:
                 messages.insert( -1, msg )
 
-            # ‫ جایگزینی placeholder در refine با کوئری واقعی
-            if intent == "refine" and messages:
-                last_msg = messages[ -1 ]
-                content = last_msg.get( "content" )
-                if isinstance( content, str ):          # ‫ گارد تایپ: فقط اگر content رشته باشه اجرا می‌شه
-                    last_msg[ "content" ] = content.replace( "{refine_query_placeholder}", user_query )
-
         # ‫۳. ارسال به LLM (Groq → Gemini Fallback)
         raw_json = ""
         token_usage = {}
@@ -297,7 +291,7 @@ class LLMOrchestrator:
             try:
                 log_message( LG.LLM, f"📡 ارسال درخواست Generate به {provider_name.capitalize()}...", LogLevel.DEBUG )
                 raw_json, token_usage = await client.chat_json( cast( list, messages ) )
-                model_used = client._model
+                model_used = client.model
                 break          # موفقیت‌آمیز بود، از حلقه خارج شو
 
             except Exception as exc:

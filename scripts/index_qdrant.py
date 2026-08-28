@@ -1,14 +1,13 @@
 """‫اسکریپت  ایندکس‌سازی محصولات در Qdrant"""
-#───────────────────── Imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 import asyncio
 
-#───────────────────── Local Imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.data.db.engine import DatabaseEngine
 from src.data.repositories.product_repository import ProductRepository
 from src.data.processing.product_pipeline import ProductProcessingPipeline
 from src.core.vector.qdrant_indexer import QdrantIndexer
 from src.config.logging_config import log_message, LogLevel, LG
-from src.config.settings import get_settings
 
 
 async def main() -> None:
@@ -31,7 +30,7 @@ async def main() -> None:
         return
 
     products = [ p for p in products if p.price > 0 ]
-    # آپلود به Qdrant
+    # ‫آپلود به Qdrant
     count = indexer.index_products( products )
     log_message( LG.DATA_PROCESSING, f"✅ پایان تست | {count} محصول آماده جستجوی ترکیبی", LogLevel.INFO )
 

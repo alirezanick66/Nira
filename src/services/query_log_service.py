@@ -1,4 +1,4 @@
-""" ‫سرویس ثبت غیرهمزمان کوئری‌ها در دیتابیس (Non-Blocking Fire & Forget)"""
+""" ‫سرویس ثبت ترتیبی کوئری‌ها در دیتابیس (Non-Blocking Fire & Forget)"""
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 import asyncio
@@ -106,8 +106,6 @@ async def close_log_service() -> None:
 
 
 #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
-
-
 def _init_log_infrastructure() -> None:
     """‫راه‌اندازی ایمن Engine و Worker با بررسی لوپ فعال"""
     global _engine, _session_factory, _worker_task

@@ -1,4 +1,5 @@
-"""‫سرویس ایندکس‌سازی و مدیریت بردارهای محصولات در Qdrant
+"""
+‫سرویس ایندکس‌سازی و مدیریت بردارهای محصولات در Qdrant
 ‫مسئول: ایجاد کالکشن، پیکربندی Hybrid (Dense+Sparse)، آپلود محصولات
 """
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
@@ -25,8 +26,6 @@ class QdrantIndexer:
         self._embedder = embedding_service or EmbeddingService()
 
         log_message( LG.DATA_PROCESSING, "QdrantIndexer با سرویس Embedding فعال راه‌اندازی شد", LogLevel.INFO )
-
-    #────────────────────────────────────────── Public Methods ───────────────────────────────────────────────────────────────
 
     #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     def index_products( self, products: Sequence[ Product ] ) -> int:

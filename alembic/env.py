@@ -1,5 +1,5 @@
 """‫پیکربندی محیط اجرای Alembic برای SQLAlchemy Async
-‫این فایل اتصال به دیتابیس را از Settings می‌خواند و مهاجرت‌ها را به صورت غیرهمزمان اجرا می‌کند.
+‫این فایل اتصال به دیتابیس را از Settings می‌خواند و مهاجرت‌ها را به صورت غیر ترتیبی اجرا می‌کند.
 """
 import asyncio
 from logging.config import fileConfig

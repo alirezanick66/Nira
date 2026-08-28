@@ -1,4 +1,4 @@
-"""‫کلاینت غیرهمزمان استخراج داده از API دیجی‌کالا
+"""‫کلاینت غیر ترتیبی استخراج داده از API دیجی‌کالا
 ‫این ماژول مسئول دریافت لیست محصولات و جزئیات هر محصول با اعتبارسنجی Pydantic است.
 ‫ویژگی‌ها:
 ‫‫- مدیریت چرخه حیات با Async Context Manager
@@ -26,7 +26,7 @@ class DigikalaAPIClient:
         self._settings = get_settings()
         self._client: AsyncClient | None = None
         self._resilience = ApiResilienceLayer()
-        self._semaphore = asyncio.Semaphore( 3 )
+        self._semaphore = asyncio.Semaphore( self._settings.SYNC_CONCURRENCY )          # محدودیت همزمانی درخواست‌ها
 
         self._base_url = self._settings.DIGIKALA_BASE_URL
         self._headers = {
@@ -153,5 +153,5 @@ class DigikalaAPIClient:
 
             # ‫رعایت Rate Limiting بین درخواست‌ها
             delay = self._settings.REQUEST_DELAY_SECONDS
-            await asyncio.sleep( delay + random.uniform( -0.1, 0.1 ) )
+            await asyncio.sleep( max( 0.0, delay + random.uniform( -0.1, 0.1 ) ) )
             return response.json()

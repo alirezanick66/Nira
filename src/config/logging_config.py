@@ -76,9 +76,9 @@ def log_message( category: LG, message: str, level: LogLevel = LogLevel.INFO, **
     """‫ثبت لاگ با پشتیبانی از متن فارسی
 
     ‫پارامترها:
-        category: دسته‌بندی لاگ (از enum LG)
+        category: ‫دسته‌بندی لاگ (از enum LG)
         message: متن پیام
-        level: سطح لاگ (پیش‌فرض INFO)
+        level: ‫سطح لاگ (پیش‌فرض INFO)
         **kwargs: اطلاعات اضافی برای ضمیمه شدن به لاگ
     """
     # ‫پردازش فارسی فقط برای کنسول — برای فایل خام ذخیره می‌شود

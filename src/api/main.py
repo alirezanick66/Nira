@@ -1,7 +1,7 @@
 """‫نقطهٔ ورود وب‌سرور FastAPI
 ‫مسئول: مدیریت چرخه عمر اپلیکیشن، تعریف Routeها، و اجرای هماهنگ پایپلاین NLU → Retrieval → Rerank → LLM
 """
-#─────────────────────imports─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Request
@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from fastapi.responses import JSONResponse
 
-#─────────────────────local imports─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.services.search_service import SearchService
 from src.data.repositories.product_repository import ProductRepository
 from src.config.domain_loader import DomainConfigLoader
@@ -107,6 +107,11 @@ async def custom_http_exception( request: Request, exc: HTTPException ):
                              "request_id": getattr( request.state, "req_id", "" ),
                              "detail": exc.detail
                          } )
+
+
+@app.get( "/health" )
+async def health_check():
+    return { "status": "ok" }
 
 
 FRONTEND_DIR = Path( __file__ ).resolve().parents[ 2 ] / "frontend"

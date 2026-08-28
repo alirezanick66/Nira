@@ -12,7 +12,7 @@ from src.config.logging_config import log_message, LogLevel, LG
 class DomainConfig( BaseModel ):
     """مدل صریح و اعتبارسنجی‌شده برای پیکربندی دامنه‌ها
     """
-    model_config = PydanticConfig( extra="allow" )          # پذیرش فیلدهای دامنه‌های آینده بدون شکست
+    model_config = PydanticConfig( extra="allow" )          # پذیرش فیلدهای دامنه‌های آینده
 
     #base.yaml Config
     price_ceiling_multiplier: float = Field( default=1.8, description="ضریب سقف هوشمند قیمت نسبت به کف" )
@@ -30,7 +30,6 @@ class DomainConfig( BaseModel ):
     categories: list[ str ] = Field( default_factory=list )
     colors: list[ str ] = Field( default_factory=list )
     os_types: list[ str ] = Field( default_factory=list )
-    templates: dict[ str, str ] = Field( default_factory=dict )
     use_case_rules: dict[ str, dict[ str, object ] ] = Field( default_factory=dict )
     relaxation_order: list[ str ] = Field( default_factory=list )
     relaxation_mappings: dict[ str, dict[ str, str ] ] = Field( default_factory=dict )
@@ -74,7 +73,7 @@ class DomainConfigLoader:
     def __init__( self, config_dir: Path | str | None = None ) -> None:
         self._config_dir = Path( config_dir ) if config_dir else Path( __file__ ).resolve().parent / "domains"
 
-    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     def load( self, domain: str = "mobile" ) -> DomainConfig:
         """بارگذاری، ادغام و آماده‌سازی کانفیگ دامنهٔ مشخص‌شده
 

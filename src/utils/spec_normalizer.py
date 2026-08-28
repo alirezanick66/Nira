@@ -38,7 +38,7 @@ class SpecNormalizer:
         "میلی‌آمپر": 1.0,
         "mah": 1.0,
     }
-    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     @classmethod
     def extract_specifications( cls, raw_specs: list[ dict ] ) -> dict[ str, Any ]:
         """‫استخراج و نرمال‌سازی کامل مشخصات فنی
@@ -133,7 +133,7 @@ class SpecNormalizer:
 
         return specs
 
-    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     @staticmethod
     def _extract_number( text: str ) -> float | None:
         """‫استخراج اولین عدد از متن

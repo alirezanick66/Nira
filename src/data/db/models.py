@@ -1,13 +1,12 @@
 """‫مدل‌های SQLAlchemy برای جداول  دیتابیس
 ‫این ماژول فقط ساختار جداول و ایندکس‌ها را تعریف می‌کند
 """
-#────────────────────────────────────────── imports ──────────────────────────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 from __future__ import annotations
-from sqlalchemy import Float, Integer, DateTime, func
+from sqlalchemy import Float, DateTime, func, Index, Integer, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Index, Integer, String, Text, TIMESTAMP
 import uuid
 from datetime import datetime
 
@@ -31,9 +30,12 @@ class ProductRawCache( Base ):
     raw_payload: Mapped[ dict[ str, object ] ] = mapped_column( JSONB, nullable=False )
     updated_at: Mapped[ datetime ] = mapped_column( DateTime( timezone=True ), server_default=func.now(), onupdate=func.now() )
 
+    # INDEX
+    __table_args__ = ( Index( "idx_product_id", "product_id" ), )
+
 
 class SyncProgress( Base ):
-    """جدول رهگیری وضعیت همگام‌سازی (الگوی Singleton با id=1).
+    """‫جدول رهگیری وضعیت همگام‌سازی (الگوی Singleton با id=1).
 
     Attributes:
         id: شناسهٔ ثابت رکورد پیشرفت (همیشه ۱).
@@ -92,7 +94,7 @@ class QueryLog( Base ):
     model_used: Mapped[ str ] = mapped_column( String, nullable=False, default="groq" )
 
     created_at: Mapped[ datetime ] = mapped_column( TIMESTAMP( timezone=True ), server_default=func.now(), nullable=False )
-
+    # INDEX
     __table_args__ = (
         Index( "idx_query_logs_store_time", "store_id", created_at.desc() ),
         Index( "idx_query_logs_user", "user_id" ),

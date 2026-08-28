@@ -1,5 +1,5 @@
-"""‫سرویس تبدیل API Response به Product Model
-
+"""
+‫سرویس تبدیل API Response به Product Model
 ‫این ماژول مسئول تبدیل داده‌های خام API دیجی‌کالا به مدل Product نرمال‌شده هست
 """
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
@@ -15,7 +15,7 @@ from src.utils.spec_normalizer import SpecNormalizer
 class ProductTransformer:
     """‫تبدیل‌گر API Response به Product Model"""
 
-    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     @classmethod
     def transform( cls, api_product: DigikalaProduct ) -> Product:
         """‫تبدیل DigikalaProduct به Product
@@ -110,7 +110,7 @@ class ProductTransformer:
 
         return product
 
-    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     @staticmethod
     def _determine_category( title: str ) -> ProductCategory:
         """‫تشخیص category از عنوان محصول

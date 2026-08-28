@@ -21,7 +21,7 @@ class DigikalaSyncService:
         self._repo = ProductRepository( self._db )
         self._tracker = ProgressTracker( self._db )
 
-    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     async def run(
         self,
         max_products: int | None = None,
@@ -81,7 +81,7 @@ class DigikalaSyncService:
         log_message( LG.DATA_PROCESSING, f"پایان همگام‌سازی | موفق: {success_count}", LogLevel.DEBUG )
         return success_count
 
-    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     async def _process_product( self, client: DigikalaAPIClient, product_id: int ) -> bool:
         """‫دریافت، اعتبارسنجی و ذخیرهٔ ایزولهٔ یک محصول"""
         try:

@@ -36,7 +36,7 @@ class PersianNormalizer:
     def __init__( self ):
         log_message( LG.DATA_PROCESSING, f"Custom Persian Normalizer آماده شد ", LogLevel.INFO )
 
-    #────────────────────────────────────────── Public methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Public Methods ──────────────────────────────────────────
     def normalize( self, text: str, remove_diacritics: bool = True, remove_kashida: bool = True ) -> str:
         """
         نرمال‌سازی کامل متن فارسی
@@ -62,7 +62,7 @@ class PersianNormalizer:
             # ‫6. اصلاح علائم در اعداد
             text = self._fix_number_punctuation( text )
 
-            # 7. اضافه کردن فاصله بعد از علائم نگارشی
+            # ‫7. اضافه کردن فاصله بعد از علائم نگارشی
             text = self._fix_spacing_and_punctuation( text )
 
             return text
@@ -72,7 +72,7 @@ class PersianNormalizer:
             # بازگشت حداقلی متن تمیز شده در صورت خطا
             return " ".join( text.split() )
 
-    #────────────────────────────────────────── Private methods ──────────────────────────────────────────
+    #────────────────────────────────────────── Private Methods ──────────────────────────────────────────
     def _fix_chars_and_numbers( self, text: str ) -> str:
         """ ‫تبدیل یکپارچه حروف و اعداد با استفاده از translate (بسیار سریع)"""
         return text.translate( self._TRANS_TABLE )

@@ -1,10 +1,10 @@
 """‫اسکریپت تست همگام‌سازی کامل با قابلیت Resume"""
-#───────────────────── imports ─────────────────────
+#────────────────────────────────────────── Imports ──────────────────────────────────────────
 import asyncio
 import signal
 import sys
 
-#───────────────────── local imports ─────────────────────
+#────────────────────────────────────────── Local Imports ──────────────────────────────────────────
 from src.config.logging_config import log_message, LogLevel, LG
 from src.data.sync.digikala_sync import DigikalaSyncService
 

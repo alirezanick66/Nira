@@ -1,4 +1,5 @@
 #────────────────────────────────────────── Imports ──────────────────────────────────────────
+
 from functools import lru_cache
 from pathlib import Path
 from pydantic import Field
@@ -33,7 +34,7 @@ class Settings( BaseSettings ):
     POOL_SIZE: int = Field( default=5 )
     MAX_OVERFLOW: int = Field( default=10 )
 
-    sync_concurrency: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
+    SYNC_CONCURRENCY: int = Field( default=3, ge=1, le=10, description="حداکثر درخواست همزمان برای استخراج" )
 
     # ────────────────────────────────────────── FastApi ──────────────────────────────────────────
     APP_NAME: str = "Nira"
@@ -52,6 +53,7 @@ class Settings( BaseSettings ):
     RERANKER_TOP_K: int = Field( default=3, ge=1, le=20, description="تعداد محصولات Top-k نهایی پس از Reranking" )
 
     #────────────────────────────────────────── LLM ──────────────────────────────────────────
+
     LLM_PRIMARY_PROVIDER: str = Field( default="groq", description="مدل اصلی برای فراخوانی LLM (groq یا gemini)" )
 
     #Api Keys

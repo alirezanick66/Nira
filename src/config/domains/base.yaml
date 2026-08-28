@@ -46,7 +46,7 @@ qualitative_mappings:
     price_range:
         budget: [ارزان, ارزان‌تر, ارزون, ارزون‌تر, اقتصادی, بودجه]
         mid: [قیمت مناسب, متوسط, میان‌رده, میان رده]
-        flagship: [گران, گرون, پرچم‌دار, پرچمدار, لوکس, premium]
+        flagship: [گران, گرون, پرچم‌دار, پرچمدار, لوکس]
         premium: [بالارده]
     value_for_money:
         excellent: [ارزش خرید بالا]

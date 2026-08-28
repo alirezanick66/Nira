@@ -5,7 +5,7 @@ import numpy as np
 import onnxruntime as ort
 from typing import Sequence
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
+import warnings
 #────────────────────────────────────────── Local  Imports ──────────────────────────────────────────
 from src.config.settings import Settings, get_settings
 from src.config.logging_config import log_message, LogLevel, LG
@@ -26,10 +26,13 @@ class RerankerService:
         if not model_path.exists():
             raise FileNotFoundError( f"مسیر مدل Reranker یافت نشد: {model_path}" )
 
-        self._session = ort.InferenceSession( str( model_path ), providers=[ "CPUExecutionProvider" ] )
-        self._tokenizer = AutoTokenizer.from_pretrained( str( self._settings.ONNX_RERANKER_PATH ) )
+        # بارگذاری مدل با بهینه‌سازی CPU
+        self._init_onnx_session()
 
-        log_message( LG.RETRIEVAL, "سرویس Reranker (ONNX INT8) با موفقیت بارگذاری شد", LogLevel.INFO )
+        # بارگذاری توکنایزر
+        self._tokenizer = AutoTokenizer.from_pretrained( str( self._settings.ONNX_RERANKER_PATH ) )
+        if self._tokenizer is None:
+            raise RuntimeError( "بارگذاری توکنایزر Reranker با شکست مواجه شد." )
 
     #────────────────────────────────────────── Public methods ──────────────────────────────────────────
     def rerank(
@@ -168,3 +171,19 @@ class RerankerService:
             parts.append( "ویژگی‌ها: " + "، ".join( payload.tags[ :4 ] ) )
 
         return " | ".join( filter( None, parts ) )
+
+    def _init_onnx_session( self ) -> None:
+        """ ‫راه‌اندازی نشست ONNX Runtime با بهینه‌سازی‌های CPU"""
+        session_options = ort.SessionOptions()
+        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        session_options.intra_op_num_threads = getattr( self._settings, "ONNX_INTRA_THREADS", 0 )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter( "ignore" )
+            self._session = ort.InferenceSession(
+                str( self._settings.ONNX_RERANKER_PATH / "model_quantized.onnx" ),
+                sess_options=session_options,
+                providers=list( getattr( self._settings, "ONNX_PROVIDERS", [ "CPUExecutionProvider" ] ) ),
+            )
+
+        log_message( LG.RETRIEVAL, "سرویس Reranking (ONNX INT8) با موفقیت بارگذاری شد", LogLevel.INFO )

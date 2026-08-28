@@ -11,7 +11,7 @@ Welcome to the Nira project. This document serves as a guide for AI coding assis
 
 ## 🛠️ Tech Stack & Conventions
 
-- **Language**: Python 3.11+ (using generic types and modern features like `Self`, `TaskGroup`.)
+- **Language**: Python 3.13+ (using generic types and modern features like `Self`, `TaskGroup`.)
 - **API Framework**: FastAPI, Pydantic, uvicorn.
 - **Database & Storage**: SQLAlchemy 2 (Async), PostgreSQL (asyncpg), Alembic for migrations, and Qdrant for vector/hybrid search.
 - **ML / AI Models**: ONNX (`optimum[onnxruntime]`) for embedding/reranker optimization, Groq/Google GenAI for LLM operations.

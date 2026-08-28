@@ -19,10 +19,16 @@ class _BaseLLMClient:
     """ ‫کلاس پایه مشترک برای مدیریت Retry و لاگ‌گذاری کلاینت‌های LLM"""
 
     _T = TypeVar( "_T" )
+    _model: str
+
+    @property
+    def model( self ) -> str:
+        """نام فعلی مدل ارائه دهنده"""
+        return self._model
 
     @staticmethod
     async def _retry_on_rate_limit( func: Callable[..., Awaitable[ _T ] ], *args: object, **kwargs: Any ) -> _T:
-        """اجرای مجدد هوشمند در صورت خطای 429 Too Many Requests"""
+        """اجرای مجدد هوشمند در صورت خطای ‫429 Too Many Requests"""
         timeout = get_settings().GROQ_TIMEOUT_SEC
         MAX_RETRIES: int = get_settings().MAX_RETRIES
         BACKOFF_FACTOR: float = get_settings().LLM_BACKOFF_FACTOR
